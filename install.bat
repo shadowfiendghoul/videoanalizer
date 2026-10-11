@@ -161,6 +161,9 @@ if exist "templates\quiz-remotion\package.json" (
         echo [WARN] npm install encountered warnings or errors.
     ) else (
         echo [OK] Remotion dependencies installed.
+        echo [INFO] Pre-downloading and verifying Remotion headless Chromium engine...
+        call npx remotion browser ensure
+        echo [OK] Remotion render engine is ready.
     )
     popd
 )

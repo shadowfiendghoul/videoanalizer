@@ -383,7 +383,7 @@ class AudioService:
                 "All edge-tts voices failed for '%s'. Engaging offline TTS fallback.",
                 text[:40],
             )
-            self._synthesize_offline_fallback(text, output_path)
+            self._synthesize_offline_fallback(text, output_path, voice=voice)
             duration_ms = probe_audio_duration_ms(output_path)
             tokens = text.split()
             if tokens and duration_ms > 0:

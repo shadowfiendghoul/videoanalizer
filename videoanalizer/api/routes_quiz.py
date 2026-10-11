@@ -192,8 +192,12 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
 
     try:
         job["status"] = "rendering_video"
-        job["stage"] = "remotion_rendering"
-        job["progress_percent"] = 40
+        job["stage"] = "Инициализация рендеринга..."
+        job["progress_percent"] = 10
+
+        def on_progress(percent: int, stage_detail: str) -> None:
+            job["progress_percent"] = max(job.get("progress_percent", 0), percent)
+            job["stage"] = stage_detail
 
         retention_config = QuizRetentionConfig(
             enabled=request.retention_enabled,
@@ -217,6 +221,7 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
             background_music=request.background_music,
             background_music_volume=request.background_music_volume,
             uniquifier=request.uniquifier,
+            progress_callback=on_progress,
         )
 
         job["status"] = "completed"

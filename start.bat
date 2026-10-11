@@ -52,6 +52,7 @@ if exist "templates\quiz-remotion\package.json" (
         echo [INFO] Installing Remotion template dependencies...
         pushd templates\quiz-remotion
         call npm install --no-audit --no-fund >nul 2>&1
+        call npx remotion browser ensure >nul 2>&1
         popd
     )
 )

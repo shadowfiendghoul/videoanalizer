@@ -153,7 +153,9 @@ async def test_orchestrator_generate_pipeline_success(tmp_path: Path) -> None:
         )
     )
 
-    async def fake_render(props_path: Path, public_dir: Path, output_path: Path) -> None:
+    async def fake_render(
+        props_path: Path, public_dir: Path, output_path: Path, **kwargs: object
+    ) -> None:
         output_path.write_bytes(b"rendered mp4 data")
 
     with patch.object(orchestrator, "_render_remotion", new_callable=AsyncMock) as mock_render:
@@ -276,7 +278,9 @@ async def test_orchestrator_generate_with_banner(tmp_path: Path) -> None:
 
     captured_props = {}
 
-    async def mock_render(props_path: Path, public_dir: Path, output_path: Path) -> None:
+    async def mock_render(
+        props_path: Path, public_dir: Path, output_path: Path, **kwargs: object
+    ) -> None:
         import json
         captured_props.update(json.loads(props_path.read_text(encoding="utf-8")))
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -331,7 +335,9 @@ async def test_orchestrator_generate_with_approved_challenge(tmp_path: Path) -> 
 
     captured_props = {}
 
-    async def mock_render(props_path: Path, public_dir: Path, output_path: Path) -> None:
+    async def mock_render(
+        props_path: Path, public_dir: Path, output_path: Path, **kwargs: object
+    ) -> None:
         import json
         captured_props.update(json.loads(props_path.read_text(encoding="utf-8")))
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -350,5 +356,74 @@ async def test_orchestrator_generate_with_approved_challenge(tmp_path: Path) -> 
     # Ensure rendered challenge matches provided challenge
     assert captured_props["challenge"]["topic"] == "World Trivia"
     assert len(captured_props["challenge"]["tiers"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_generate_with_progress_callback(tmp_path: Path) -> None:
+    """Test that progress_callback receives expected progress updates across stages."""
+    config = QuizConfig(
+        output_dir=tmp_path / "outputs",
+        temp_dir=tmp_path / "temp",
+        backgrounds_dir=tmp_path / "backgrounds",
+        sfx_dir=tmp_path / "sfx",
+        remotion_dir=tmp_path / "remotion",
+    )
+    config.backgrounds_dir.mkdir(parents=True, exist_ok=True)
+    config.sfx_dir.mkdir(parents=True, exist_ok=True)
+
+    bg = config.backgrounds_dir / "default_bg.mp4"
+    bg.write_bytes(b"bg")
+    (config.sfx_dir / "timer_tick.wav").write_bytes(b"wav")
+    (config.sfx_dir / "reveal_ding.wav").write_bytes(b"wav")
+    (config.sfx_dir / "level_up.wav").write_bytes(b"wav")
+
+    orchestrator = QuizOrchestrator(config=config)
+    sample_challenge = make_sample_challenge()
+    sample_cue_sheet = make_sample_cue_sheet()
+
+    orchestrator.script_service = AsyncMock()
+    orchestrator.audio_service = AsyncMock()
+    orchestrator.audio_service.synthesize_cue_sheet.return_value = sample_cue_sheet
+    orchestrator.audio_service.ensure_default_sfx = MagicMock(
+        return_value=SfxPaths(
+            timer_tick=str(config.sfx_dir / "timer_tick.wav"),
+            reveal_ding=str(config.sfx_dir / "reveal_ding.wav"),
+            level_up=str(config.sfx_dir / "level_up.wav"),
+        )
+    )
+
+    async def mock_render(
+        props_path: Path,
+        public_dir: Path,
+        output_path: Path,
+        progress_callback: object = None,
+    ) -> None:
+        if progress_callback:
+            progress_callback(50, "Рендеринг видео: 50%")
+            progress_callback(85, "Рендеринг видео: 85%")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"rendered_mp4")
+
+    orchestrator._render_remotion = AsyncMock(side_effect=mock_render)
+
+    progress_events = []
+
+    def on_progress(percent: int, stage_detail: str) -> None:
+        progress_events.append((percent, stage_detail))
+
+    res = await orchestrator.generate(
+        topic="ProgressTestTopic",
+        challenge=sample_challenge,
+        progress_callback=on_progress,
+    )
+
+    assert res.exists()
+    assert len(progress_events) >= 5
+    percentages = [p[0] for p in progress_events]
+    assert 10 in percentages
+    assert 100 in percentages
+    # Ensure percentages are monotonically non-decreasing
+    assert percentages == sorted(percentages)
+
 
 

@@ -1653,12 +1653,13 @@
           const bar = document.getElementById('progress-bar-fill');
           const details = document.getElementById('status-details');
 
+          const pct = Math.max(10, Math.min(100, job.progress_percent || 15));
           if (job.status === 'pending') {
-            bar.style.width = '35%';
-            details.textContent = 'Шаг 1: Подготовка аудио и таймингов...';
+            bar.style.width = `${pct}%`;
+            details.textContent = job.stage || 'Шаг 1: Подготовка аудио и таймингов...';
           } else if (job.status === 'processing' || job.status === 'rendering_video') {
-            bar.style.width = '70%';
-            details.textContent = 'Шаг 2: Синтез речи Edge-TTS и рендеринг Remotion (1080x1920 60fps)...';
+            bar.style.width = `${pct}%`;
+            details.textContent = job.stage || `Шаг 2: Синтез речи и рендеринг видео (${pct}%)...`;
           } else if (job.status === 'completed') {
             clearInterval(pollInterval);
             bar.style.width = '100%';

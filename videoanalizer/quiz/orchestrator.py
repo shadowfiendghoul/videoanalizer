@@ -3,10 +3,13 @@
 import asyncio
 import json
 import logging
+import os
+import re
 import secrets
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from videoanalizer.media.uniquifier import VideoUniquifierConfig, apply_video_uniquifier
@@ -136,8 +139,9 @@ class QuizOrchestrator:
         abs_props = props_path.resolve()
         abs_public = public_dir.resolve()
 
-        # Concurrency strictly 3 to guard shared VRAM on Radeon 780M iGPU against Chromium OOM
-        concurrency = 3
+        # Dynamic concurrency based on available CPU cores
+        cpu_count = os.cpu_count() or 4
+        concurrency = min(6, max(2, cpu_count // 2 if cpu_count >= 6 else cpu_count - 1))
 
         args = [
             "render",
@@ -161,8 +165,9 @@ class QuizOrchestrator:
         props_path: Path,
         public_dir: Path,
         output_path: Path,
+        progress_callback: Callable[[int, str], None] | None = None,
     ) -> None:
-        """Execute Remotion CLI subprocess to render the MP4 composition."""
+        """Execute Remotion CLI subprocess to render MP4 with real-time streaming."""
         ensure_system_paths()
         cmd = self._build_remotion_command(
             props_path=props_path,
@@ -179,9 +184,69 @@ class QuizOrchestrator:
                 stderr=asyncio.subprocess.PIPE,
             )
 
+            collected_stdout: list[str] = []
+            collected_stderr: list[str] = []
+
+            async def read_stream(stream: asyncio.StreamReader, is_stderr: bool) -> None:
+                while True:
+                    line_b = await stream.readline()
+                    if not line_b:
+                        break
+                    line = line_b.decode(errors="replace").strip()
+                    if not line:
+                        continue
+                    if is_stderr:
+                        collected_stderr.append(line)
+                        logger.debug("[Remotion stderr] %s", line)
+                    else:
+                        collected_stdout.append(line)
+                        kw_matches = ("rendered", "bundl", "encod", "compos")
+                        if any(kw in line.lower() for kw in kw_matches):
+                            logger.info("[Remotion] %s", line)
+                        if progress_callback:
+                            # 1. Bundling progress: 40% -> 46%
+                            bundle_match = re.search(r"bundl\w*\s+.*?(\d+)%", line, re.IGNORECASE)
+                            if bundle_match:
+                                b_pct = int(bundle_match.group(1))
+                                progress_callback(
+                                    40 + int(b_pct * 0.06), f"Подготовка Remotion: {b_pct}%"
+                                )
+                            # 2. Rendering progress: 46% -> 90%
+                            render_match = re.search(
+                                r"rendered\s+(\d+)/(\d+)(?:,\s*time remaining:\s*([^,\n\r]+))?",
+                                line,
+                                re.IGNORECASE,
+                            )
+                            if render_match:
+                                cur = int(render_match.group(1))
+                                total = max(1, int(render_match.group(2)))
+                                rem_time = render_match.group(3)
+                                pct = 46 + int((cur / total) * 44)
+                                time_str = f" (осталось {rem_time.strip()})" if rem_time else ""
+                                frame_pct = int(cur / total * 100)
+                                progress_callback(
+                                    pct,
+                                    f"Рендеринг видео: кадр {cur}/{total} ({frame_pct}%){time_str}",
+                                )
+                            # 3. Encoding progress: 90% -> 92%
+                            encoded_match = re.search(r"encoded\s+(\d+)/(\d+)", line, re.IGNORECASE)
+                            if encoded_match:
+                                cur = int(encoded_match.group(1))
+                                total = max(1, int(encoded_match.group(2)))
+                                progress_callback(
+                                    90 + int((cur / total) * 2),
+                                    f"Кодирование видео: {cur}/{total} кадров",
+                                )
+
             try:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(),
+                assert process.stdout is not None
+                assert process.stderr is not None
+                await asyncio.wait_for(
+                    asyncio.gather(
+                        read_stream(process.stdout, False),
+                        read_stream(process.stderr, True),
+                        process.wait(),
+                    ),
                     timeout=self.config.render_timeout_sec,
                 )
             except TimeoutError as exc:
@@ -190,10 +255,9 @@ class QuizOrchestrator:
                     f"Remotion render timed out after {self.config.render_timeout_sec} seconds"
                 ) from exc
 
-
         if process.returncode != 0:
-            err_msg = stderr.decode(errors="replace")
-            out_msg = stdout.decode(errors="replace")
+            err_msg = "\n".join(collected_stderr[-30:])
+            out_msg = "\n".join(collected_stdout[-30:])
             logger.error(
                 "Remotion render failed with exit code %s: %s", process.returncode, err_msg
             )
@@ -219,8 +283,11 @@ class QuizOrchestrator:
         background_music: Path | str | None = None,
         background_music_volume: float = 0.18,
         uniquifier: VideoUniquifierConfig | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
     ) -> Path:
         """Run the full end-to-end quiz short generation pipeline."""
+        if progress_callback:
+            progress_callback(10, "Инициализация генерации...")
         self.config.output_dir.mkdir(parents=True, exist_ok=True)
         bg_source = self.select_background(background_video)
 
@@ -247,6 +314,8 @@ class QuizOrchestrator:
 
         async with QuizWorkspace(base_dir=self.config.temp_dir) as workspace:
             logger.info("Started quiz generation in workspace %s", workspace.path)
+            if progress_callback:
+                progress_callback(15, "Подготовка звуковых эффектов и ассетов...")
 
             # 1. Create public directory structure inside workspace for Remotion serving
             public_dir = workspace.path / "public"
@@ -298,6 +367,8 @@ class QuizOrchestrator:
 
 
             # 3. Generate structured 9-question challenge or use pre-approved challenge
+            if progress_callback:
+                progress_callback(20, "Подготовка вопросов и визуальных подсказок...")
             if challenge is not None:
                 logger.info(
                     "Using pre-approved quiz challenge with %d questions for topic: %s",
@@ -374,6 +445,8 @@ class QuizOrchestrator:
                                 q.local_image_path = None
 
             # 4. Synthesize synchronized voiceovers and word boundary cue sheet
+            if progress_callback:
+                progress_callback(30, "Синтез речи нейросетью Edge-TTS...")
             logger.info("Synthesizing audio narration and karaoke cues")
             cue_sheet: AudioCueSheet = await self.audio_service.synthesize_cue_sheet(
                 challenge=challenge,
@@ -395,6 +468,8 @@ class QuizOrchestrator:
                     cue.answer_audio_file = f"audio/{Path(cue.answer_audio_file).name}"
 
             # 5. Stage Background Video into public/background.mp4 with continuous duration loop
+            if progress_callback:
+                progress_callback(38, "Подготовка фонового видеоряда...")
             staged_bg_name = "background.mp4"
             target_bg = public_dir / staged_bg_name
             target_duration_sec = (cue_sheet.total_duration_ms / 1000.0) + 15.0
@@ -526,12 +601,22 @@ class QuizOrchestrator:
             )
 
             # 7. Execute Remotion CLI render
+            if progress_callback:
+                progress_callback(40, "Запуск рендеринга Remotion...")
             logger.info("Rendering final vertical video to %s", final_output_path)
-            await self._render_remotion(
-                props_path=props_file,
-                public_dir=public_dir,
-                output_path=final_output_path,
-            )
+            if progress_callback is not None:
+                await self._render_remotion(
+                    props_path=props_file,
+                    public_dir=public_dir,
+                    output_path=final_output_path,
+                    progress_callback=progress_callback,
+                )
+            else:
+                await self._render_remotion(
+                    props_path=props_file,
+                    public_dir=public_dir,
+                    output_path=final_output_path,
+                )
 
         if not final_output_path.exists() or final_output_path.stat().st_size == 0:
             raise RuntimeError(
@@ -540,6 +625,8 @@ class QuizOrchestrator:
 
         # 9. Apply Video Uniquifier post-processing if enabled
         if uniquifier and uniquifier.enabled:
+            if progress_callback:
+                progress_callback(93, "Уникализация видео (Anti-Content ID)...")
             logger.info("Applying Video Uniquifier post-processing on %s", final_output_path)
             apply_video_uniquifier(
                 input_path=final_output_path,
@@ -548,6 +635,9 @@ class QuizOrchestrator:
                 width=self.config.width,
                 height=self.config.height,
             )
+
+        if progress_callback:
+            progress_callback(100, "Видео успешно создано!")
 
         logger.info(
             "Quiz shorts video ready: %s (size: %d bytes)",
