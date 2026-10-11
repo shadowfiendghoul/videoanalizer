@@ -15,6 +15,7 @@ from videoanalizer.quiz.models import (
     AudioCueSheet,
     QuestionAudioCue,
     QuizChallenge,
+    QuizRetentionConfig,
     SfxPaths,
     WordCue,
 )
@@ -121,11 +122,100 @@ def ensure_default_sfx(sfx_dir: Path) -> None:
                 data.extend(struct.pack("<h", int(val)))
             f.writeframes(data)
 
+    heartbeat_path = sfx_dir / "heartbeat_panic.wav"
+    if not heartbeat_path.exists():
+        # Double-pulse heartbeat sound (0.6s)
+        n_samples = int(sample_rate * 0.6)
+        with wave.open(str(heartbeat_path), "w") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(sample_rate)
+            data = bytearray()
+            for i in range(n_samples):
+                t = i / sample_rate
+                # First thump at 0.0s, second thump at 0.22s
+                env1 = math.exp(-t * 25.0) if t < 0.22 else 0.0
+                t2 = t - 0.22
+                env2 = math.exp(-t2 * 20.0) if t >= 0.22 else 0.0
+                val = (
+                    math.sin(2 * math.pi * 65.0 * t) * env1 * 28000
+                    + math.sin(2 * math.pi * 55.0 * t) * env2 * 30000
+                )
+                data.extend(struct.pack("<h", int(max(-32767, min(32767, val)))))
+            f.writeframes(data)
+
+    streak_fire_path = sfx_dir / "streak_fire.wav"
+    if not streak_fire_path.exists():
+        # Fire whoosh burst (0.5s)
+        n_samples = int(sample_rate * 0.5)
+        with wave.open(str(streak_fire_path), "w") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(sample_rate)
+            data = bytearray()
+            for i in range(n_samples):
+                t = i / sample_rate
+                env = math.sin(math.pi * (i / n_samples))
+                # Frequency glide from 300Hz to 900Hz
+                freq = 300.0 + 600.0 * (t / 0.5)
+                val = math.sin(2 * math.pi * freq * t) * env * 25000
+                data.extend(struct.pack("<h", int(max(-32767, min(32767, val)))))
+            f.writeframes(data)
+
+    rank_levelup_path = sfx_dir / "rank_levelup.wav"
+    if not rank_levelup_path.exists():
+        # Soaring cosmic arpeggio (1.4s)
+        n_samples = int(sample_rate * 1.4)
+        cosmic_notes = [440.0, 554.37, 659.25, 880.0, 1108.73]
+        with wave.open(str(rank_levelup_path), "w") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(sample_rate)
+            data = bytearray()
+            for i in range(n_samples):
+                t = i / sample_rate
+                idx = min(int(t / 0.12), len(cosmic_notes) - 1)
+                freq = cosmic_notes[idx]
+                note_t = t - (idx * 0.12)
+                env = math.exp(-note_t * 2.5)
+                val = (
+                    0.7 * math.sin(2 * math.pi * freq * t)
+                    + 0.3 * math.sin(2 * math.pi * (freq * 2) * t)
+                ) * env * 27000
+                data.extend(struct.pack("<h", int(max(-32767, min(32767, val)))))
+            f.writeframes(data)
+
+    comment_buzzer_path = sfx_dir / "comment_buzzer.wav"
+    if not comment_buzzer_path.exists():
+        # Dramatic deep brass / vine boom impact (1.0s)
+        n_samples = int(sample_rate * 1.0)
+        with wave.open(str(comment_buzzer_path), "w") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(sample_rate)
+            data = bytearray()
+            for i in range(n_samples):
+                t = i / sample_rate
+                env = math.exp(-t * 4.0)
+                # Pitch drop from 120Hz to 45Hz
+                freq = max(45.0, 120.0 - 75.0 * t)
+                val = (
+                    0.8 * math.sin(2 * math.pi * freq * t)
+                    + 0.2 * math.sin(2 * math.pi * (freq * 3) * t)
+                ) * env * 31000
+                data.extend(struct.pack("<h", int(max(-32767, min(32767, val)))))
+            f.writeframes(data)
+
     return SfxPaths(
         timer_tick=str(tick_path),
         reveal_ding=str(ding_path),
         level_up=str(level_up_path),
+        heartbeat_panic=str(heartbeat_path),
+        streak_fire=str(streak_fire_path),
+        rank_levelup=str(rank_levelup_path),
+        comment_buzzer=str(comment_buzzer_path),
     )
+
 
 
 class AudioService:
@@ -201,6 +291,7 @@ class AudioService:
         workspace: QuizWorkspace | None = None,
         output_dir: Path | None = None,
         voice: str | None = None,
+        retention_config: QuizRetentionConfig | None = None,
     ) -> AudioCueSheet:
         """Synthesize all 9 questions and assemble the master AudioCueSheet."""
         ensure_default_sfx(self.config.sfx_dir)
@@ -208,8 +299,6 @@ class AudioService:
             challenge.language, "ru-RU-SvetlanaNeural"
         )
         fps = self.config.fps
-        think_duration_ms = int(self.config.think_duration_sec * 1000)
-        think_frames = int(self.config.think_duration_sec * fps)
 
         cues: list[QuestionAudioCue] = []
         current_frame = 0
@@ -217,6 +306,22 @@ class AudioService:
         # Process each question in sequence
         for q in challenge.all_questions():
             q_num = q.question_number
+
+            # Determine progressive blitz think duration for current difficulty tier
+            think_sec = self.config.think_duration_sec
+            if retention_config and retention_config.stress_timer_enabled:
+                tier_name = "easy" if q_num <= 3 else ("medium" if q_num <= 6 else "hard")
+                for tier_cfg in retention_config.stress_tiers:
+                    if tier_cfg.tier_level == tier_name:
+                        think_sec = tier_cfg.think_duration_sec
+                        break
+            elif not retention_config:
+                # Default blitz progression: 3.0s (Easy), 2.5s (Medium), 1.8s (Hard)
+                think_sec = 3.0 if q_num <= 3 else (2.5 if q_num <= 6 else 1.8)
+
+            think_duration_ms = int(think_sec * 1000)
+            think_frames = int(think_sec * fps)
+
             if output_dir:
                 q_audio_path = output_dir / f"q_{q_num}_prompt.mp3"
                 ans_audio_path = output_dir / f"q_{q_num}_answer.mp3"
@@ -294,10 +399,11 @@ class AudioService:
             reveal_frame = think_start_frame + think_frames
             ans_frames = max(1, int(ans_dur_ms * fps / 1000))
 
-            # Add a 15-frame breathing buffer before next question
-            pause_frames = 15
+            # Add a 6-frame breathing buffer before next question (snappy blitz transition)
+            pause_frames = 6
             end_frame = reveal_frame + ans_frames + pause_frames
             current_frame = end_frame
+
 
             cues.append(
                 QuestionAudioCue(

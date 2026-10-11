@@ -3,7 +3,6 @@
 import asyncio
 import json
 import logging
-import os
 import secrets
 import shutil
 import subprocess
@@ -16,6 +15,7 @@ from videoanalizer.quiz.image_service import ImageService
 from videoanalizer.quiz.models import (
     AudioCueSheet,
     QuizChallenge,
+    QuizRetentionConfig,
     RemotionRenderProps,
     SfxPaths,
 )
@@ -23,6 +23,17 @@ from videoanalizer.quiz.script_service import ScriptService
 from videoanalizer.quiz.workspace import QuizWorkspace
 
 logger = logging.getLogger(__name__)
+
+# Global FIFO Semaphore to prevent multiple concurrent Remotion instances and OOM on iGPU
+_RENDER_SEMAPHORE: asyncio.Semaphore | None = None
+
+
+def get_render_semaphore() -> asyncio.Semaphore:
+    """Lazily initialize asyncio.Semaphore(1) on active event loop."""
+    global _RENDER_SEMAPHORE
+    if _RENDER_SEMAPHORE is None:
+        _RENDER_SEMAPHORE = asyncio.Semaphore(1)
+    return _RENDER_SEMAPHORE
 
 
 class QuizOrchestrator:
@@ -124,8 +135,8 @@ class QuizOrchestrator:
         abs_props = props_path.resolve()
         abs_public = public_dir.resolve()
 
-        # Concurrency 4 utilizes Ryzen 7 8845H Zen 4 cores (8c/16t) without overloading iGPU decoder
-        concurrency = max(1, min(4, (os.cpu_count() or 4) // 2))
+        # Concurrency strictly 3 to guard shared VRAM on Radeon 780M iGPU against Chromium OOM
+        concurrency = 3
 
         args = [
             "render",
@@ -158,24 +169,26 @@ class QuizOrchestrator:
             output_path=output_path,
         )
 
-        logger.info("Executing Remotion render: %s", " ".join(cmd))
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            cwd=str(self.config.remotion_dir.resolve()),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-
-        try:
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=self.config.render_timeout_sec,
+        async with get_render_semaphore():
+            logger.info("Executing Remotion render: %s", " ".join(cmd))
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                cwd=str(self.config.remotion_dir.resolve()),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
-        except TimeoutError as exc:
-            process.kill()
-            raise TimeoutError(
-                f"Remotion render timed out after {self.config.render_timeout_sec} seconds"
-            ) from exc
+
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(),
+                    timeout=self.config.render_timeout_sec,
+                )
+            except TimeoutError as exc:
+                process.kill()
+                raise TimeoutError(
+                    f"Remotion render timed out after {self.config.render_timeout_sec} seconds"
+                ) from exc
+
 
         if process.returncode != 0:
             err_msg = stderr.decode(errors="replace")
@@ -198,6 +211,7 @@ class QuizOrchestrator:
         output_filename: str | None = None,
         banner_video: Path | str | None = None,
         challenge: QuizChallenge | None = None,
+        retention_config: QuizRetentionConfig | None = None,
     ) -> Path:
         """Run the full end-to-end quiz short generation pipeline."""
         self.config.output_dir.mkdir(parents=True, exist_ok=True)
@@ -243,11 +257,36 @@ class QuizOrchestrator:
             shutil.copy2(raw_sfx.reveal_ding, sfx_target_dir / "reveal_ding.wav")
             shutil.copy2(raw_sfx.level_up, sfx_target_dir / "level_up.wav")
 
+            heartbeat_panic_rel = None
+            if raw_sfx.heartbeat_panic and Path(raw_sfx.heartbeat_panic).exists():
+                shutil.copy2(raw_sfx.heartbeat_panic, sfx_target_dir / "heartbeat_panic.wav")
+                heartbeat_panic_rel = "sfx/heartbeat_panic.wav"
+
+            streak_fire_rel = None
+            if raw_sfx.streak_fire and Path(raw_sfx.streak_fire).exists():
+                shutil.copy2(raw_sfx.streak_fire, sfx_target_dir / "streak_fire.wav")
+                streak_fire_rel = "sfx/streak_fire.wav"
+
+            rank_levelup_rel = None
+            if raw_sfx.rank_levelup and Path(raw_sfx.rank_levelup).exists():
+                shutil.copy2(raw_sfx.rank_levelup, sfx_target_dir / "rank_levelup.wav")
+                rank_levelup_rel = "sfx/rank_levelup.wav"
+
+            comment_buzzer_rel = None
+            if raw_sfx.comment_buzzer and Path(raw_sfx.comment_buzzer).exists():
+                shutil.copy2(raw_sfx.comment_buzzer, sfx_target_dir / "comment_buzzer.wav")
+                comment_buzzer_rel = "sfx/comment_buzzer.wav"
+
             staged_sfx = SfxPaths(
                 timer_tick="sfx/timer_tick.wav",
                 reveal_ding="sfx/reveal_ding.wav",
                 level_up="sfx/level_up.wav",
+                heartbeat_panic=heartbeat_panic_rel,
+                streak_fire=streak_fire_rel,
+                rank_levelup=rank_levelup_rel,
+                comment_buzzer=comment_buzzer_rel,
             )
+
 
             # 3. Generate structured 9-question challenge or use pre-approved challenge
             if challenge is not None:
@@ -297,6 +336,7 @@ class QuizOrchestrator:
                 challenge=challenge,
                 output_dir=audio_dir,
                 voice=voice,
+                retention_config=retention_config,
             )
 
             # Normalize cue audio file paths to be relative to public dir (e.g. "audio/...")
@@ -384,6 +424,7 @@ class QuizOrchestrator:
                 cue_sheet=cue_sheet,
                 background_video_path=staged_bg_name,
                 sfx_paths=staged_sfx,
+                retention=retention_config or QuizRetentionConfig(),
                 fps=self.config.fps,
                 width=self.config.width,
                 height=self.config.height,
@@ -391,6 +432,7 @@ class QuizOrchestrator:
                 banner_start_frame=banner_start_frame,
                 banner_duration_frames=banner_duration_frames,
             )
+
 
             props_file = workspace.path / "remotion-props.json"
             props_file.write_text(

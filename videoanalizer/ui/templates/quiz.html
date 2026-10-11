@@ -218,20 +218,35 @@
             </div>
           </div>
 
-          <!-- Feature Highlights Card -->
-          <div class="p-4 rounded-xl bg-emerald-500/[0.04] border border-emerald-500/20 space-y-2 text-xs text-slate-300">
-            <div class="font-semibold text-emerald-400 flex items-center space-x-1.5">
-              <i data-lucide="check-circle" class="w-4 h-4"></i>
-              <span>Фирменный стиль @dreaaam33 (dreamfacts):</span>
+          <!-- Retention Mechanics Settings Card -->
+          <div class="p-4 rounded-xl bg-purple-500/[0.05] border border-purple-500/20 space-y-3 text-xs text-slate-300">
+            <div class="font-semibold text-purple-300 flex items-center justify-between">
+              <span class="flex items-center space-x-1.5">
+                <i data-lucide="zap" class="w-4 h-4 text-purple-400"></i>
+                <span>Вирусные фишки удержания (Retention Mechanics):</span>
+              </span>
+              <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">TikTok APV &gt; 70%</span>
             </div>
-            <ul class="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
-              <li>• Верхний баннер УРОВЕНЬ: ЛЕГКИЙ/СРЕДНИЙ/ТЯЖЕЛЫЙ</li>
-              <li>• Лестница 1-9 на левом краю (1-4 Зелёные, 5-8 Жёлтые, 9 Красный)</li>
-              <li>• Плавный таймер-капсула на 3 секунды</li>
-              <li>• Выбор геймплея на фоне (Minecraft, GTA 5, Subway Surfers, Космос)</li>
-              <li>• Анимационный баннер (строго центр, &ge;25% экрана)</li>
-            </ul>
+            <div class="grid grid-cols-2 gap-2 text-[11px] pt-1">
+              <label class="flex items-center space-x-2 cursor-pointer p-2 rounded-lg bg-black/40 border border-white/[0.04] hover:border-purple-500/30 transition-all">
+                <input type="checkbox" id="rank-toggle" checked class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-slate-900 border-white/20">
+                <span class="text-slate-200">👑 IQ/Rank шкала (NPC &rarr; 1%)</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer p-2 rounded-lg bg-black/40 border border-white/[0.04] hover:border-purple-500/30 transition-all">
+                <input type="checkbox" id="timer-toggle" checked class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-slate-900 border-white/20">
+                <span class="text-slate-200">⚡ Стресс-таймер (3с &rarr; 1.8с)</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer p-2 rounded-lg bg-black/40 border border-white/[0.04] hover:border-purple-500/30 transition-all">
+                <input type="checkbox" id="streak-toggle" checked class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-slate-900 border-white/20">
+                <span class="text-slate-200">🔥 Комбо-огонь x1..x9</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer p-2 rounded-lg bg-black/40 border border-white/[0.04] hover:border-purple-500/30 transition-all">
+                <input type="checkbox" id="trap-toggle" checked class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-slate-900 border-white/20">
+                <span class="text-slate-200">💬 Ловушка комментов (Аутро)</span>
+              </label>
+            </div>
           </div>
+
 
           <!-- Action Buttons -->
           <div class="space-y-2 pt-1">
@@ -686,7 +701,12 @@
             voice: voice,
             background_video: background,
             banner_video: bannerEnabled ? uploadedBannerFile : null,
-            challenge: approvedChallenge
+            challenge: approvedChallenge,
+            retention_enabled: true,
+            rank_bar_enabled: document.getElementById('rank-toggle')?.checked ?? true,
+            stress_timer_enabled: document.getElementById('timer-toggle')?.checked ?? true,
+            streak_fire_enabled: document.getElementById('streak-toggle')?.checked ?? true,
+            comment_trap_enabled: document.getElementById('trap-toggle')?.checked ?? true
           })
         });
 

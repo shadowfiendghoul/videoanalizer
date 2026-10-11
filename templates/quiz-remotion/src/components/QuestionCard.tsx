@@ -70,13 +70,29 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
               />
             </div>
             {/* Prompt text below image */}
-            <h2 className={`font-black text-white text-center drop-shadow-lg ${textSizeClass}`}>
+            <h2
+              className="font-black text-white text-center drop-shadow-lg"
+              style={{
+                fontSize: "clamp(26px, 3.2vw, 44px)",
+                lineHeight: 1.25,
+                maxWidth: "840px",
+                overflowWrap: "break-word",
+              }}
+            >
               {questionText}
             </h2>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center w-full py-4">
-            <h2 className={`font-black text-white text-center tracking-wide drop-shadow-lg ${textSizeClass}`}>
+            <h2
+              className="font-black text-white text-center tracking-wide drop-shadow-lg"
+              style={{
+                fontSize: "clamp(26px, 3.2vw, 44px)",
+                lineHeight: 1.25,
+                maxWidth: "840px",
+                overflowWrap: "break-word",
+              }}
+            >
               {questionText}
             </h2>
           </div>

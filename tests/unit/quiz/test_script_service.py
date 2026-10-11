@@ -82,3 +82,67 @@ async def test_generate_quiz_success(tmp_path: Path) -> None:
                 # Check that question 1 resolved image path
                 q1 = result.all_questions()[0]
                 assert q1.local_image_path == str(fake_img_path)
+
+
+def test_quiz_system_prompt_layout_guard_constraints() -> None:
+    """Verify QUIZ_SYSTEM_PROMPT contains <= 65 and <= 25 character constraints."""
+    from videoanalizer.quiz.script_service import QUIZ_SYSTEM_PROMPT
+
+    assert "65 characters" in QUIZ_SYSTEM_PROMPT
+    assert "25 characters" in QUIZ_SYSTEM_PROMPT
+    assert "80 characters" in QUIZ_SYSTEM_PROMPT
+    assert "35 characters" in QUIZ_SYSTEM_PROMPT
+
+
+def test_quiz_item_within_layout_guard_bounds() -> None:
+    """Verify QuizItem accepts questions <= 65 chars and answers <= 25 chars."""
+    item = QuizItem(
+        question_number=1,
+        difficulty=DifficultyTier.EASY,
+        tier_index=1,
+        question_text="Какая столица у Франции?",  # 25 chars
+        correct_answer="Париж",  # 5 chars
+        fun_fact="Париж называют городом огней.",
+    )
+    assert len(item.question_text) <= 65
+    assert len(item.correct_answer) <= 25
+
+
+def test_quiz_item_rejects_question_over_80_chars() -> None:
+    """Verify QuizItem raises ValidationError when question exceeds hard 80-char limit."""
+    from pydantic import ValidationError
+
+    overlong_q = (
+        "Это очень длинный тестовый вопрос, длина которого заведомо превышает восемьдесят символов!"
+    )
+    assert len(overlong_q) > 80
+
+    with pytest.raises(ValidationError) as exc_info:
+        QuizItem(
+            question_number=1,
+            difficulty=DifficultyTier.EASY,
+            tier_index=1,
+            question_text=overlong_q,
+            correct_answer="Париж",
+            fun_fact="Факт",
+        )
+    assert "80" in str(exc_info.value)
+
+
+def test_quiz_item_rejects_answer_over_35_chars() -> None:
+    """Verify QuizItem raises ValidationError when answer exceeds hard 35-char limit."""
+    from pydantic import ValidationError
+
+    overlong_a = "Невероятно длинный и подробный ответ на вопрос"
+    assert len(overlong_a) > 35
+
+    with pytest.raises(ValidationError) as exc_info:
+        QuizItem(
+            question_number=1,
+            difficulty=DifficultyTier.EASY,
+            tier_index=1,
+            question_text="Вопрос нормальной длины?",
+            correct_answer=overlong_a,
+            fun_fact="Факт",
+        )
+    assert "35" in str(exc_info.value)

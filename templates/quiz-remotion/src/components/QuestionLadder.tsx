@@ -64,19 +64,20 @@ export const QuestionLadder: React.FC<QuestionLadderProps> = ({
         return (
           <div
             key={num}
-            className="flex items-center text-4xl md:text-5xl font-black tracking-wide"
+            className="flex items-center font-black tracking-wide"
             style={{
               filter: "drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.9))",
+              fontSize: "clamp(26px, 3.2vw, 44px)",
             }}
           >
             {isRed ? (
-              <span className="inline-flex items-center justify-center w-12 h-12 rounded-full border-2 border-white bg-red-600 text-white text-3xl font-black mr-3 shadow-lg">
+              <span className="inline-flex items-center justify-center w-12 h-12 rounded-full border-2 border-white bg-red-600 text-white text-3xl font-black mr-3 shadow-lg flex-shrink-0">
                 9
               </span>
             ) : (
               <span
                 style={{ color: numberColor }}
-                className="font-black mr-3 w-10 text-left"
+                className="font-black mr-3 w-10 text-left flex-shrink-0"
               >
                 {num}.
               </span>
@@ -87,8 +88,11 @@ export const QuestionLadder: React.FC<QuestionLadderProps> = ({
                 style={{
                   transform: `scale(${popScale})`,
                   transformOrigin: "left center",
+                  fontSize: "clamp(26px, 3.2vw, 44px)",
+                  maxWidth: "760px",
+                  lineHeight: 1.15,
                 }}
-                className="text-white font-black text-4xl md:text-5xl tracking-wide uppercase drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+                className="text-white font-black tracking-wide uppercase drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] truncate"
               >
                 {q.correct_answer}
               </span>

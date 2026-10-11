@@ -11,7 +11,12 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, statu
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from videoanalizer.quiz.models import QuizChallenge
+from videoanalizer.quiz.models import (
+    ComboStreakConfig,
+    CommentTrapConfig,
+    QuizChallenge,
+    QuizRetentionConfig,
+)
 from videoanalizer.quiz.orchestrator import QuizOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -41,6 +46,22 @@ class QuizGenerateRequest(BaseModel):
     challenge: QuizChallenge | None = Field(
         default=None, description="Optional pre-approved 9-question challenge structure."
     )
+    retention_enabled: bool = Field(
+        default=True, description="Master switch for viral retention mechanics."
+    )
+    rank_bar_enabled: bool = Field(
+        default=True, description="Enable psychological IQ/Rank status bar."
+    )
+    stress_timer_enabled: bool = Field(
+        default=True, description="Enable blitz progressive stress timer."
+    )
+    streak_fire_enabled: bool = Field(
+        default=True, description="Enable combo streak flame counter."
+    )
+    comment_trap_enabled: bool = Field(
+        default=True, description="Enable controversy outro comment callout."
+    )
+
 
 
 class BannerUploadResponse(BaseModel):
@@ -105,6 +126,14 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
         job["stage"] = "remotion_rendering"
         job["progress_percent"] = 40
 
+        retention_config = QuizRetentionConfig(
+            enabled=request.retention_enabled,
+            rank_bar_enabled=request.rank_bar_enabled,
+            stress_timer_enabled=request.stress_timer_enabled,
+            streak_fire=ComboStreakConfig(enabled=request.streak_fire_enabled),
+            comment_trap=CommentTrapConfig(enabled=request.comment_trap_enabled),
+        )
+
         output_path = await orchestrator.generate(
             topic=request.topic,
             language=request.language,
@@ -112,6 +141,7 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
             voice=request.voice,
             banner_video=request.banner_video,
             challenge=request.challenge,
+            retention_config=retention_config,
         )
 
         job["status"] = "completed"

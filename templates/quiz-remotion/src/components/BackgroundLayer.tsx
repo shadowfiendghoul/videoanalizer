@@ -1,26 +1,31 @@
 import React from "react";
-import { AbsoluteFill, Video } from "remotion";
+import { AbsoluteFill, Loop, Video } from "remotion";
 import { resolveAssetUrl } from "../utils/assets";
 
 interface BackgroundLayerProps {
   videoPath: string;
+  loopDurationInFrames?: number;
 }
 
-export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({ videoPath }) => {
+export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({
+  videoPath,
+  loopDurationInFrames = 450, // Loop every 15s (450 frames) to safely loop short backgrounds
+}) => {
   const src = resolveAssetUrl(videoPath);
 
   return (
     <AbsoluteFill className="bg-slate-950">
-      {/* Background Video */}
+      {/* Background Video wrapped in Loop guard */}
       {src && (
-        <Video
-          src={src}
-          loop
-          muted
-          delayRenderTimeoutInMilliseconds={120000}
-          delayRenderRetries={3}
-          className="w-full h-full object-cover opacity-85"
-        />
+        <Loop durationInFrames={loopDurationInFrames}>
+          <Video
+            src={src}
+            muted
+            delayRenderTimeoutInMilliseconds={120000}
+            delayRenderRetries={3}
+            className="w-full h-full object-cover opacity-85"
+          />
+        </Loop>
       )}
 
       {/* Dark Ambient Vignette and Gradients for High Text Contrast */}

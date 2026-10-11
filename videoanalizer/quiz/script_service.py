@@ -27,9 +27,11 @@ RULES & CONSTRAINTS:
    - Level 1 (Easy): 3 questions, theme_color '#22C55E', question numbers 1, 2, 3.
    - Level 2 (Medium): 3 questions, theme_color '#F59E0B', question numbers 4, 5, 6.
    - Level 3 (Hard): 3 questions, theme_color '#EF4444', question numbers 7, 8, 9.
-3. Content Quality:
-   - Question texts must be punchy, direct, and under 120 characters.
-   - Correct answers must be crisp (1 to 4 words).
+3. Content Quality & Layout Guard:
+   - Question texts must be punchy, direct, and strictly <= 65 characters
+     (never exceed 80 characters).
+   - Correct answers must be crisp, 1 to 4 words, and strictly <= 25 characters
+     (never exceed 35 characters).
    - Fun facts must be fascinating, educational, and under 150 characters.
    - If the topic is visual (flags, country shapes, brand logos, monuments),
      provide a precise 'image_query' (e.g. 'Flag of Argentina', 'Starbucks Logo')

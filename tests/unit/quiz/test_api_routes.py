@@ -171,3 +171,27 @@ def test_generate_quiz_with_approved_challenge() -> None:
         assert len(req_arg.challenge.all_questions()) == 9
 
 
+def test_generate_quiz_with_retention_flags() -> None:
+    """POST /api/v1/quiz/generate should accept viral retention configuration flags."""
+    with patch("videoanalizer.api.routes_quiz._run_quiz_job", new_callable=AsyncMock) as mock_job:
+        payload = {
+            "topic": "Космос",
+            "language": "ru",
+            "retention_enabled": True,
+            "rank_bar_enabled": True,
+            "stress_timer_enabled": True,
+            "streak_fire_enabled": True,
+            "comment_trap_enabled": True,
+        }
+        res = client.post("/api/v1/quiz/generate", json=payload)
+        assert res.status_code == 202
+        mock_job.assert_called_once()
+        req_arg = mock_job.call_args[0][1]
+        assert req_arg.retention_enabled is True
+        assert req_arg.rank_bar_enabled is True
+        assert req_arg.stress_timer_enabled is True
+        assert req_arg.streak_fire_enabled is True
+        assert req_arg.comment_trap_enabled is True
+
+
+

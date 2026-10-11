@@ -9,6 +9,7 @@ export interface QuizItem {
   fun_fact: string;
   image_query: string | null;
   local_image_path: string | null;
+  decoy_answer?: string | null;
 }
 
 export interface QuizTier {
@@ -56,6 +57,54 @@ export interface SfxPaths {
   timer_tick: string;
   reveal_ding: string;
   level_up: string;
+  heartbeat_panic?: string | null;
+  streak_fire?: string | null;
+  rank_levelup?: string | null;
+  comment_buzzer?: string | null;
+}
+
+export interface RankTierConfig {
+  min_question: number;
+  max_question: number;
+  rank_title: string;
+  rank_color: string;
+  rank_icon: string;
+  iq_label: string;
+}
+
+export interface StressTimerTier {
+  tier_level: DifficultyTier;
+  think_duration_sec: number;
+  theme_color: string;
+  sfx_file: string;
+  panic_vignette: boolean;
+}
+
+export interface ComboStreakConfig {
+  enabled: boolean;
+  fire_color_normal: string;
+  fire_color_ultra: string;
+  ultra_threshold: number;
+  sfx_pitch_step: number;
+}
+
+export interface CommentTrapConfig {
+  enabled: boolean;
+  trap_question_number: number;
+  outro_challenge_text: string;
+  duration_frames: number;
+}
+
+export interface QuizRetentionConfig {
+  enabled: boolean;
+  rank_bar_enabled: boolean;
+  rank_tiers: RankTierConfig[];
+  stress_timer_enabled: boolean;
+  stress_tiers: StressTimerTier[];
+  streak_fire: ComboStreakConfig;
+  comment_trap: CommentTrapConfig;
+  seamless_loop: boolean;
+  anti_cheat_callout: boolean;
 }
 
 export interface RemotionRenderProps extends Record<string, unknown> {
@@ -63,6 +112,7 @@ export interface RemotionRenderProps extends Record<string, unknown> {
   cue_sheet: AudioCueSheet;
   background_video_path: string;
   sfx_paths: SfxPaths;
+  retention?: QuizRetentionConfig;
   fps: number;
   width: number;
   height: number;
@@ -70,3 +120,4 @@ export interface RemotionRenderProps extends Record<string, unknown> {
   banner_start_frame?: number | null;
   banner_duration_frames?: number | null;
 }
+

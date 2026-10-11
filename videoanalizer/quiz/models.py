@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DifficultyTier(StrEnum):
@@ -37,15 +37,31 @@ class QuizItem(BaseModel):
     question_text: str = Field(
         ...,
         min_length=5,
-        max_length=150,
-        description="Question text presented to the viewer.",
+        max_length=80,
+        description="Question text presented to the viewer (target <= 65 chars, hard limit 80).",
     )
     correct_answer: str = Field(
         ...,
         min_length=1,
-        max_length=60,
-        description="The definitive correct answer displayed on reveal.",
+        max_length=35,
+        description=(
+            "The definitive correct answer displayed on reveal (target <= 25 chars, hard limit 35)."
+        ),
     )
+
+    @field_validator("question_text")
+    @classmethod
+    def validate_question_text_length(cls, v: str) -> str:
+        if len(v) > 80:
+            raise ValueError(f"Question text exceeds maximum 80 characters limit: {len(v)} chars")
+        return v
+
+    @field_validator("correct_answer")
+    @classmethod
+    def validate_correct_answer_length(cls, v: str) -> str:
+        if len(v) > 35:
+            raise ValueError(f"Correct answer exceeds maximum 35 characters limit: {len(v)} chars")
+        return v
     fun_fact: str = Field(
         ...,
         max_length=200,
@@ -166,25 +182,193 @@ class AudioCueSheet(BaseModel):
 class SfxPaths(BaseModel):
     """Sound effect file paths."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     timer_tick: str
     reveal_ding: str
     level_up: str
+    heartbeat_panic: str | None = Field(
+        default=None, description="Fast heartbeat for hard timer."
+    )
+    streak_fire: str | None = Field(default=None, description="Whoosh sound for combo streak.")
+    rank_levelup: str | None = Field(default=None, description="Chime for rank tier increase.")
+    comment_buzzer: str | None = Field(
+        default=None, description="Accent buzzer/boom for outro trap."
+    )
+
+
+class RankTierConfig(BaseModel):
+    """Configuration for a specific rank status tier."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    min_question: int = Field(..., ge=1, le=9, description="Starting question number (inclusive)")
+    max_question: int = Field(..., ge=1, le=9, description="Ending question number (inclusive)")
+    rank_title: str = Field(
+        ..., min_length=2, max_length=30, description="Name of the rank (e.g. NPC, Нормис)"
+    )
+    rank_color: str = Field(
+        ..., pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color theme for this rank tier"
+    )
+    rank_icon: str = Field(..., min_length=1, max_length=10, description="Emoji or symbol icon")
+    iq_label: str = Field(
+        ..., min_length=2, max_length=20, description="IQ label (e.g. 'IQ: 85', 'IQ: 160+')"
+    )
+
+
+class StressTimerTier(BaseModel):
+    """Timing and style parameters for difficulty levels."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    tier_level: str = Field(..., pattern=r"^(easy|medium|hard)$")
+    think_duration_sec: float = Field(..., ge=1.0, le=4.0, description="Think window in seconds")
+    theme_color: str = Field(
+        ..., pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color for countdown pill"
+    )
+    sfx_file: str = Field(..., description="SFX audio identifier/path")
+    panic_vignette: bool = Field(
+        default=False, description="Enable pulsing red vignette on screen edges"
+    )
+
+
+class ComboStreakConfig(BaseModel):
+    """Combo streak tracker configuration."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    enabled: bool = Field(default=True)
+    fire_color_normal: str = Field(default="#FF4500", pattern=r"^#[0-9A-Fa-f]{6}$")
+    fire_color_ultra: str = Field(default="#38BDF8", pattern=r"^#[0-9A-Fa-f]{6}$")
+    ultra_threshold: int = Field(
+        default=7, ge=3, le=9, description="Streak count triggering blue fire mode"
+    )
+    sfx_pitch_step: float = Field(
+        default=1.059463, ge=1.0, le=1.2, description="Pitch multiplier per streak step"
+    )
+
+
+class CommentTrapConfig(BaseModel):
+    """Comment baiting and controversy outro trigger."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    enabled: bool = Field(default=True)
+    trap_question_number: int = Field(
+        default=8, ge=6, le=9, description="Question containing a counter-intuitive fact"
+    )
+    outro_challenge_text: str = Field(
+        default="Если набрал 8+ — ты соврал. Пиши честный счет в комменты! 👇",
+        min_length=10,
+        max_length=150,
+    )
+    duration_frames: int = Field(
+        default=90,
+        ge=30,
+        le=180,
+        description="Duration in frames at 60fps (1.5s = 90 frames)",
+    )
+
+
+def get_default_rank_tiers() -> list[RankTierConfig]:
+    """Return default 4-tier psychological status progression."""
+    return [
+        RankTierConfig(
+            min_question=1,
+            max_question=2,
+            rank_title="NPC",
+            rank_color="#64748B",
+            rank_icon="🤡",
+            iq_label="IQ: 85",
+        ),
+        RankTierConfig(
+            min_question=3,
+            max_question=5,
+            rank_title="Нормис",
+            rank_color="#22C55E",
+            rank_icon="🤓",
+            iq_label="IQ: 110",
+        ),
+        RankTierConfig(
+            min_question=6,
+            max_question=8,
+            rank_title="Эрудит",
+            rank_color="#A855F7",
+            rank_icon="🧠",
+            iq_label="IQ: 135",
+        ),
+        RankTierConfig(
+            min_question=9,
+            max_question=9,
+            rank_title="1% Гениев",
+            rank_color="#F59E0B",
+            rank_icon="👑",
+            iq_label="IQ: 160+",
+        ),
+    ]
+
+
+def get_default_stress_tiers() -> list[StressTimerTier]:
+    """Return default accelerating blitz timer parameters."""
+    return [
+        StressTimerTier(
+            tier_level="easy",
+            think_duration_sec=3.0,
+            theme_color="#00A3FF",
+            sfx_file="timer_tick.wav",
+            panic_vignette=False,
+        ),
+        StressTimerTier(
+            tier_level="medium",
+            think_duration_sec=2.5,
+            theme_color="#F59E0B",
+            sfx_file="timer_tick.wav",
+            panic_vignette=False,
+        ),
+        StressTimerTier(
+            tier_level="hard",
+            think_duration_sec=1.8,
+            theme_color="#EF4444",
+            sfx_file="heartbeat_panic.wav",
+            panic_vignette=True,
+        ),
+    ]
+
+
+class QuizRetentionConfig(BaseModel):
+    """Aggregate retention and virality configuration passed to Remotion."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    enabled: bool = Field(default=True, description="Master toggle for retention mechanics")
+    rank_bar_enabled: bool = Field(default=True)
+    rank_tiers: list[RankTierConfig] = Field(default_factory=get_default_rank_tiers)
+    stress_timer_enabled: bool = Field(default=True)
+    stress_tiers: list[StressTimerTier] = Field(default_factory=get_default_stress_tiers)
+    streak_fire: ComboStreakConfig = Field(default_factory=ComboStreakConfig)
+    comment_trap: CommentTrapConfig = Field(default_factory=CommentTrapConfig)
+    seamless_loop: bool = Field(
+        default=True, description="Align intro and outro for infinite looping"
+    )
+    anti_cheat_callout: bool = Field(
+        default=True, description="Display '👀 Без паузы!' banner on Q9"
+    )
 
 
 class RemotionRenderProps(BaseModel):
     """Unified JSON input contract passed to Remotion CLI."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     challenge: QuizChallenge
     cue_sheet: AudioCueSheet
     background_video_path: str
     sfx_paths: SfxPaths
+    retention: QuizRetentionConfig = Field(default_factory=QuizRetentionConfig)
     fps: int = Field(default=60)
     width: int = Field(default=1080)
     height: int = Field(default=1920)
     banner_video_path: str | None = Field(default=None)
     banner_start_frame: int | None = Field(default=None)
     banner_duration_frames: int | None = Field(default=None)
+

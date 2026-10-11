@@ -11,8 +11,8 @@
 
 **Purpose**: Подготовка структуры звуковых ассетов и базовых конфигурационных шаблонов.
 
-- [ ] T001 Create SFX asset files with synthetic fallback helpers in `assets/sfx/` (`heartbeat_panic.wav`, `streak_fire.wav`, `rank_levelup.wav`, `comment_buzzer.wav`)
-- [ ] T002 [P] Verify Remotion dependencies and package structure in `templates/quiz-remotion/package.json`
+- [x] T001 Create SFX asset files with synthetic fallback helpers in `assets/sfx/` (`heartbeat_panic.wav`, `streak_fire.wav`, `rank_levelup.wav`, `comment_buzzer.wav`)
+- [x] T002 [P] Verify Remotion dependencies and package structure in `templates/quiz-remotion/package.json`
 
 ---
 
@@ -22,11 +22,12 @@
 
 **⚠️ CRITICAL**: Работа над пользовательскими историями не может начаться до завершения этих задач.
 
-- [ ] T003 [P] Implement Pydantic retention schemas (`RankTierConfig`, `StressTimerTier`, `ComboStreakConfig`, `CommentTrapConfig`, `QuizRetentionConfig`) in `videoanalizer/quiz/models.py`
-- [ ] T004 [P] Implement TypeScript retention interfaces (`RankTierConfig`, `StressTimerTier`, `ComboStreakConfig`, `CommentTrapConfig`, `QuizRetentionConfig`) in `templates/quiz-remotion/src/types.ts`
-- [ ] T005 [P] Implement contract tests for retention schemas in `tests/contract/quiz/test_retention_schema_contract.py`
-- [ ] T006 Update `RemotionRenderProps` in `videoanalizer/quiz/models.py` and `templates/quiz-remotion/src/types.ts` to include `retention: QuizRetentionConfig`
-- [ ] T007 Implement audio synthesis fallback methods in `videoanalizer/quiz/audio_service.py` for `heartbeat_panic.wav`, `streak_fire.wav`, and `rank_levelup.wav`
+- [x] T003 [P] Implement Pydantic retention schemas (`RankTierConfig`, `StressTimerTier`, `ComboStreakConfig`, `CommentTrapConfig`, `QuizRetentionConfig`) in `videoanalizer/quiz/models.py`
+- [x] T004 [P] Implement TypeScript retention interfaces (`RankTierConfig`, `StressTimerTier`, `ComboStreakConfig`, `CommentTrapConfig`, `QuizRetentionConfig`) in `templates/quiz-remotion/src/types.ts`
+- [x] T005 [P] Implement contract tests for retention schemas in `tests/contract/quiz/test_retention_schema_contract.py`
+- [x] T006 Update `RemotionRenderProps` in `videoanalizer/quiz/models.py` and `templates/quiz-remotion/src/types.ts` to include `retention: QuizRetentionConfig`
+- [x] T007 Implement audio synthesis fallback methods in `videoanalizer/quiz/audio_service.py` for `heartbeat_panic.wav`, `streak_fire.wav`, and `rank_levelup.wav`
+
 
 **Checkpoint**: Базовые контракты и модели данных готовы и протестированы.
 
@@ -39,17 +40,18 @@
 **Independent Test**: Запуск рендера тестовой композиции в Remotion и проверка хронометража ролика строго в пределах 45–50 секунд с отображением Rank Bar, стресс-таймера и счетчика огня.
 
 ### Tests for User Story 1
-- [ ] T008 [P] [US1] Unit test for dynamic blitz audio timing calculation and cue sheet compilation in `tests/unit/quiz/test_audio_service.py`
+- [x] T008 [P] [US1] Unit test for dynamic blitz audio timing calculation and cue sheet compilation in `tests/unit/quiz/test_audio_service.py`
 
 ### Implementation for User Story 1
-- [ ] T009 [P] [US1] Create `RankStatusBar.tsx` component in `templates/quiz-remotion/src/components/RankStatusBar.tsx` (Y=160px, 4 tiers: NPC `#64748B`, Нормис `#22C55E`, Эрудит `#A855F7`, 1% Гениев `#F59E0B` with spring fill animation)
-- [ ] T010 [P] [US1] Create `StressTimer.tsx` component in `templates/quiz-remotion/src/components/StressTimer.tsx` (tier-based durations 3.0s/2.5s/1.8s, color shift blue `#00A3FF` -> amber `#F59E0B` -> red `#EF4444`, 1-second shake)
-- [ ] T011 [P] [US1] Create `PanicVignette.tsx` component in `templates/quiz-remotion/src/components/PanicVignette.tsx` (pulsing red radial vignette on screen edges during Hard tier questions)
-- [ ] T012 [P] [US1] Create `StreakFire.tsx` component in `templates/quiz-remotion/src/components/StreakFire.tsx` (flame counter `🔥 x1`–`🔥 x9` at X=880px, Y=280px with blue fire `#38BDF8` ultra mode at >=7)
-- [ ] T013 [US1] Integrate `StressTimer`, `RankStatusBar`, `PanicVignette`, and `StreakFire` into `templates/quiz-remotion/src/QuizChallenge.tsx`
-- [ ] T014 [US1] Update `AudioService.calculate_cue_sheet` in `videoanalizer/quiz/audio_service.py` to enforce blitz think durations (3.0s for Easy, 2.5s for Medium, 1.8s for Hard) and max total duration $\le 50$s
+- [x] T009 [P] [US1] Create `RankStatusBar.tsx` component in `templates/quiz-remotion/src/components/RankStatusBar.tsx` (Y=160px, 4 tiers: NPC `#64748B`, Нормис `#22C55E`, Эрудит `#A855F7`, 1% Гениев `#F59E0B` with spring fill animation)
+- [x] T010 [P] [US1] Create `StressTimer.tsx` component in `templates/quiz-remotion/src/components/StressTimer.tsx` (tier-based durations 3.0s/2.5s/1.8s, color shift blue `#00A3FF` -> amber `#F59E0B` -> red `#EF4444`, 1-second shake)
+- [x] T011 [P] [US1] Create `PanicVignette.tsx` component in `templates/quiz-remotion/src/components/PanicVignette.tsx` (pulsing red radial vignette on screen edges during Hard tier questions)
+- [x] T012 [P] [US1] Create `StreakFire.tsx` component in `templates/quiz-remotion/src/components/StreakFire.tsx` (flame counter `🔥 x1`–`🔥 x9` at X=880px, Y=280px with blue fire `#38BDF8` ultra mode at >=7)
+- [x] T013 [US1] Integrate `StressTimer`, `RankStatusBar`, `PanicVignette`, and `StreakFire` into `templates/quiz-remotion/src/QuizChallenge.tsx`
+- [x] T014 [US1] Update `AudioService.calculate_cue_sheet` in `videoanalizer/quiz/audio_service.py` to enforce blitz think durations (3.0s for Easy, 2.5s for Medium, 1.8s for Hard) and max total duration $\le 50$s
 
 **Checkpoint**: User Story 1 полностью функционирует как самостоятельный MVP продукт.
+
 
 ---
 
@@ -60,14 +62,14 @@
 **Independent Test**: Отправка POST запроса на `/api/v1/quiz/generate` с флагами удержания, проверка постановки в очередь и формирования итогового MP4 с финальным баннером комментариев.
 
 ### Tests for User Story 2
-- [ ] T015 [P] [US2] Unit test for `/api/v1/quiz/generate` accepting retention toggles and queuing jobs in `tests/unit/quiz/test_api_routes.py`
+- [x] T015 [P] [US2] Unit test for `/api/v1/quiz/generate` accepting retention toggles and queuing jobs in `tests/unit/quiz/test_api_routes.py`
 
 ### Implementation for User Story 2
-- [ ] T016 [P] [US2] Create `CommentTrapOutro.tsx` component in `templates/quiz-remotion/src/components/CommentTrapOutro.tsx` (outro challenge banner on final 1.5s: "Если набрал 8+ — ты соврал. Пиши честный счет в комменты! 👇")
-- [ ] T017 [P] [US2] Create `AntiCheatCallout.tsx` component in `templates/quiz-remotion/src/components/AntiCheatCallout.tsx` (HUD sticker overlay on Q9: "👀 Без паузы и Гугла!")
-- [ ] T018 [US2] Update `QuizOrchestrator` in `videoanalizer/quiz/orchestrator.py` to enforce `asyncio.Semaphore(1)` render queue and Chromium `--concurrency=3`
-- [ ] T019 [US2] Update `QuizGenerateRequest` schema and endpoint in `videoanalizer/api/routes_quiz.py` to pass `retention_enabled`, `rank_bar_enabled`, `stress_timer_enabled`, `streak_fire_enabled`, `comment_trap_enabled`
-- [ ] T020 [US2] Add retention toggles and queue status indicators to web dashboard in `videoanalizer/ui/templates/quiz.html`
+- [x] T016 [P] [US2] Create `CommentTrapOutro.tsx` component in `templates/quiz-remotion/src/components/CommentTrapOutro.tsx` (outro challenge banner on final 1.5s: "Если набрал 8+ — ты соврал. Пиши честный счет в комменты! 👇")
+- [x] T017 [P] [US2] Create `AntiCheatCallout.tsx` component in `templates/quiz-remotion/src/components/AntiCheatCallout.tsx` (HUD sticker overlay on Q9: "👀 Без паузы и Гугла!")
+- [x] T018 [US2] Update `QuizOrchestrator` in `videoanalizer/quiz/orchestrator.py` to enforce `asyncio.Semaphore(1)` render queue and Chromium `--concurrency=3`
+- [x] T019 [US2] Update `QuizGenerateRequest` schema and endpoint in `videoanalizer/api/routes_quiz.py` to pass `retention_enabled`, `rank_bar_enabled`, `stress_timer_enabled`, `streak_fire_enabled`, `comment_trap_enabled`
+- [x] T020 [US2] Add retention toggles and queue status indicators to web dashboard in `videoanalizer/ui/templates/quiz.html`
 
 **Checkpoint**: Создатель контента имеет полный контроль над всеми механиками через UI и API.
 
@@ -80,13 +82,13 @@
 **Independent Test**: Генерация квиза с коротким 15-секундным фоновым роликом и длинным текстом вопросов; подтверждение бесшовного зацикливания видео и адаптивного кегля шрифта без наложений.
 
 ### Tests for User Story 3
-- [ ] T021 [P] [US3] Unit tests for Gemini prompt text length limits and Pydantic validators in `tests/unit/quiz/test_script_service.py`
+- [x] T021 [P] [US3] Unit tests for Gemini prompt text length limits and Pydantic validators in `tests/unit/quiz/test_script_service.py`
 
 ### Implementation for User Story 3
-- [ ] T022 [US3] Update `QUIZ_SYSTEM_PROMPT` and add Pydantic validators in `videoanalizer/quiz/script_service.py` (question $\le 65$ chars, answer $\le 25$ chars, reject $>80$ / $>35$)
-- [ ] T023 [P] [US3] Create `DecoyFakeOut.tsx` component in `templates/quiz-remotion/src/components/DecoyFakeOut.tsx` (0.3s fake answer stamp `❌ НЕ ПАРИЖ` $\rightarrow$ `✅ ЛИОН` on Q4/Q7)
-- [ ] T024 [US3] Wrap background video layer in `<Loop>` in `templates/quiz-remotion/src/components/BackgroundLayer.tsx` for seamless looping of short backgrounds
-- [ ] T025 [US3] Implement dynamic CSS `clamp(26px, 3.2vw, 44px)` font scaling in `templates/quiz-remotion/src/components/QuestionCard.tsx` and `QuestionLadder.tsx`
+- [x] T022 [US3] Update `QUIZ_SYSTEM_PROMPT` and add Pydantic validators in `videoanalizer/quiz/script_service.py` (question $\le 65$ chars, answer $\le 25$ chars, reject $>80$ / $>35$)
+- [x] T023 [P] [US3] Create `DecoyFakeOut.tsx` component in `templates/quiz-remotion/src/components/DecoyFakeOut.tsx` (0.3s fake answer stamp `❌ НЕ ПАРИЖ` $\rightarrow$ `✅ ЛИОН` on Q4/Q7)
+- [x] T024 [US3] Wrap background video layer in `<Loop>` in `templates/quiz-remotion/src/components/BackgroundLayer.tsx` for seamless looping of short backgrounds
+- [x] T025 [US3] Implement dynamic CSS `clamp(26px, 3.2vw, 44px)` font scaling in `templates/quiz-remotion/src/components/QuestionCard.tsx` and `QuestionLadder.tsx`
 
 **Checkpoint**: Система полностью защищена от оверфлоу текста и обрывов фонового видео.
 
@@ -96,10 +98,10 @@
 
 **Purpose**: Финальная полировка, согласование дефолтных props и сквозная верификация.
 
-- [ ] T026 [P] Update defaultProps with retention configuration in `templates/quiz-remotion/src/Root.tsx`
-- [ ] T027 [P] Run Ruff linter and formatting checks across Python codebase (`python -m ruff check videoanalizer/ tests/`)
-- [ ] T028 Run full automated test suite (`python -m pytest tests/unit/quiz tests/contract/quiz`)
-- [ ] T029 Execute end-to-end quickstart validation scenario from `specs/003-quiz-retention-mechanics/quickstart.md`
+- [x] T026 [P] Update defaultProps with retention configuration in `templates/quiz-remotion/src/Root.tsx`
+- [x] T027 [P] Run Ruff linter and formatting checks across Python codebase (`python -m ruff check videoanalizer/ tests/`)
+- [x] T028 Run full automated test suite (`python -m pytest tests/unit/quiz tests/contract/quiz`)
+- [x] T029 Execute end-to-end quickstart validation scenario from `specs/003-quiz-retention-mechanics/quickstart.md`
 
 ---
 
