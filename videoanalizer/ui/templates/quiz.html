@@ -660,9 +660,22 @@
       if (chk.checked) {
         box.classList.remove('hidden');
         const queryInput = document.getElementById(`img-query-input-${qnum}`);
+        const ansInput = document.querySelector(`input[data-qnum="${qnum}"][data-field="correct_answer"]`);
         const qTextInput = document.querySelector(`input[data-qnum="${qnum}"][data-field="question_text"]`);
-        if (queryInput && !queryInput.value.trim() && qTextInput) {
-          queryInput.value = qTextInput.value.trim();
+
+        const currentVal = queryInput ? queryInput.value.trim() : '';
+        const qTextVal = qTextInput ? qTextInput.value.trim() : '';
+        const ansVal = ansInput ? ansInput.value.trim() : '';
+
+        // Вписываем правильный ответ (а не текст вопроса), если запрос пуст или равен тексту вопроса
+        if (queryInput && ansVal && (!currentVal || currentVal === qTextVal)) {
+          queryInput.value = ansVal;
+        }
+
+        // Автоматически ищем картинки по ответу, если изображение еще не выбрано
+        const urlInput = document.getElementById(`img-url-input-${qnum}`);
+        if ((!urlInput || !urlInput.value.trim()) && queryInput && queryInput.value.trim()) {
+          searchImageOptions(qnum);
         }
       } else {
         box.classList.add('hidden');
@@ -857,7 +870,7 @@
                         data-qnum="${q.question_number}" 
                         data-field="image_query" 
                         value="${(q.image_query || '').replace(/"/g, '&quot;')}" 
-                        placeholder="Поисковый запрос картинки (например, Флаг Бразилии)" 
+                        placeholder="Поисковый запрос картинки (например, ${q.correct_answer.replace(/"/g, '&quot;')})" 
                         class="flex-1 bg-black/60 border border-white/[0.1] focus:border-cyan-400 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none transition-all"
                       />
                       <button 
@@ -942,7 +955,7 @@
 
           if (useImg && urlVal) {
             q.image_url = urlVal;
-            q.image_query = queryVal || q.question_text;
+            q.image_query = queryVal || q.correct_answer;
             q.has_visual_clue = true;
           } else if (useImg && queryVal) {
             q.image_url = null;
