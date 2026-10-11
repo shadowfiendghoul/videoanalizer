@@ -181,6 +181,15 @@ class AudioCueSheet(BaseModel):
     total_duration_ms: int = Field(..., ge=30000, le=120000)
     total_duration_frames: int = Field(..., ge=1800, le=7200)
     cues: list[QuestionAudioCue] = Field(..., min_length=9, max_length=9)
+    intro_hook_text: str | None = Field(
+        default=None, description="Custom hook phrase spoken at start."
+    )
+    intro_hook_audio_file: str | None = Field(
+        default=None, description="Path to intro hook narration audio."
+    )
+    intro_hook_duration_ms: int = Field(default=0, ge=0)
+    intro_hook_words: list[WordCue] = Field(default_factory=list)
+    intro_hook_duration_frames: int = Field(default=0, ge=0)
 
 
 class SfxPaths(BaseModel):
@@ -375,4 +384,6 @@ class RemotionRenderProps(BaseModel):
     banner_video_path: str | None = Field(default=None)
     banner_start_frame: int | None = Field(default=None)
     banner_duration_frames: int | None = Field(default=None)
+    background_music_path: str | None = Field(default=None)
+    background_music_volume: float = Field(default=0.18, ge=0.0, le=1.0)
 

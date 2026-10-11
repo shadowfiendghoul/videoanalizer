@@ -11,6 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, statu
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from videoanalizer.quiz.audio_service import probe_audio_duration_ms
 from videoanalizer.quiz.models import (
     ComboStreakConfig,
     CommentTrapConfig,
@@ -81,6 +82,20 @@ class QuizGenerateRequest(BaseModel):
     comment_trap_enabled: bool = Field(
         default=True, description="Enable controversy outro comment callout."
     )
+    intro_hook: str | None = Field(
+        default="Ты гений, если ответишь на все вопросы!",
+        description="Optional custom greeting/hook phrase spoken at start.",
+    )
+    background_music: str | None = Field(
+        default=None,
+        description="Optional custom background music filename or path.",
+    )
+    background_music_volume: float = Field(
+        default=0.18,
+        ge=0.0,
+        le=1.0,
+        description="Background music volume (0.0 to 1.0, default 0.18).",
+    )
 
 
 
@@ -108,6 +123,15 @@ class BannerUploadResponse(BaseModel):
     """Metadata response when a promo banner video is uploaded."""
 
     banner_path: str
+    filename: str
+    saved_filename: str
+    duration_seconds: float
+
+
+class MusicUploadResponse(BaseModel):
+    """Metadata response when a background music audio file is uploaded."""
+
+    music_path: str
     filename: str
     saved_filename: str
     duration_seconds: float
@@ -184,6 +208,9 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
             retention_config=retention_config,
             creative_temperature=request.temperature,
             fact_check=request.fact_check,
+            intro_hook=request.intro_hook,
+            background_music=request.background_music,
+            background_music_volume=request.background_music_volume,
         )
 
         job["status"] = "completed"
@@ -281,6 +308,63 @@ async def upload_banner(file: UploadFile) -> BannerUploadResponse:
         saved_filename=saved_name,
         duration_seconds=dur_sec,
     )
+
+
+@router.post("/upload-music", response_model=MusicUploadResponse)
+async def upload_music(file: UploadFile) -> MusicUploadResponse:
+    """Upload background music audio file (MP3, WAV, M4A, OGG, AAC, FLAC)."""
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No filename provided in upload.",
+        )
+    ext = Path(file.filename).suffix.lower()
+    allowed_exts = {".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"}
+    if ext not in allowed_exts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported audio format '{ext}'. Allowed: {', '.join(sorted(allowed_exts))}",
+        )
+
+    orchestrator = QuizOrchestrator()
+    music_dir = orchestrator.config.music_dir
+    music_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_stem = "".join(c if c.isalnum() else "_" for c in Path(file.filename).stem).strip("_")
+    saved_name = f"music_{uuid.uuid4().hex[:8]}_{safe_stem}{ext}"
+    target_path = music_dir / saved_name
+
+    with target_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    dur_ms = probe_audio_duration_ms(target_path)
+    dur_sec = round(dur_ms / 1000.0, 2)
+
+    return MusicUploadResponse(
+        music_path=str(target_path),
+        filename=file.filename,
+        saved_filename=saved_name,
+        duration_seconds=dur_sec,
+    )
+
+
+@router.get("/music")
+async def list_available_music() -> list[dict[str, str | float]]:
+    """List available saved background music audio files."""
+    orchestrator = QuizOrchestrator()
+    music_dir = orchestrator.config.music_dir
+    results: list[dict[str, str | float]] = []
+    allowed_exts = {".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"}
+    if music_dir.exists():
+        for p in sorted(music_dir.iterdir()):
+            if p.is_file() and p.suffix.lower() in allowed_exts:
+                dur_ms = probe_audio_duration_ms(p)
+                results.append({
+                    "filename": p.name,
+                    "saved_filename": p.name,
+                    "duration_seconds": round(dur_ms / 1000.0, 2),
+                })
+    return results
 
 
 @router.get("/backgrounds", response_model=list[BackgroundInfo])

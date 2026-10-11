@@ -62,6 +62,7 @@ outputs/
 temp/
 scratch/
 assets/banners/
+assets/music/
 
 # Large video and media files
 *.mp4

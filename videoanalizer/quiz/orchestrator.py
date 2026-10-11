@@ -214,6 +214,9 @@ class QuizOrchestrator:
         retention_config: QuizRetentionConfig | None = None,
         creative_temperature: float | None = None,
         fact_check: bool | None = None,
+        intro_hook: str | None = "Ты гений, если ответишь на все вопросы!",
+        background_music: Path | str | None = None,
+        background_music_volume: float = 0.18,
     ) -> Path:
         """Run the full end-to-end quiz short generation pipeline."""
         self.config.output_dir.mkdir(parents=True, exist_ok=True)
@@ -255,7 +258,9 @@ class QuizOrchestrator:
 
             # 2. Stage SFX files into public/sfx
             raw_sfx = self.audio_service.ensure_default_sfx(self.config.sfx_dir)
-            shutil.copy2(raw_sfx.timer_tick, sfx_target_dir / "timer_tick.wav")
+            tick_src = Path(raw_sfx.timer_tick)
+            staged_tick_name = f"timer_tick{tick_src.suffix}"
+            shutil.copy2(tick_src, sfx_target_dir / staged_tick_name)
             shutil.copy2(raw_sfx.reveal_ding, sfx_target_dir / "reveal_ding.wav")
             shutil.copy2(raw_sfx.level_up, sfx_target_dir / "level_up.wav")
 
@@ -280,7 +285,7 @@ class QuizOrchestrator:
                 comment_buzzer_rel = "sfx/comment_buzzer.wav"
 
             staged_sfx = SfxPaths(
-                timer_tick="sfx/timer_tick.wav",
+                timer_tick=f"sfx/{staged_tick_name}",
                 reveal_ding="sfx/reveal_ding.wav",
                 level_up="sfx/level_up.wav",
                 heartbeat_panic=heartbeat_panic_rel,
@@ -373,9 +378,14 @@ class QuizOrchestrator:
                 output_dir=audio_dir,
                 voice=voice,
                 retention_config=retention_config,
+                intro_hook=intro_hook,
             )
 
             # Normalize cue audio file paths to be relative to public dir (e.g. "audio/...")
+            if cue_sheet.intro_hook_audio_file:
+                cue_sheet.intro_hook_audio_file = (
+                    f"audio/{Path(cue_sheet.intro_hook_audio_file).name}"
+                )
             for cue in cue_sheet.cues:
                 if cue.question_audio_file:
                     cue.question_audio_file = f"audio/{Path(cue.question_audio_file).name}"
@@ -469,7 +479,27 @@ class QuizOrchestrator:
                         "Banner video '%s' not found, skipping banner", banner_video
                     )
 
-            # 7. Assemble RemotionRenderProps
+            # 7. Optional background music staging
+            staged_music_name: str | None = None
+            if background_music:
+                music_path = Path(background_music)
+                if not music_path.is_file():
+                    alt_path = self.config.music_dir / background_music
+                    if alt_path.is_file():
+                        music_path = alt_path
+
+                if music_path.is_file():
+                    music_ext = music_path.suffix.lower() or ".mp3"
+                    staged_music_name = f"music{music_ext}"
+                    staged_music_target = public_dir / staged_music_name
+                    shutil.copy2(music_path, staged_music_target)
+                    logger.info("Background music staged: %s", staged_music_name)
+                else:
+                    logger.warning(
+                        "Background music '%s' not found, skipping music", background_music
+                    )
+
+            # 8. Assemble RemotionRenderProps
             remotion_props = RemotionRenderProps(
                 challenge=challenge,
                 cue_sheet=cue_sheet,
@@ -482,6 +512,8 @@ class QuizOrchestrator:
                 banner_video_path=staged_banner_name,
                 banner_start_frame=banner_start_frame,
                 banner_duration_frames=banner_duration_frames,
+                background_music_path=staged_music_name,
+                background_music_volume=background_music_volume,
             )
 
 

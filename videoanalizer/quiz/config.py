@@ -105,6 +105,10 @@ class QuizConfig(BaseSettings):
         default=Path("assets/banners"),
         description="Directory containing uploaded promo banner videos.",
     )
+    music_dir: Path = Field(
+        default=Path("assets/music"),
+        description="Directory containing uploaded background music audio files.",
+    )
     sfx_dir: Path = Field(
         default=Path("assets/sfx"),
         description="Directory containing sound effects.",

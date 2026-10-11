@@ -5,6 +5,7 @@ import { BackgroundLayer } from "./components/BackgroundLayer";
 import { CenterBanner } from "./components/CenterBanner";
 import { CommentTrapOutro } from "./components/CommentTrapOutro";
 import { DecoyFakeOut } from "./components/DecoyFakeOut";
+import { IntroHookCard } from "./components/IntroHookCard";
 import { KaraokeCaptions } from "./components/KaraokeCaptions";
 import { LevelHeader } from "./components/LevelHeader";
 import { PanicVignette } from "./components/PanicVignette";
@@ -25,6 +26,8 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
   banner_video_path,
   banner_start_frame,
   banner_duration_frames,
+  background_music_path,
+  background_music_volume,
 }) => {
   const currentGlobalFrame = useCurrentFrame();
 
@@ -36,6 +39,22 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
         bannerStartFrame={banner_start_frame}
         bannerDurationFrames={banner_duration_frames}
       />
+
+      {/* 1.5. Viral Greeting Hook (e.g. "Ты гений, если ответишь на все вопросы!") */}
+      {Boolean(cue_sheet.intro_hook_duration_frames && cue_sheet.intro_hook_duration_frames > 0 && cue_sheet.intro_hook_text) && (
+        <Sequence
+          from={0}
+          durationInFrames={cue_sheet.intro_hook_duration_frames!}
+          name="IntroHook"
+        >
+          <IntroHookCard
+            hookText={cue_sheet.intro_hook_text!}
+            audioFile={cue_sheet.intro_hook_audio_file}
+            words={cue_sheet.intro_hook_words}
+            durationInFrames={cue_sheet.intro_hook_duration_frames!}
+          />
+        </Sequence>
+      )}
 
       {/* 2. Persistent Left-Side 1-9 Question & Answer Ladder */}
       <QuestionLadder
@@ -231,6 +250,15 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
         >
           <Audio src={resolveAssetUrl(sfx_paths.comment_buzzer)} volume={0.85} />
         </Sequence>
+      )}
+
+      {/* 9. Global Background Music Track (BGM) */}
+      {background_music_path && (
+        <Audio
+          src={resolveAssetUrl(background_music_path)}
+          volume={background_music_volume ?? 0.18}
+          loop
+        />
       )}
     </AbsoluteFill>
   );

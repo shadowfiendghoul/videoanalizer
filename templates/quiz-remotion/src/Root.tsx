@@ -145,6 +145,9 @@ const defaultProps: RemotionRenderProps = {
     }),
   },
   background_video_path: "bg.mp4",
+  background_music_path: null,
+  background_music_volume: 0.18,
+  banner_image_path: null,
   sfx_paths: {
     timer_tick: "assets/sfx/timer_tick.wav",
     reveal_ding: "assets/sfx/reveal_ding.wav",

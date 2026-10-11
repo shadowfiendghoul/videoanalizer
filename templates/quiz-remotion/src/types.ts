@@ -52,6 +52,11 @@ export interface AudioCueSheet {
   total_duration_ms: number;
   total_duration_frames: number;
   cues: QuestionAudioCue[];
+  intro_hook_text?: string | null;
+  intro_hook_audio_file?: string | null;
+  intro_hook_duration_ms?: number;
+  intro_hook_words?: WordCue[];
+  intro_hook_duration_frames?: number;
 }
 
 export interface SfxPaths {
@@ -120,5 +125,7 @@ export interface RemotionRenderProps extends Record<string, unknown> {
   banner_video_path?: string | null;
   banner_start_frame?: number | null;
   banner_duration_frames?: number | null;
+  background_music_path?: string | null;
+  background_music_volume?: number | null;
 }
 

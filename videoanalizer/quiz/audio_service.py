@@ -67,8 +67,9 @@ def ensure_default_sfx(sfx_dir: Path) -> None:
     sfx_dir.mkdir(parents=True, exist_ok=True)
     sample_rate = 44100
 
+    tick_mp3 = sfx_dir / "timer_tick.mp3"
     tick_path = sfx_dir / "timer_tick.wav"
-    if not tick_path.exists():
+    if not tick_path.exists() and not tick_mp3.exists():
         n_samples = int(sample_rate * 0.1)
         with wave.open(str(tick_path), "w") as f:
             f.setnchannels(1)
@@ -81,6 +82,8 @@ def ensure_default_sfx(sfx_dir: Path) -> None:
                 val = math.sin(2 * math.pi * 1800 * t) * env * 28000
                 data.extend(struct.pack("<h", int(val)))
             f.writeframes(data)
+
+    chosen_tick = tick_mp3 if tick_mp3.exists() else tick_path
 
     ding_path = sfx_dir / "reveal_ding.wav"
     if not ding_path.exists():
@@ -208,7 +211,7 @@ def ensure_default_sfx(sfx_dir: Path) -> None:
             f.writeframes(data)
 
     return SfxPaths(
-        timer_tick=str(tick_path),
+        timer_tick=str(chosen_tick),
         reveal_ding=str(ding_path),
         level_up=str(level_up_path),
         heartbeat_panic=str(heartbeat_path),
@@ -412,6 +415,7 @@ class AudioService:
         output_dir: Path | None = None,
         voice: str | None = None,
         retention_config: QuizRetentionConfig | None = None,
+        intro_hook: str | None = None,
     ) -> AudioCueSheet:
         """Synthesize all 9 questions and assemble the master AudioCueSheet."""
         ensure_default_sfx(self.config.sfx_dir)
@@ -422,6 +426,31 @@ class AudioService:
 
         cues: list[QuestionAudioCue] = []
         current_frame = 0
+
+        intro_text: str | None = None
+        intro_audio_path: Path | None = None
+        intro_dur_ms: int = 0
+        intro_words: list[WordCue] = []
+        intro_frames: int = 0
+
+        # Synthesize optional viral intro hook greeting if provided
+        if intro_hook and intro_hook.strip():
+            intro_text = intro_hook.strip()
+            if output_dir:
+                intro_audio_path = output_dir / "intro_hook.mp3"
+            elif workspace:
+                intro_audio_path = workspace.get_audio_path("intro_hook.mp3")
+            else:
+                raise ValueError("Either output_dir or workspace must be provided.")
+
+            intro_dur_ms, intro_words = await self.synthesize_speech_with_cues(
+                intro_text,
+                selected_voice,
+                intro_audio_path,
+            )
+            # Add a 6-frame pacing buffer between intro hook and question 1
+            intro_frames = max(1, int(intro_dur_ms * fps / 1000)) + 6
+            current_frame = intro_frames
 
         # Process each question in sequence
         for q in challenge.all_questions():
@@ -554,6 +583,11 @@ class AudioService:
             total_duration_ms=total_duration_ms,
             total_duration_frames=total_duration_frames,
             cues=cues,
+            intro_hook_text=intro_text,
+            intro_hook_audio_file=str(intro_audio_path) if intro_audio_path else None,
+            intro_hook_duration_ms=intro_dur_ms,
+            intro_hook_words=intro_words,
+            intro_hook_duration_frames=intro_frames,
         )
 
     # Alias for orchestrator interface

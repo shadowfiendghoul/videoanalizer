@@ -190,6 +190,38 @@
             </div>
           </div>
 
+          <!-- Intro Hook Greeting Phrase -->
+          <div class="space-y-1.5 pt-2 border-t border-white/[0.06]">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-medium text-slate-300 flex items-center space-x-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>Интро-хук / Фраза приветствия</span>
+              </label>
+              <span class="text-[10px] text-slate-400 font-mono">Вирусный старт (0–2 сек)</span>
+            </div>
+            <div class="relative">
+              <input 
+                type="text" 
+                id="intro-hook-input" 
+                value="Ты гений, если ответишь на все вопросы!" 
+                placeholder="Например: Ты гений, если ответишь на все вопросы!" 
+                oninput="saveSettings()"
+                class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all pr-20"
+              />
+              <button 
+                type="button" 
+                onclick="document.getElementById('intro-hook-input').value = 'Ты гений, если ответишь на все вопросы!'; saveSettings();"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-2 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white transition-all cursor-pointer font-mono"
+                title="Сбросить на стандартную фразу"
+              >
+                Дефолт
+              </button>
+            </div>
+            <p class="text-[10px] text-slate-400">
+              Озвучивается в самом начале видео и отображается на анимированной карточке. Оставьте пустым, чтобы сразу начать с вопроса 1.
+            </p>
+          </div>
+
           <!-- Background Video Selector -->
           <div class="space-y-1.5 pt-1">
             <div class="flex items-center justify-between">
@@ -267,6 +299,86 @@
                 >
                   <i data-lucide="x" class="w-3.5 h-3.5"></i>
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Background Music Audio (Optional Toggle & Upload) -->
+          <div class="space-y-3 pt-3 border-t border-white/[0.06]">
+            <div class="flex items-center justify-between">
+              <label class="flex items-center space-x-2.5 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  id="music-toggle" 
+                  class="w-4 h-4 rounded text-cyan-500 bg-black/40 border-white/[0.2] focus:ring-cyan-500 focus:ring-offset-0 transition-all cursor-pointer"
+                  onchange="toggleMusicSection()"
+                />
+                <span class="text-xs font-medium text-slate-200">🎵 Фоновая музыка (BGM)</span>
+              </label>
+              <span class="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
+                Зацикливание + Микширование
+              </span>
+            </div>
+
+            <!-- Expandable Music Upload Section -->
+            <div id="music-upload-section" class="hidden space-y-2.5 pl-4 border-l-2 border-cyan-500/30">
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                Музыка воспроизводится на фоне на протяжении всего видео, автоматически зацикливаясь под озвучку и таймер.
+              </p>
+
+              <!-- Upload Dropzone -->
+              <div 
+                id="music-dropzone"
+                onclick="document.getElementById('music-file-input').click()"
+                ondragover="handleMusicDragOver(event)"
+                ondragleave="handleMusicDragLeave(event)"
+                ondrop="handleMusicDrop(event)"
+                class="border border-dashed border-white/[0.15] hover:border-cyan-500/50 bg-black/30 hover:bg-black/50 rounded-xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-1.5"
+              >
+                <input 
+                  type="file" 
+                  id="music-file-input" 
+                  accept="audio/mpeg,audio/wav,audio/m4a,audio/aac,audio/ogg,.mp3,.wav,.m4a,.aac,.ogg" 
+                  class="hidden" 
+                  onchange="handleMusicFileSelect(event)"
+                />
+                <i data-lucide="music" class="w-6 h-6 text-slate-400"></i>
+                <span class="text-xs text-slate-300 font-medium">Нажмите или перетащите MP3 / WAV / M4A</span>
+                <span class="text-[10px] text-slate-500">Фоновый трек (будет сохранен)</span>
+              </div>
+
+              <!-- Upload Status Box -->
+              <div id="music-status-box" class="hidden space-y-2.5 p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-300">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-2 truncate">
+                    <i data-lucide="check-circle" class="w-4 h-4 text-cyan-400 shrink-0"></i>
+                    <span id="music-file-name" class="truncate font-mono text-[11px]">track.mp3</span>
+                    <span id="music-duration-badge" class="px-1.5 py-0.5 rounded bg-black/40 text-[10px] font-mono text-cyan-400 shrink-0">120.0s</span>
+                  </div>
+                  <button 
+                    type="button" 
+                    onclick="removeMusic(event)" 
+                    class="text-slate-400 hover:text-red-400 p-1 transition-all ml-2 shrink-0 cursor-pointer" 
+                    title="Удалить музыку"
+                  >
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+                <!-- Volume slider -->
+                <div class="flex items-center space-x-2 pt-1 border-t border-cyan-500/20">
+                  <span class="text-[10px] text-slate-300 font-mono shrink-0">Громкость фона:</span>
+                  <input 
+                    type="range" 
+                    id="music-volume-slider" 
+                    min="0.05" 
+                    max="0.50" 
+                    step="0.01" 
+                    value="0.18" 
+                    oninput="document.getElementById('music-volume-val').textContent = Math.round(this.value * 100) + '%'; saveSettings();"
+                    class="flex-1 accent-cyan-500 cursor-pointer h-1 bg-black/50 rounded appearance-none"
+                  />
+                  <span id="music-volume-val" class="text-[10px] font-mono font-bold text-cyan-400 w-8 text-right shrink-0">18%</span>
+                </div>
               </div>
             </div>
           </div>
@@ -473,6 +585,7 @@
 
     function saveSettings() {
       const settings = {
+        introHook: document.getElementById('intro-hook-input')?.value,
         language: document.getElementById('language-select')?.value,
         voice: document.getElementById('voice-select')?.value,
         background: document.getElementById('background-select')?.value,
@@ -480,6 +593,11 @@
         bannerFile: uploadedBannerFile,
         bannerName: document.getElementById('banner-file-name')?.textContent,
         bannerDuration: document.getElementById('banner-duration-badge')?.textContent,
+        musicEnabled: document.getElementById('music-toggle')?.checked ?? false,
+        musicFile: uploadedMusicFile,
+        musicName: document.getElementById('music-file-name')?.textContent,
+        musicDuration: document.getElementById('music-duration-badge')?.textContent,
+        musicVolume: document.getElementById('music-volume-slider') ? parseFloat(document.getElementById('music-volume-slider').value) : 0.18,
         rankEnabled: document.getElementById('rank-toggle')?.checked ?? true,
         timerEnabled: document.getElementById('timer-toggle')?.checked ?? true,
         streakEnabled: document.getElementById('streak-toggle')?.checked ?? true,
@@ -498,6 +616,9 @@
       const s = getStoredSettings();
       if (!s) return;
 
+      if (typeof s.introHook === 'string' && document.getElementById('intro-hook-input')) {
+        document.getElementById('intro-hook-input').value = s.introHook;
+      }
       if (s.language && document.getElementById('language-select')) {
         document.getElementById('language-select').value = s.language;
       }
@@ -521,6 +642,27 @@
           }
           document.getElementById('banner-dropzone')?.classList.add('hidden');
           document.getElementById('banner-status-box')?.classList.remove('hidden');
+        }
+      }
+      if (typeof s.musicEnabled === 'boolean' && document.getElementById('music-toggle')) {
+        document.getElementById('music-toggle').checked = s.musicEnabled;
+        const mSection = document.getElementById('music-upload-section');
+        if (s.musicEnabled && mSection) {
+          mSection.classList.remove('hidden');
+        }
+        if (s.musicFile && s.musicName) {
+          uploadedMusicFile = s.musicFile;
+          document.getElementById('music-file-name').textContent = s.musicName;
+          if (s.musicDuration) {
+            document.getElementById('music-duration-badge').textContent = s.musicDuration;
+          }
+          if (typeof s.musicVolume === 'number' && document.getElementById('music-volume-slider')) {
+            document.getElementById('music-volume-slider').value = s.musicVolume;
+            const volBadge = document.getElementById('music-volume-val');
+            if (volBadge) volBadge.textContent = Math.round(s.musicVolume * 100) + '%';
+          }
+          document.getElementById('music-dropzone')?.classList.add('hidden');
+          document.getElementById('music-status-box')?.classList.remove('hidden');
         }
       }
       if (typeof s.rankEnabled === 'boolean' && document.getElementById('rank-toggle')) {
@@ -592,13 +734,17 @@
     let activeJobId = null;
     let pollInterval = null;
     let uploadedBannerFile = null;
+    let uploadedMusicFile = null;
 
     // Initialize persisted settings and listeners
     loadSettings();
+    document.getElementById('intro-hook-input')?.addEventListener('input', saveSettings);
     document.getElementById('language-select')?.addEventListener('change', handleLanguageChange);
     document.getElementById('voice-select')?.addEventListener('change', saveSettings);
     document.getElementById('background-select')?.addEventListener('change', saveSettings);
     document.getElementById('banner-toggle')?.addEventListener('change', () => { toggleBannerSection(); saveSettings(); });
+    document.getElementById('music-toggle')?.addEventListener('change', () => { toggleMusicSection(); saveSettings(); });
+    document.getElementById('music-volume-slider')?.addEventListener('input', saveSettings);
     document.getElementById('rank-toggle')?.addEventListener('change', saveSettings);
     document.getElementById('timer-toggle')?.addEventListener('change', saveSettings);
     document.getElementById('streak-toggle')?.addEventListener('change', saveSettings);
@@ -678,6 +824,84 @@
       document.getElementById('banner-file-input').value = '';
       document.getElementById('banner-status-box').classList.add('hidden');
       document.getElementById('banner-dropzone').classList.remove('hidden');
+      saveSettings();
+      lucide.createIcons();
+    }
+
+    function toggleMusicSection() {
+      const checked = document.getElementById('music-toggle').checked;
+      const section = document.getElementById('music-upload-section');
+      if (checked) {
+        section.classList.remove('hidden');
+      } else {
+        section.classList.add('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    function handleMusicDragOver(e) {
+      e.preventDefault();
+      document.getElementById('music-dropzone').classList.add('border-cyan-400', 'bg-cyan-500/10');
+    }
+
+    function handleMusicDragLeave(e) {
+      e.preventDefault();
+      document.getElementById('music-dropzone').classList.remove('border-cyan-400', 'bg-cyan-500/10');
+    }
+
+    function handleMusicDrop(e) {
+      e.preventDefault();
+      document.getElementById('music-dropzone').classList.remove('border-cyan-400', 'bg-cyan-500/10');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+        uploadMusicFile(e.dataTransfer.files[0]);
+      }
+    }
+
+    function handleMusicFileSelect(e) {
+      if (e.target && e.target.files && e.target.files[0]) {
+        uploadMusicFile(e.target.files[0]);
+      }
+    }
+
+    async function uploadMusicFile(file) {
+      const dropzone = document.getElementById('music-dropzone');
+      const statusBox = document.getElementById('music-status-box');
+      dropzone.classList.add('opacity-50', 'pointer-events-none');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const resp = await fetch('/api/v1/quiz/upload-music', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Ошибка загрузки музыки');
+        }
+        const data = await resp.json();
+        uploadedMusicFile = data.saved_filename;
+        document.getElementById('music-file-name').textContent = data.filename;
+        document.getElementById('music-duration-badge').textContent = `${data.duration_seconds}с`;
+
+        dropzone.classList.add('hidden');
+        statusBox.classList.remove('hidden');
+        saveSettings();
+      } catch (err) {
+        alert('Не удалось загрузить фоновую музыку: ' + err.message);
+      } finally {
+        dropzone.classList.remove('opacity-50', 'pointer-events-none');
+        lucide.createIcons();
+      }
+    }
+
+    function removeMusic(e) {
+      if (e) e.stopPropagation();
+      uploadedMusicFile = null;
+      document.getElementById('music-file-input').value = '';
+      document.getElementById('music-status-box').classList.add('hidden');
+      document.getElementById('music-dropzone').classList.remove('hidden');
       saveSettings();
       lucide.createIcons();
     }
@@ -1062,6 +1286,12 @@
       const background = document.getElementById('background-select').value;
       const bannerToggle = document.getElementById('banner-toggle');
       const bannerEnabled = bannerToggle ? bannerToggle.checked : false;
+      const musicToggle = document.getElementById('music-toggle');
+      const musicEnabled = musicToggle ? musicToggle.checked : false;
+      const introHookInput = document.getElementById('intro-hook-input');
+      const introHookVal = introHookInput ? (introHookInput.value.trim() || null) : null;
+      const musicVolumeSlider = document.getElementById('music-volume-slider');
+      const musicVolume = musicVolumeSlider ? parseFloat(musicVolumeSlider.value) : 0.18;
       const previewBtn = document.getElementById('preview-btn');
 
       if (!topic) {
@@ -1071,6 +1301,11 @@
 
       if (bannerEnabled && !uploadedBannerFile) {
         alert('Вы включили вставку промо-баннера, но ещё не загрузили видео! Пожалуйста, выберите видео-файл баннера.');
+        return;
+      }
+
+      if (musicEnabled && !uploadedMusicFile) {
+        alert('Вы включили фоновую музыку, но ещё не загрузили аудио-файл! Пожалуйста, выберите MP3/WAV трек.');
         return;
       }
 
@@ -1105,6 +1340,9 @@
             background_video: background,
             banner_video: bannerEnabled ? uploadedBannerFile : null,
             challenge: approvedChallenge,
+            intro_hook: introHookVal,
+            background_music: (musicEnabled && uploadedMusicFile) ? uploadedMusicFile : null,
+            background_music_volume: musicVolume,
             retention_enabled: true,
             rank_bar_enabled: document.getElementById('rank-toggle')?.checked ?? true,
             stress_timer_enabled: document.getElementById('timer-toggle')?.checked ?? true,
