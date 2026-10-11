@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "videoanalizer"
+version = "0.1.0"
+description = "AI-powered funny moments detector and TikTok/Shorts vertical video generator using Gemini 2.5 Flash and FFmpeg"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "VideoAnalyzer Team" }
+]
+keywords = ["video", "ai", "gemini", "shorts", "tiktok", "ffmpeg", "gradio"]
+dependencies = [
+    "google-genai>=1.0.0",
+    "ffmpeg-python>=0.2.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "httpx>=0.25.0",
+    "yt-dlp>=2024.1.0",
+    "pillow>=10.0.0",
+    "edge-tts>=6.1.9",
+    "duckduckgo_search>=4.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.3.0",
+]
+
+[project.scripts]
+videoanalizer = "videoanalizer.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["videoanalizer*"]
+exclude = ["tests*", "specs*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # Pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "ANN",  # flake8-annotations
+    "S",    # flake8-bandit
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "ANN101", # Missing type annotation for self
+    "ANN102", # Missing type annotation for cls
+    "S101",   # Use of assert (allowed in tests)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "S101"]
+"tests/*" = ["ANN", "S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["videoanalizer"]

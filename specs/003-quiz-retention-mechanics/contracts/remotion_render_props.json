@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RemotionRenderPropsWithRetention",
+  "type": "object",
+  "required": [
+    "challenge",
+    "cue_sheet",
+    "background_video_path",
+    "sfx_paths",
+    "retention",
+    "fps",
+    "width",
+    "height"
+  ],
+  "properties": {
+    "challenge": {
+      "type": "object",
+      "required": ["topic", "language", "total_questions", "tiers"],
+      "properties": {
+        "topic": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "language": { "type": "string", "enum": ["ru", "en"] },
+        "total_questions": { "type": "integer", "const": 9 },
+        "tiers": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "required": ["tier_level", "tier_index", "theme_color", "questions"],
+            "properties": {
+              "tier_level": { "type": "string", "enum": ["easy", "medium", "hard"] },
+              "tier_index": { "type": "integer", "minimum": 1, "maximum": 3 },
+              "theme_color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+              "questions": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "type": "object",
+                  "required": ["question_number", "difficulty", "tier_index", "question_text", "correct_answer", "fun_fact"],
+                  "properties": {
+                    "question_number": { "type": "integer", "minimum": 1, "maximum": 9 },
+                    "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
+                    "tier_index": { "type": "integer", "minimum": 1, "maximum": 3 },
+                    "question_text": { "type": "string", "maxLength": 80 },
+                    "correct_answer": { "type": "string", "maxLength": 35 },
+                    "fun_fact": { "type": "string", "maxLength": 200 },
+                    "image_query": { "type": ["string", "null"] },
+                    "local_image_path": { "type": ["string", "null"] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cue_sheet": {
+      "type": "object",
+      "required": ["total_duration_ms", "total_duration_frames", "cues"],
+      "properties": {
+        "total_duration_ms": { "type": "integer", "minimum": 30000, "maximum": 60000 },
+        "total_duration_frames": { "type": "integer", "minimum": 1800, "maximum": 3600 },
+        "cues": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9
+        }
+      }
+    },
+    "background_video_path": { "type": "string" },
+    "sfx_paths": {
+      "type": "object",
+      "required": ["timer_tick", "reveal_ding", "level_up"],
+      "properties": {
+        "timer_tick": { "type": "string" },
+        "reveal_ding": { "type": "string" },
+        "level_up": { "type": "string" },
+        "heartbeat_panic": { "type": ["string", "null"] },
+        "streak_fire": { "type": ["string", "null"] },
+        "comment_buzzer": { "type": ["string", "null"] }
+      }
+    },
+    "retention": {
+      "type": "object",
+      "required": ["enabled", "rank_bar_enabled", "stress_timer_enabled", "streak_fire", "comment_trap"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "rank_bar_enabled": { "type": "boolean" },
+        "rank_tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["min_question", "max_question", "rank_title", "rank_color", "rank_icon", "iq_label"]
+          }
+        },
+        "stress_timer_enabled": { "type": "boolean" },
+        "stress_tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["tier_level", "think_duration_sec", "theme_color", "sfx_file", "panic_vignette"]
+          }
+        },
+        "streak_fire": {
+          "type": "object",
+          "required": ["enabled", "fire_color_normal", "fire_color_ultra", "ultra_threshold", "sfx_pitch_step"]
+        },
+        "comment_trap": {
+          "type": "object",
+          "required": ["enabled", "trap_question_number", "outro_challenge_text", "duration_frames"]
+        },
+        "seamless_loop": { "type": "boolean" },
+        "anti_cheat_callout": { "type": "boolean" }
+      }
+    },
+    "fps": { "type": "integer", "const": 60 },
+    "width": { "type": "integer", "const": 1080 },
+    "height": { "type": "integer", "const": 1920 },
+    "banner_video_path": { "type": ["string", "null"] },
+    "banner_start_frame": { "type": ["integer", "null"] },
+    "banner_duration_frames": { "type": ["integer", "null"] }
+  }
+}

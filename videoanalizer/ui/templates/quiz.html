@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TikTok Квизы 1-9 — VideoAnalyzer</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    .glass-panel {
+      background: rgba(18, 20, 29, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1rem;
+    }
+    .pulse-glow {
+      box-shadow: 0 0 25px rgba(139, 92, 246, 0.35);
+    }
+  </style>
+</head>
+<body class="bg-[#090a0f] text-slate-100 min-h-screen antialiased flex flex-col selection:bg-purple-500 selection:text-white">
+
+  <!-- Header Navigation -->
+  <header class="border-b border-white/[0.08] bg-[#090a0f]/80 backdrop-blur-xl sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-teal-500/20">
+          <i data-lucide="help-circle" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+              VideoAnalyzer
+            </span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-medium">
+              Квизы 1-9 (@dreaaam33)
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Генератор вирусных вертикальных квизов для TikTok & Shorts</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <a href="/" class="text-xs px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 transition-all flex items-center space-x-1.5 border border-white/[0.08]">
+          <i data-lucide="video" class="w-3.5 h-3.5"></i>
+          <span>Нарезка видео в Shorts</span>
+        </a>
+        <div class="flex items-center space-x-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Онлайн</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+      <!-- LEFT: Controls & Parameters (7 cols) -->
+      <section class="lg:col-span-7 space-y-6">
+
+        <!-- Panel: Quiz Topic & Parameters -->
+        <div class="glass-panel p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-white/[0.06] pb-4">
+            <h2 class="text-lg font-semibold flex items-center space-x-2.5">
+              <i data-lucide="flame" class="w-5 h-5 text-amber-400"></i>
+              <span>Создание викторины</span>
+            </h2>
+            <span class="text-xs text-slate-400 font-mono">Формат: 9 вопросов (Лестница)</span>
+          </div>
+
+          <!-- Topic Input -->
+          <div class="space-y-2">
+            <label class="block text-xs font-medium text-slate-300">Тема викторины</label>
+            <div class="relative">
+              <input 
+                type="text" 
+                id="topic-input" 
+                placeholder="Например: Школьные знания, Мировая география, Флаги стран..." 
+                class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all"
+                value="Школьные знания"
+              />
+            </div>
+            
+            <!-- Preset Chips -->
+            <div class="flex flex-wrap gap-2 pt-1">
+              <span class="text-xs text-slate-400 self-center mr-1">Быстрые темы:</span>
+              <button onclick="setTopic('Школьные знания')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">📚 Школьные знания</button>
+              <button onclick="setTopic('Мировая география')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">🌍 География</button>
+              <button onclick="setTopic('Флаги стран мира')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">🚩 Флаги</button>
+              <button onclick="setTopic('История человечества')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">🏛️ История</button>
+              <button onclick="setTopic('Автомобили и бренды')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Автомобили</button>
+            </div>
+          </div>
+
+          <!-- Parameters Grid -->
+          <div class="grid grid-cols-2 gap-4 pt-2">
+            <!-- Language -->
+            <div class="space-y-1.5">
+              <label class="block text-xs font-medium text-slate-300">Язык озвучки и текста</label>
+              <select id="language-select" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all">
+                <option value="ru" selected>Русский (ru)</option>
+                <option value="en">English (en)</option>
+              </select>
+            </div>
+
+            <!-- Voice Selection -->
+            <div class="space-y-1.5">
+              <label class="block text-xs font-medium text-slate-300">Нейросетевой голос</label>
+              <select id="voice-select" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all">
+                <option value="ru-RU-SvetlanaNeural" selected>Светлана (SvetlanaNeural)</option>
+                <option value="en-US-GuyNeural">Guy (en-US-GuyNeural)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Background Video Selector -->
+          <div class="space-y-1.5 pt-1">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-medium text-slate-300 flex items-center space-x-1.5">
+                <i data-lucide="film" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span>Фоновое видео (геймплей / космос)</span>
+              </label>
+              <span class="text-[11px] text-slate-400 font-mono">1080x1920 (9:16)</span>
+            </div>
+            <select id="background-select" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all">
+              <option value="random" selected>🎲 Случайный фон из папки (Random)</option>
+              <option value="minecraft_parkour_1.mp4">⛏️ Minecraft Parkour</option>
+              <option value="gta5_mega_ramp_vertical.mp4">🏎️ GTA 5 Mega Ramp</option>
+              <option value="subway_surfers_vertical.mp4">🏃 Subway Surfers</option>
+              <option value="earth_space_night.mp4">🌍 Земля из космоса (Space Earth)</option>
+            </select>
+          </div>
+
+          <!-- Promo Banner Video (Optional Toggle & Upload) -->
+          <div class="space-y-3 pt-3 border-t border-white/[0.06]">
+            <div class="flex items-center justify-between">
+              <label class="flex items-center space-x-2.5 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  id="banner-toggle" 
+                  class="w-4 h-4 rounded text-emerald-500 bg-black/40 border-white/[0.2] focus:ring-emerald-500 focus:ring-offset-0 transition-all cursor-pointer"
+                  onchange="toggleBannerSection()"
+                />
+                <span class="text-xs font-medium text-slate-200">📢 Вставить промо-баннер (видео)</span>
+              </label>
+              <span class="text-[11px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono">
+                Строго по центру &ge;25%
+              </span>
+            </div>
+
+            <!-- Expandable Banner Upload Section -->
+            <div id="banner-upload-section" class="hidden space-y-2.5 pl-4 border-l-2 border-emerald-500/30">
+              <p class="text-[11px] text-slate-400 leading-relaxed">
+                Видео размещается <strong class="text-emerald-400">строго в середине хронометража</strong> и занимает <strong class="text-emerald-400">&ge;25% площади экрана</strong> ровно по центру (правило 3.2).
+              </p>
+
+              <!-- Upload Dropzone -->
+              <div 
+                id="banner-dropzone"
+                onclick="document.getElementById('banner-file-input').click()"
+                ondragover="handleBannerDragOver(event)"
+                ondragleave="handleBannerDragLeave(event)"
+                ondrop="handleBannerDrop(event)"
+                class="border border-dashed border-white/[0.15] hover:border-emerald-500/50 bg-black/30 hover:bg-black/50 rounded-xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-1.5"
+              >
+                <input 
+                  type="file" 
+                  id="banner-file-input" 
+                  accept="video/mp4,video/webm,video/quicktime,video/x-m4v" 
+                  class="hidden" 
+                  onchange="handleBannerFileSelect(event)"
+                />
+                <i data-lucide="upload-cloud" class="w-6 h-6 text-slate-400"></i>
+                <span class="text-xs text-slate-300 font-medium">Нажмите или перетащите MP4 / WebM / MOV</span>
+                <span class="text-[10px] text-slate-500">Короткое видео для интеграции (3–10 сек)</span>
+              </div>
+
+              <!-- Upload Status Box -->
+              <div id="banner-status-box" class="hidden flex items-center justify-between p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+                <div class="flex items-center space-x-2 truncate">
+                  <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                  <span id="banner-file-name" class="truncate font-mono text-[11px]">banner.mp4</span>
+                  <span id="banner-duration-badge" class="px-1.5 py-0.5 rounded bg-black/40 text-[10px] font-mono text-emerald-400 shrink-0">5.0s</span>
+                </div>
+                <button 
+                  type="button" 
+                  onclick="removeBanner(event)" 
+                  class="text-slate-400 hover:text-red-400 p-1 transition-all ml-2 shrink-0" 
+                  title="Удалить баннер"
+                >
+                  <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feature Highlights Card -->
+          <div class="p-4 rounded-xl bg-emerald-500/[0.04] border border-emerald-500/20 space-y-2 text-xs text-slate-300">
+            <div class="font-semibold text-emerald-400 flex items-center space-x-1.5">
+              <i data-lucide="check-circle" class="w-4 h-4"></i>
+              <span>Фирменный стиль @dreaaam33 (dreamfacts):</span>
+            </div>
+            <ul class="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
+              <li>• Верхний баннер УРОВЕНЬ: ЛЕГКИЙ/СРЕДНИЙ/ТЯЖЕЛЫЙ</li>
+              <li>• Лестница 1-9 на левом краю (1-4 Зелёные, 5-8 Жёлтые, 9 Красный)</li>
+              <li>• Плавный таймер-капсула на 3 секунды</li>
+              <li>• Выбор геймплея на фоне (Minecraft, GTA 5, Subway Surfers, Космос)</li>
+              <li>• Анимационный баннер (строго центр, &ge;25% экрана)</li>
+            </ul>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="space-y-2 pt-1">
+            <button 
+              id="preview-btn" 
+              onclick="previewQuestions()"
+              class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-sm shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+            >
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+              <span>Сгенерировать вопросы (AI)</span>
+            </button>
+            <div class="flex items-center justify-center pt-0.5">
+              <button 
+                type="button" 
+                onclick="startQuizGeneration(null)" 
+                class="text-xs text-slate-400 hover:text-slate-200 transition-all flex items-center space-x-1 cursor-pointer"
+              >
+                <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>Создать видео сразу (без предпросмотра)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel: Questions Review & Confirmation Card -->
+        <div id="questions-preview-card" class="glass-panel p-6 space-y-5 hidden border border-emerald-500/30">
+          <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <i data-lucide="list-checks" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                  <span>Проверка вопросов викторины</span>
+                  <span id="preview-topic-badge" class="text-xs px-2 py-0.5 rounded-full bg-white/[0.08] text-slate-300 font-mono truncate max-w-[200px]">Школьные знания</span>
+                </h3>
+                <p class="text-xs text-slate-400">Проверьте или скорректируйте вопросы перед озвучкой и рендером</p>
+              </div>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-medium">9 вопросов</span>
+          </div>
+
+          <!-- Question Cards Container (populated by JS) -->
+          <div id="questions-list" class="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+            <!-- Dynamic content injected here -->
+          </div>
+
+          <!-- Confirmation Actions Bar -->
+          <div class="pt-3 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <button 
+              id="regen-btn"
+              type="button" 
+              onclick="regenerateQuestions()"
+              class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 text-xs font-semibold border border-white/[0.1] transition-all flex items-center justify-center space-x-2 cursor-pointer"
+            >
+              <i data-lucide="refresh-cw" class="w-4 h-4 text-amber-400"></i>
+              <span>Перегенерировать вопросы</span>
+            </button>
+
+            <button 
+              id="confirm-btn"
+              type="button" 
+              onclick="confirmAndStartVideo()"
+              class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+            >
+              <i data-lucide="check" class="w-4 h-4"></i>
+              <span>Подтвердить и создать видео</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Progress Status Card -->
+        <div id="progress-card" class="glass-panel p-6 space-y-4 hidden">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-semibold flex items-center space-x-2">
+              <span id="spinner" class="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin inline-block"></span>
+              <span id="status-title">Инициализация генерации...</span>
+            </h3>
+            <span id="status-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">В процессе</span>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="w-full bg-white/[0.06] rounded-full h-2 overflow-hidden">
+            <div id="progress-bar-fill" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-2 rounded-full transition-all duration-300 w-1/4 animate-pulse"></div>
+          </div>
+
+          <p id="status-details" class="text-xs text-slate-400 font-mono">
+            Шаг 1: Gemini 3.5 Flash генерирует 9 вопросов...
+          </p>
+        </div>
+
+      </section>
+
+      <!-- RIGHT: Video Player & Output (5 cols) -->
+      <section class="lg:col-span-5 space-y-6">
+        <div class="glass-panel p-6 flex flex-col items-center text-center space-y-4">
+          <div class="w-full flex items-center justify-between border-b border-white/[0.06] pb-3">
+            <h3 class="text-sm font-semibold flex items-center space-x-2">
+              <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
+              <span>Предпросмотр Shorts (9:16)</span>
+            </h3>
+            <span id="video-state-badge" class="text-xs text-slate-400 font-mono">Ожидание</span>
+          </div>
+
+          <!-- Video Player Container -->
+          <div class="w-full max-w-[320px] aspect-[9/16] bg-black/60 rounded-2xl border border-white/[0.1] overflow-hidden relative flex items-center justify-center shadow-2xl">
+            <video 
+              id="result-video" 
+              class="w-full h-full object-cover hidden" 
+              controls 
+              playsinline
+            ></video>
+
+            <!-- Placeholder Screen -->
+            <div id="video-placeholder" class="p-6 text-center space-y-3">
+              <div class="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto text-slate-500">
+                <i data-lucide="play" class="w-6 h-6"></i>
+              </div>
+              <p class="text-xs text-slate-400">После завершения рендеринга готовый ролик появится здесь</p>
+            </div>
+          </div>
+
+          <!-- Download Action -->
+          <div id="download-box" class="w-full hidden space-y-3">
+            <a 
+              id="download-link" 
+              href="#" 
+              download 
+              class="w-full py-3 px-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-white text-xs font-semibold border border-white/[0.15] transition-all flex items-center justify-center space-x-2"
+            >
+              <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+              <span>Скачать готовый MP4 (1080x1920)</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Frontend Logic -->
+  <script>
+    lucide.createIcons();
+
+    function setTopic(name) {
+      document.getElementById('topic-input').value = name;
+    }
+
+    async function loadBackgrounds() {
+      try {
+        const resp = await fetch('/api/v1/quiz/backgrounds');
+        if (!resp.ok) return;
+        const list = await resp.json();
+        if (list && list.length > 0) {
+          const select = document.getElementById('background-select');
+          const current = select.value;
+          select.innerHTML = '<option value="random">🎲 Случайный фон из папки (Random)</option>';
+          list.forEach(bg => {
+            const opt = document.createElement('option');
+            opt.value = bg.filename;
+            let icon = '🎥';
+            const lower = bg.filename.toLowerCase();
+            if (lower.includes('minecraft')) icon = '⛏️';
+            else if (lower.includes('gta')) icon = '🏎️';
+            else if (lower.includes('subway')) icon = '🏃';
+            else if (lower.includes('earth') || lower.includes('space')) icon = '🌍';
+            opt.textContent = `${icon} ${bg.name}`;
+            select.appendChild(opt);
+          });
+          if (current) select.value = current;
+        }
+      } catch (e) {
+        console.warn('Failed to load backgrounds list:', e);
+      }
+    }
+    loadBackgrounds();
+
+    let activeJobId = null;
+    let pollInterval = null;
+    let uploadedBannerFile = null;
+
+    function toggleBannerSection() {
+      const checked = document.getElementById('banner-toggle').checked;
+      const section = document.getElementById('banner-upload-section');
+      if (checked) {
+        section.classList.remove('hidden');
+      } else {
+        section.classList.add('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    function handleBannerDragOver(e) {
+      e.preventDefault();
+      document.getElementById('banner-dropzone').classList.add('border-emerald-400', 'bg-emerald-500/10');
+    }
+
+    function handleBannerDragLeave(e) {
+      e.preventDefault();
+      document.getElementById('banner-dropzone').classList.remove('border-emerald-400', 'bg-emerald-500/10');
+    }
+
+    function handleBannerDrop(e) {
+      e.preventDefault();
+      document.getElementById('banner-dropzone').classList.remove('border-emerald-400', 'bg-emerald-500/10');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+        uploadBannerFile(e.dataTransfer.files[0]);
+      }
+    }
+
+    function handleBannerFileSelect(e) {
+      if (e.target && e.target.files && e.target.files[0]) {
+        uploadBannerFile(e.target.files[0]);
+      }
+    }
+
+    async function uploadBannerFile(file) {
+      const dropzone = document.getElementById('banner-dropzone');
+      const statusBox = document.getElementById('banner-status-box');
+      dropzone.classList.add('opacity-50', 'pointer-events-none');
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const resp = await fetch('/api/v1/quiz/upload-banner', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Ошибка загрузки баннера');
+        }
+        const data = await resp.json();
+        uploadedBannerFile = data.saved_filename;
+        document.getElementById('banner-file-name').textContent = data.filename;
+        document.getElementById('banner-duration-badge').textContent = `${data.duration_seconds}с`;
+
+        dropzone.classList.add('hidden');
+        statusBox.classList.remove('hidden');
+      } catch (err) {
+        alert('Не удалось загрузить видео баннера: ' + err.message);
+      } finally {
+        dropzone.classList.remove('opacity-50', 'pointer-events-none');
+        lucide.createIcons();
+      }
+    }
+
+    function removeBanner(e) {
+      if (e) e.stopPropagation();
+      uploadedBannerFile = null;
+      document.getElementById('banner-file-input').value = '';
+      document.getElementById('banner-status-box').classList.add('hidden');
+      document.getElementById('banner-dropzone').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    let currentChallenge = null;
+
+    async function previewQuestions() {
+      const topic = document.getElementById('topic-input').value.trim();
+      const language = document.getElementById('language-select').value;
+      const previewBtn = document.getElementById('preview-btn');
+
+      if (!topic) {
+        alert('Пожалуйста, укажите тему викторины!');
+        return;
+      }
+
+      previewBtn.disabled = true;
+      previewBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      const origHtml = previewBtn.innerHTML;
+      previewBtn.innerHTML = '<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></span><span>ИИ генерирует 9 вопросов...</span>';
+
+      try {
+        const resp = await fetch('/api/v1/quiz/preview-questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, language })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Ошибка генерации вопросов');
+        }
+
+        currentChallenge = await resp.json();
+        renderQuestionsPreview(currentChallenge);
+      } catch (err) {
+        alert('Ошибка генерации вопросов: ' + err.message);
+      } finally {
+        previewBtn.disabled = false;
+        previewBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        previewBtn.innerHTML = origHtml;
+        lucide.createIcons();
+      }
+    }
+
+    function renderQuestionsPreview(challenge) {
+      const card = document.getElementById('questions-preview-card');
+      const list = document.getElementById('questions-list');
+      const topicBadge = document.getElementById('preview-topic-badge');
+
+      topicBadge.textContent = challenge.topic;
+      list.innerHTML = '';
+
+      challenge.tiers.forEach((tier) => {
+        const tierSection = document.createElement('div');
+        tierSection.className = 'p-3.5 rounded-xl bg-black/40 border border-white/[0.06] space-y-2.5';
+
+        const tierName = tier.tier_level === 'easy' ? 'Уровень 1: Легкий (Вопросы 1–3)' :
+                         tier.tier_level === 'medium' ? 'Уровень 2: Средний (Вопросы 4–6)' :
+                         'Уровень 3: Тяжелый (Вопросы 7–9)';
+        const color = tier.theme_color || '#22C55E';
+
+        const tierHeader = document.createElement('div');
+        tierHeader.className = 'flex items-center space-x-2 font-bold text-xs pb-1.5 border-b border-white/[0.06]';
+        tierHeader.style.color = color;
+        tierHeader.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background-color: ${color}"></span><span>${tierName}</span>`;
+        tierSection.appendChild(tierHeader);
+
+        tier.questions.forEach((q) => {
+          const qBox = document.createElement('div');
+          qBox.className = 'space-y-1.5 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]';
+          qBox.innerHTML = `
+            <div class="flex items-start space-x-2.5">
+              <span class="w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs shrink-0 mt-0.5" style="background-color: ${color}22; color: ${color}; border: 1px solid ${color}44">${q.question_number}</span>
+              <div class="flex-1 space-y-1.5">
+                <input 
+                  type="text" 
+                  data-qnum="${q.question_number}" 
+                  data-field="question_text"
+                  value="${q.question_text.replace(/"/g, '&quot;')}" 
+                  class="w-full bg-black/60 border border-white/[0.1] focus:border-emerald-500 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none transition-all"
+                  title="Текст вопроса"
+                />
+                <div class="flex items-center space-x-2">
+                  <span class="text-[11px] text-slate-400 shrink-0 font-medium">Ответ:</span>
+                  <input 
+                    type="text" 
+                    data-qnum="${q.question_number}" 
+                    data-field="correct_answer"
+                    value="${q.correct_answer.replace(/"/g, '&quot;')}" 
+                    class="flex-1 bg-black/60 border border-white/[0.1] focus:border-emerald-500 rounded-lg px-2.5 py-1 text-xs text-emerald-400 font-bold focus:outline-none transition-all"
+                    title="Правильный ответ"
+                  />
+                </div>
+              </div>
+            </div>
+          `;
+          tierSection.appendChild(qBox);
+        });
+
+        list.appendChild(tierSection);
+      });
+
+      card.classList.remove('hidden');
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      lucide.createIcons();
+    }
+
+    async function regenerateQuestions() {
+      const regenBtn = document.getElementById('regen-btn');
+      regenBtn.disabled = true;
+      regenBtn.classList.add('opacity-50');
+      const origHtml = regenBtn.innerHTML;
+      regenBtn.innerHTML = '<span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-1"></span><span>Генерация новых...</span>';
+
+      try {
+        await previewQuestions();
+      } finally {
+        regenBtn.disabled = false;
+        regenBtn.classList.remove('opacity-50');
+        regenBtn.innerHTML = origHtml;
+        lucide.createIcons();
+      }
+    }
+
+    function confirmAndStartVideo() {
+      if (!currentChallenge) {
+        alert('Нет загруженных вопросов для подтверждения!');
+        return;
+      }
+
+      // Collect any inline edits
+      const qInputs = document.querySelectorAll('#questions-list input[data-qnum]');
+      qInputs.forEach((input) => {
+        const qnum = parseInt(input.getAttribute('data-qnum'), 10);
+        const field = input.getAttribute('data-field');
+        const val = input.value.trim();
+
+        currentChallenge.tiers.forEach((tier) => {
+          tier.questions.forEach((q) => {
+            if (q.question_number === qnum) {
+              q[field] = val;
+            }
+          });
+        });
+      });
+
+      // Hide preview card and launch rendering pipeline
+      document.getElementById('questions-preview-card').classList.add('hidden');
+      startQuizGeneration(currentChallenge);
+    }
+
+    async function startQuizGeneration(approvedChallenge = null) {
+      const topic = approvedChallenge ? approvedChallenge.topic : document.getElementById('topic-input').value.trim();
+      const language = approvedChallenge ? approvedChallenge.language : document.getElementById('language-select').value;
+      const voice = document.getElementById('voice-select').value;
+      const background = document.getElementById('background-select').value;
+      const bannerToggle = document.getElementById('banner-toggle');
+      const bannerEnabled = bannerToggle ? bannerToggle.checked : false;
+      const previewBtn = document.getElementById('preview-btn');
+
+      if (!topic) {
+        alert('Пожалуйста, укажите тему викторины!');
+        return;
+      }
+
+      if (bannerEnabled && !uploadedBannerFile) {
+        alert('Вы включили вставку промо-баннера, но ещё не загрузили видео! Пожалуйста, выберите видео-файл баннера.');
+        return;
+      }
+
+      if (previewBtn) {
+        previewBtn.disabled = true;
+        previewBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+
+      // Reset & Show progress card
+      const pCard = document.getElementById('progress-card');
+      pCard.classList.remove('hidden');
+      pCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.getElementById('status-title').textContent = 'Генерация видео начата...';
+      document.getElementById('status-badge').textContent = 'В процессе';
+      document.getElementById('status-details').textContent = approvedChallenge 
+        ? 'Вопросы утверждены! Шаг 2/3: Синтез речи Edge-TTS...'
+        : 'Шаг 1/3: Генерация структуры вопросов в Gemini AI...';
+      document.getElementById('progress-bar-fill').style.width = approvedChallenge ? '45%' : '25%';
+
+      document.getElementById('video-placeholder').classList.remove('hidden');
+      document.getElementById('result-video').classList.add('hidden');
+      document.getElementById('download-box').classList.add('hidden');
+
+      try {
+        const resp = await fetch('/api/v1/quiz/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topic: topic,
+            language: language,
+            voice: voice,
+            background_video: background,
+            banner_video: bannerEnabled ? uploadedBannerFile : null,
+            challenge: approvedChallenge
+          })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Ошибка запуска генерации');
+        }
+
+        const data = await resp.json();
+        activeJobId = data.job_id;
+        startPolling(activeJobId);
+      } catch (err) {
+        if (previewBtn) {
+          previewBtn.disabled = false;
+          previewBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        alert('Ошибка: ' + err.message);
+        pCard.classList.add('hidden');
+      }
+    }
+
+    function startPolling(jobId) {
+      if (pollInterval) clearInterval(pollInterval);
+
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/v1/quiz/jobs/${jobId}`);
+          if (!res.ok) return;
+
+          const job = await res.json();
+          const bar = document.getElementById('progress-bar-fill');
+          const details = document.getElementById('status-details');
+
+          if (job.status === 'pending') {
+            bar.style.width = '35%';
+            details.textContent = 'Шаг 1: Подготовка аудио и таймингов...';
+          } else if (job.status === 'processing' || job.status === 'rendering_video') {
+            bar.style.width = '70%';
+            details.textContent = 'Шаг 2: Синтез речи Edge-TTS и рендеринг Remotion (1080x1920 60fps)...';
+          } else if (job.status === 'completed') {
+            clearInterval(pollInterval);
+            bar.style.width = '100%';
+            bar.classList.remove('animate-pulse');
+            document.getElementById('spinner').classList.add('hidden');
+            document.getElementById('status-title').textContent = 'Викторина успешно создана!';
+            document.getElementById('status-badge').textContent = 'Готово';
+            document.getElementById('status-badge').className = 'text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono';
+            details.textContent = 'Видео сохранено в 1080x1920 60fps.';
+
+            const pBtn = document.getElementById('preview-btn');
+            if (pBtn) {
+              pBtn.disabled = false;
+              pBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+            // Show video
+            const videoElem = document.getElementById('result-video');
+            const videoUrl = `/api/v1/quiz/jobs/${jobId}/download`;
+            videoElem.src = videoUrl;
+            videoElem.classList.remove('hidden');
+            document.getElementById('video-placeholder').classList.add('hidden');
+            document.getElementById('video-state-badge').textContent = '1080x1920 MP4';
+
+            // Show download button
+            const dlLink = document.getElementById('download-link');
+            dlLink.href = videoUrl;
+            document.getElementById('download-box').classList.remove('hidden');
+          } else if (job.status === 'failed') {
+            clearInterval(pollInterval);
+            document.getElementById('spinner').classList.add('hidden');
+            document.getElementById('status-title').textContent = 'Ошибка рендеринга';
+            document.getElementById('status-badge').textContent = 'Ошибка';
+            document.getElementById('status-badge').className = 'text-xs px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 font-mono';
+            details.textContent = job.error_message || 'Произошла непредвиденная ошибка';
+
+            const pBtn = document.getElementById('preview-btn');
+            if (pBtn) {
+              pBtn.disabled = false;
+              pBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+          }
+        } catch (e) {
+          console.error('Polling error:', e);
+        }
+      }, 2500);
+    }
+  </script>
+</body>
+</html>

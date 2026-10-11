@@ -1,0 +1,38 @@
+{
+  "highlights": [
+    {
+      "start_sec": 45.2,
+      "end_sec": 78.5,
+      "humor_score": 8.7,
+      "summary": "Streamer accidentally walks off cliff while explaining strategy, panics audibly",
+      "transcript": "So the key to winning here is you just need to carefully walk along the edge and OH NO NO NO WAIT",
+      "word_timings": [
+        { "word": "So", "start_sec": 0.0, "end_sec": 0.2 },
+        { "word": "the", "start_sec": 0.2, "end_sec": 0.35 },
+        { "word": "key", "start_sec": 0.35, "end_sec": 0.55 },
+        { "word": "to", "start_sec": 0.55, "end_sec": 0.65 },
+        { "word": "winning", "start_sec": 0.65, "end_sec": 1.0 },
+        { "word": "here", "start_sec": 1.0, "end_sec": 1.2 },
+        { "word": "is", "start_sec": 1.2, "end_sec": 1.35 }
+      ],
+      "suggested_headline": "He really said 'carefully' 💀😂"
+    },
+    {
+      "start_sec": 120.0,
+      "end_sec": 155.4,
+      "humor_score": 9.2,
+      "summary": "Teammate throws grenade inside elevator right before doors close",
+      "transcript": "Don't worry I got smoke for cover oops that wasn't smoke get out get out",
+      "word_timings": [
+        { "word": "Don't", "start_sec": 0.0, "end_sec": 0.25 },
+        { "word": "worry", "start_sec": 0.25, "end_sec": 0.5 },
+        { "word": "I", "start_sec": 0.5, "end_sec": 0.65 },
+        { "word": "got", "start_sec": 0.65, "end_sec": 0.85 },
+        { "word": "smoke", "start_sec": 0.85, "end_sec": 1.1 }
+      ],
+      "suggested_headline": "Worst elevator teammate ever 😭💣"
+    }
+  ],
+  "video_language": "en",
+  "analysis_notes": "Detected 2 high-confidence comedic moments in the provided segment."
+}

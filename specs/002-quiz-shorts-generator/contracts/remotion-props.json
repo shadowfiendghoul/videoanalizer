@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RemotionRenderPropsSchema",
+  "description": "Unified JSON input contract passed to Remotion CLI for rendering 1080x1920 60fps video",
+  "type": "object",
+  "required": [
+    "challenge",
+    "cue_sheet",
+    "background_video_path",
+    "sfx_paths",
+    "fps",
+    "width",
+    "height"
+  ],
+  "properties": {
+    "challenge": {
+      "$ref": "./quiz-schema.json"
+    },
+    "cue_sheet": {
+      "type": "object",
+      "required": ["total_duration_ms", "total_duration_frames", "cues"],
+      "properties": {
+        "total_duration_ms": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 90000
+        },
+        "total_duration_frames": {
+          "type": "integer",
+          "minimum": 1800,
+          "maximum": 5400
+        },
+        "cues": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9,
+          "items": {
+            "type": "object",
+            "required": [
+              "question_number",
+              "start_frame",
+              "question_audio_file",
+              "question_duration_ms",
+              "question_words",
+              "think_start_frame",
+              "think_duration_ms",
+              "reveal_frame",
+              "answer_audio_file",
+              "answer_duration_ms",
+              "answer_words",
+              "end_frame"
+            ],
+            "properties": {
+              "question_number": { "type": "integer" },
+              "start_frame": { "type": "integer" },
+              "question_audio_file": { "type": "string" },
+              "question_duration_ms": { "type": "integer" },
+              "question_words": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["word", "start_ms", "end_ms"],
+                  "properties": {
+                    "word": { "type": "string" },
+                    "start_ms": { "type": "integer" },
+                    "end_ms": { "type": "integer" }
+                  }
+                }
+              },
+              "think_start_frame": { "type": "integer" },
+              "think_duration_ms": { "type": "integer", "const": 3000 },
+              "reveal_frame": { "type": "integer" },
+              "answer_audio_file": { "type": "string" },
+              "answer_duration_ms": { "type": "integer" },
+              "answer_words": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["word", "start_ms", "end_ms"],
+                  "properties": {
+                    "word": { "type": "string" },
+                    "start_ms": { "type": "integer" },
+                    "end_ms": { "type": "integer" }
+                  }
+                }
+              },
+              "end_frame": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "background_video_path": {
+      "type": "string"
+    },
+    "sfx_paths": {
+      "type": "object",
+      "required": ["timer_tick", "reveal_ding", "level_up"],
+      "properties": {
+        "timer_tick": { "type": "string" },
+        "reveal_ding": { "type": "string" },
+        "level_up": { "type": "string" }
+      }
+    },
+    "fps": {
+      "type": "integer",
+      "const": 60
+    },
+    "width": {
+      "type": "integer",
+      "const": 1080
+    },
+    "height": {
+      "type": "integer",
+      "const": 1920
+    }
+  }
+}

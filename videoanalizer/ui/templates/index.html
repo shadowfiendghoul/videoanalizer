@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VideoAnalyzer — AI Генератор Shorts & TikTok</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-[#090a0f] text-slate-100 min-h-screen antialiased flex flex-col selection:bg-purple-500 selection:text-white">
+
+  <!-- Header Navigation -->
+  <header class="border-b border-white/[0.08] bg-[#090a0f]/80 backdrop-blur-xl sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+              VideoAnalyzer
+            </span>
+            <span class="text-xs px-2 py-0.5 rounded-full badge-gemini font-mono font-medium">
+              Gemini 3.5 Flash
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Нейросетевой монтаж вирусных Shorts & TikTok</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <!-- Link to TikTok Quiz Generator -->
+        <a href="/quiz" class="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-300 transition-all flex items-center space-x-1.5 border border-emerald-500/30 shadow-sm shadow-emerald-500/10">
+          <i data-lucide="help-circle" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span>TikTok Квизы 1-9 (Новое)</span>
+        </a>
+
+        <!-- Live SSE connection indicator -->
+        <div id="sse-indicator" class="flex items-center space-x-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-indicator"></span>
+          <span id="sse-status-text">Онлайн</span>
+        </div>
+        <a href="https://github.com" target="_blank" class="text-slate-400 hover:text-white transition-colors">
+          <i data-lucide="github" class="w-5 h-5"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- LEFT COLUMN: Input & Settings (5 cols) -->
+      <section class="lg:col-span-5 space-y-6">
+
+        <!-- Panel 1: Video Ingestion -->
+        <div class="glass-panel p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-semibold flex items-center space-x-2">
+              <i data-lucide="video" class="w-4 h-4 text-purple-400"></i>
+              <span>Источник видео</span>
+            </h2>
+            <span class="text-xs text-slate-400">Шаг 1 из 3</span>
+          </div>
+
+          <!-- Source Type Switcher -->
+          <div class="grid grid-cols-2 gap-1.5 p-1 bg-black/40 rounded-lg border border-white/[0.06] mb-4 text-xs font-medium">
+            <button id="tab-youtube" class="tab-btn active py-2 rounded-md transition-all flex items-center justify-center space-x-1.5">
+              <i data-lucide="youtube" class="w-3.5 h-3.5 text-red-400"></i>
+              <span>YouTube URL</span>
+            </button>
+            <button id="tab-file" class="tab-btn py-2 rounded-md transition-all flex items-center justify-center space-x-1.5 text-slate-400 hover:text-slate-200">
+              <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+              <span>Файл с диска</span>
+            </button>
+          </div>
+
+          <!-- YouTube Input Box -->
+          <div id="youtube-box" class="space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Ссылка на видео (YouTube / Shorts / Стрим)</label>
+              <div class="relative">
+                <input 
+                  type="url" 
+                  id="input-youtube-url" 
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  class="w-full pl-3 pr-9 py-2.5 rounded-lg text-sm input-glass font-mono text-xs placeholder:text-slate-500"
+                >
+                <button id="btn-clear-url" class="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300">
+                  <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- File Upload Box -->
+          <div id="file-box" class="hidden space-y-3">
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">Локальный видеофайл (.mp4, .mkv, .mov, .webm)</label>
+            <div id="drop-zone" class="border-2 border-dashed border-white/10 hover:border-purple-500/50 rounded-xl p-5 text-center cursor-pointer transition-all bg-black/20 hover:bg-purple-950/10">
+              <input type="file" id="input-file" accept="video/mp4,video/x-matroska,video/quicktime,video/webm" class="hidden">
+              <div class="flex flex-col items-center justify-center space-y-2">
+                <div class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
+                  <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                </div>
+                <div class="text-xs text-slate-300">
+                  <span class="text-purple-400 font-medium">Выберите файл</span> или перетащите его сюда
+                </div>
+                <p id="file-selected-name" class="text-xs text-slate-500 font-mono truncate max-w-[260px]">Файл не выбран</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analysis Sliders -->
+          <div class="mt-4 pt-4 border-t border-white/[0.06] space-y-4">
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-300">Количество клипов</span>
+                <span id="label-clip-count" class="font-mono text-purple-400 font-semibold">3</span>
+              </div>
+              <input type="range" id="slider-clip-count" min="1" max="10" value="3" class="w-full accent-purple-500 bg-white/10 h-1.5 rounded-lg cursor-pointer">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="flex justify-between text-xs mb-1.5">
+                  <span class="text-slate-300">Мин. длительность</span>
+                  <span id="label-min-dur" class="font-mono text-purple-400 font-semibold">30с</span>
+                </div>
+                <input type="range" id="slider-min-dur" min="15" max="90" value="30" step="5" class="w-full accent-purple-500 bg-white/10 h-1.5 rounded-lg cursor-pointer">
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1.5">
+                  <span class="text-slate-300">Макс. длительность</span>
+                  <span id="label-max-dur" class="font-mono text-purple-400 font-semibold">60с</span>
+                </div>
+                <input type="range" id="slider-max-dur" min="15" max="90" value="60" step="5" class="w-full accent-purple-500 bg-white/10 h-1.5 rounded-lg cursor-pointer">
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Button: Analyze -->
+          <button id="btn-analyze" class="w-full mt-5 py-3 px-4 rounded-xl font-medium text-sm text-white btn-gradient flex items-center justify-center space-x-2">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span id="btn-analyze-text">Найти смешные моменты (Gemini AI)</span>
+          </button>
+        </div>
+
+        <!-- Panel 2: Reframing & Layout (9:16) -->
+        <div class="glass-panel p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-semibold flex items-center space-x-2">
+              <i data-lucide="crop" class="w-4 h-4 text-indigo-400"></i>
+              <span>Формат 9:16 и Расположение</span>
+            </h2>
+            <span class="text-xs text-slate-400">Шаг 2 из 3</span>
+          </div>
+
+          <!-- Mode Select -->
+          <div class="grid grid-cols-2 gap-2 mb-4 text-xs">
+            <label class="flex items-center p-3 rounded-lg border border-white/[0.08] bg-black/20 cursor-pointer hover:border-purple-500/40 transition-colors">
+              <input type="radio" name="layout-mode" value="center_crop" checked class="accent-purple-500 mr-2.5">
+              <div>
+                <div class="font-medium text-slate-200">По центру</div>
+                <div class="text-[11px] text-slate-400">Center Crop 9:16</div>
+              </div>
+            </label>
+            <label class="flex items-center p-3 rounded-lg border border-white/[0.08] bg-black/20 cursor-pointer hover:border-purple-500/40 transition-colors">
+              <input type="radio" name="layout-mode" value="split_screen" class="accent-purple-500 mr-2.5">
+              <div>
+                <div class="font-medium text-slate-200">Сплит-скрин</div>
+                <div class="text-[11px] text-slate-400">Вебка + Геймплей</div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Split Screen Coordinates (Collapsible) -->
+          <div id="split-screen-params" class="hidden space-y-4 pt-3 border-t border-white/[0.06]">
+            <!-- Webcam Position -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Позиция веб-камеры</label>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <label class="flex items-center p-2 rounded-lg border border-white/[0.08] bg-black/20 cursor-pointer">
+                  <input type="radio" name="webcam-pos" value="top" checked class="accent-purple-500 mr-2">
+                  <span>Сверху (Top)</span>
+                </label>
+                <label class="flex items-center p-2 rounded-lg border border-white/[0.08] bg-black/20 cursor-pointer">
+                  <input type="radio" name="webcam-pos" value="bottom" class="accent-purple-500 mr-2">
+                  <span>Снизу (Bottom)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Webcam Crop Box -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-xs font-medium text-purple-300">Кадрирование вебки (px)</span>
+                <span class="text-[10px] text-slate-500">X, Y, W, H</span>
+              </div>
+              <div class="grid grid-cols-4 gap-2 text-xs">
+                <input type="number" id="webcam-x" value="0" placeholder="X" class="input-glass p-1.5 rounded text-center">
+                <input type="number" id="webcam-y" value="0" placeholder="Y" class="input-glass p-1.5 rounded text-center">
+                <input type="number" id="webcam-w" value="400" placeholder="W" class="input-glass p-1.5 rounded text-center">
+                <input type="number" id="webcam-h" value="400" placeholder="H" class="input-glass p-1.5 rounded text-center">
+              </div>
+            </div>
+
+            <!-- Gameplay Crop Box -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-xs font-medium text-indigo-300">Кадрирование игры (px)</span>
+                <span class="text-[10px] text-slate-500">X, Y, W, H</span>
+              </div>
+              <div class="grid grid-cols-4 gap-2 text-xs">
+                <input type="number" id="gameplay-x" value="0" placeholder="X" class="input-glass p-1.5 rounded text-center">
+                <input type="number" id="gameplay-y" value="0" placeholder="Y" class="input-glass p-1.5 rounded text-center">
+                <input type="number" id="gameplay-w" value="1920" placeholder="W" class="input-glass p-1.5 rounded text-center">
+                <input type="number" id="gameplay-h" value="1080" placeholder="H" class="input-glass p-1.5 rounded text-center">
+              </div>
+            </div>
+
+            <!-- Preset buttons -->
+            <div class="flex space-x-2 pt-1">
+              <button id="btn-preset-standard" class="btn-secondary text-[11px] px-2.5 py-1 rounded">
+                Стример 1080p
+              </button>
+              <button id="btn-preset-reset" class="btn-secondary text-[11px] px-2.5 py-1 rounded">
+                Сбросить
+              </button>
+            </div>
+          </div>
+
+          <!-- Preview Frame Button -->
+          <button id="btn-preview-frame" class="w-full mt-4 py-2 px-3 rounded-lg text-xs font-medium btn-secondary flex items-center justify-center space-x-1.5">
+            <i data-lucide="image" class="w-3.5 h-3.5 text-purple-400"></i>
+            <span>Предпросмотр кадра 9:16</span>
+          </button>
+        </div>
+
+        <!-- Panel 3: Silence, Subtitles & Viral Banner -->
+        <div class="glass-panel p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-semibold flex items-center space-x-2">
+              <i data-lucide="wand-2" class="w-4 h-4 text-pink-400"></i>
+              <span>Эффекты и Субтитры</span>
+            </h2>
+            <span class="text-xs text-slate-400">Шаг 3 из 3</span>
+          </div>
+
+          <div class="space-y-4 text-xs">
+            <!-- Silence Cutting Toggle -->
+            <div class="p-3 rounded-lg bg-black/20 border border-white/[0.06] space-y-2">
+              <label class="flex items-center justify-between cursor-pointer">
+                <span class="font-medium text-slate-200">Вырезать неловкие паузы</span>
+                <input type="checkbox" id="check-silence" checked class="w-4 h-4 accent-purple-500 rounded">
+              </label>
+              <div id="silence-options" class="pt-2 border-t border-white/[0.04]">
+                <div class="flex justify-between text-slate-400 mb-1">
+                  <span>Порог тишины</span>
+                  <span id="label-silence-thresh" class="font-mono text-purple-400">1.0с</span>
+                </div>
+                <input type="range" id="slider-silence-thresh" min="0.3" max="3.0" step="0.1" value="1.0" class="w-full accent-purple-500 bg-white/10 h-1.5 rounded-lg cursor-pointer">
+              </div>
+            </div>
+
+            <!-- Karaoke Subtitles Toggle -->
+            <div class="p-3 rounded-lg bg-black/20 border border-white/[0.06] space-y-2.5">
+              <label class="flex items-center justify-between cursor-pointer">
+                <div class="flex items-center space-x-2">
+                  <span class="font-medium text-slate-200">Караоке-субтитры (TikTok)</span>
+                  <span class="badge-neon text-[10px] px-1.5 py-0.5 rounded">Пословные</span>
+                </div>
+                <input type="checkbox" id="check-subtitles" checked class="w-4 h-4 accent-purple-500 rounded">
+              </label>
+              <div id="subtitles-options" class="grid grid-cols-3 gap-2 pt-2 border-t border-white/[0.04]">
+                <div>
+                  <span class="text-slate-400 block mb-1">Шрифт</span>
+                  <input type="number" id="sub-font-size" value="42" min="16" max="72" class="input-glass p-1.5 rounded text-center w-full">
+                </div>
+                <div>
+                  <span class="text-slate-400 block mb-1">Активное</span>
+                  <input type="color" id="sub-active-color" value="#FFFF00" class="w-full h-8 rounded bg-transparent cursor-pointer">
+                </div>
+                <div>
+                  <span class="text-slate-400 block mb-1">Обычное</span>
+                  <input type="color" id="sub-inactive-color" value="#FFFFFF" class="w-full h-8 rounded bg-transparent cursor-pointer">
+                </div>
+              </div>
+            </div>
+
+            <!-- Viral Hook Banner -->
+            <div class="p-3 rounded-lg bg-black/20 border border-white/[0.06] space-y-2.5">
+              <label class="flex items-center justify-between cursor-pointer">
+                <span class="font-medium text-slate-200">Вирусный хук-баннер</span>
+                <input type="checkbox" id="check-banner" checked class="w-4 h-4 accent-purple-500 rounded">
+              </label>
+              <div id="banner-options" class="space-y-2 pt-2 border-t border-white/[0.04]">
+                <div class="relative">
+                  <input 
+                    type="text" 
+                    id="input-banner-text" 
+                    placeholder="Заголовок хука..." 
+                    class="w-full pl-3 pr-8 py-2 rounded-lg input-glass text-xs"
+                  >
+                  <button id="btn-regen-hook" title="Сгенерировать новый хук с Gemini" class="absolute right-2 top-2 text-purple-400 hover:text-purple-300">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+                <div class="flex items-center justify-between text-slate-400">
+                  <span>Позиция баннера</span>
+                  <div class="flex space-x-2">
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                      <input type="radio" name="banner-pos" value="top" checked class="accent-purple-500">
+                      <span>Верх</span>
+                    </label>
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                      <input type="radio" name="banner-pos" value="bottom" class="accent-purple-500">
+                      <span>Низ</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: Progress, Highlights & Render Preview (7 cols) -->
+      <section class="lg:col-span-7 space-y-6">
+
+        <!-- Real-Time SSE Progress Card -->
+        <div id="progress-card" class="glass-panel p-5 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-2.5 h-2.5 rounded-full bg-purple-400 pulse-indicator"></div>
+              <h3 id="progress-stage-title" class="text-sm font-semibold text-white">Статус пайплайна</h3>
+            </div>
+            <span id="progress-percent-badge" class="font-mono text-sm font-bold text-purple-300">0%</span>
+          </div>
+
+          <!-- Animated Progress Bar -->
+          <div class="w-full bg-black/40 h-2.5 rounded-full overflow-hidden p-0.5 border border-white/[0.06] mb-4">
+            <div id="progress-bar-fill" class="h-full rounded-full progress-shimmer transition-all duration-300" style="width: 0%"></div>
+          </div>
+
+          <!-- 5 Fixed Milestone Stages -->
+          <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 text-[11px] pt-1">
+            <div id="stage-step-1" class="flex items-center space-x-1.5 text-slate-500">
+              <i data-lucide="circle" class="w-3.5 h-3.5 step-icon"></i>
+              <span class="truncate">1. Скачивание</span>
+            </div>
+            <div id="stage-step-2" class="flex items-center space-x-1.5 text-slate-500">
+              <i data-lucide="circle" class="w-3.5 h-3.5 step-icon"></i>
+              <span class="truncate">2. Анализ AI</span>
+            </div>
+            <div id="stage-step-3" class="flex items-center space-x-1.5 text-slate-500">
+              <i data-lucide="circle" class="w-3.5 h-3.5 step-icon"></i>
+              <span class="truncate">3. Кадрирование</span>
+            </div>
+            <div id="stage-step-4" class="flex items-center space-x-1.5 text-slate-500">
+              <i data-lucide="circle" class="w-3.5 h-3.5 step-icon"></i>
+              <span class="truncate">4. Караоке</span>
+            </div>
+            <div id="stage-step-5" class="flex items-center space-x-1.5 text-slate-500">
+              <i data-lucide="circle" class="w-3.5 h-3.5 step-icon"></i>
+              <span class="truncate">5. Готово!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detected Comedic Moments (Highlights List) -->
+        <div class="glass-panel p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-semibold flex items-center space-x-2">
+                <i data-lucide="flame" class="w-4 h-4 text-orange-400"></i>
+                <span>Найденные смешные моменты</span>
+              </h2>
+              <p class="text-xs text-slate-400">Ранжировано по уровню юмора нейросетью Gemini 3.5 Flash</p>
+            </div>
+            <span id="highlights-count-badge" class="badge-gemini text-xs px-2.5 py-1 rounded-full font-mono">0 моментов</span>
+          </div>
+
+          <!-- Highlights Container -->
+          <div id="highlights-container" class="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+            <!-- Empty state -->
+            <div id="highlights-empty" class="text-center py-12 px-4 border border-dashed border-white/[0.08] rounded-xl bg-black/10">
+              <div class="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center mx-auto mb-3 text-slate-500">
+                <i data-lucide="sparkles" class="w-6 h-6"></i>
+              </div>
+              <h4 class="text-sm font-medium text-slate-300">Моменты еще не найдены</h4>
+              <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                Укажите ссылку на YouTube или выберите локальный видеофайл слева и нажмите «Найти смешные моменты».
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Player & Render Action Panel -->
+        <div class="glass-panel p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-semibold flex items-center space-x-2">
+              <i data-lucide="play-circle" class="w-4 h-4 text-emerald-400"></i>
+              <span>Предпросмотр и Рендеринг Short</span>
+            </h2>
+            <div id="render-status-badge" class="hidden text-xs px-2.5 py-0.5 rounded-full font-mono"></div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <!-- 9:16 Preview Canvas / Video Player -->
+            <div class="player-9-16-container flex items-center justify-center">
+              <!-- Initial Placeholder -->
+              <div id="preview-placeholder" class="text-center p-4 text-slate-500">
+                <i data-lucide="smartphone" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
+                <div class="text-xs">Вертикальный холст 9:16</div>
+                <div class="text-[10px] text-slate-600">1080 × 1920</div>
+              </div>
+
+              <!-- Single Frame Preview Image -->
+              <img id="preview-frame-img" class="hidden w-full h-full object-cover" alt="Превью кадра">
+
+              <!-- Rendered Video Player -->
+              <video id="rendered-video-player" class="hidden w-full h-full object-cover" controls playsinline></video>
+            </div>
+
+            <!-- Render Actions & Timing Settings -->
+            <div class="space-y-4">
+              <div class="p-3 rounded-lg bg-black/20 border border-white/[0.06] space-y-3">
+                <div class="text-xs font-semibold text-slate-200">Выбранный фрагмент:</div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label class="block text-slate-400 mb-1">Старт (сек)</label>
+                    <input type="number" id="current-start-sec" step="0.5" class="input-glass p-2 rounded text-center w-full font-mono">
+                  </div>
+                  <div>
+                    <label class="block text-slate-400 mb-1">Конец (сек)</label>
+                    <input type="number" id="current-end-sec" step="0.5" class="input-glass p-2 rounded text-center w-full font-mono">
+                  </div>
+                </div>
+                <div class="text-[11px] text-slate-400 flex justify-between">
+                  <span>Длительность:</span>
+                  <span id="current-duration-text" class="font-mono text-purple-300 font-medium">0.0с</span>
+                </div>
+              </div>
+
+              <!-- Render Button -->
+              <button id="btn-render" disabled class="w-full py-3.5 px-4 rounded-xl font-medium text-sm text-white btn-gradient flex items-center justify-center space-x-2">
+                <i data-lucide="film" class="w-4 h-4"></i>
+                <span id="btn-render-text">Сгенерировать вертикальный Short</span>
+              </button>
+
+              <!-- Download Button (Shown on complete) -->
+              <a id="btn-download" href="#" download class="hidden w-full py-3.5 px-4 rounded-xl font-medium text-sm text-emerald-100 bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center space-x-2">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Скачать готовый Short (.MP4)</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/[0.06] py-4 mt-8 bg-[#090a0f]">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+      VideoAnalyzer &copy; 2026 &mdash; Быстрый AI монтаж Shorts, Reels и TikTok на базе Google Gemini 3.8 Flash и FFmpeg
+    </div>
+  </footer>
+
+  <!-- Client Script -->
+  <script src="/static/app.js"></script>
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+  </script>
+</body>
+</html>
