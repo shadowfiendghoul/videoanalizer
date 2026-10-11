@@ -300,7 +300,13 @@ class QuizOrchestrator:
                 image_tasks = []
                 target_items = []
                 for item in challenge.all_questions():
-                    if (item.image_url or item.image_query) and not item.local_image_path:
+                    has_local_file = False
+                    if item.local_image_path:
+                        p = Path(item.local_image_path)
+                        if p.exists() and p.is_file():
+                            has_local_file = True
+
+                    if (item.image_url or item.image_query) and not has_local_file:
                         dest = workspace.get_image_path(f"q_{item.question_number}.png")
                         if item.image_url:
                             image_tasks.append(
@@ -317,6 +323,8 @@ class QuizOrchestrator:
                     for item, res in zip(target_items, results, strict=False):
                         if isinstance(res, Path) and res.exists():
                             item.local_image_path = str(res)
+                        else:
+                            item.local_image_path = None
             else:
                 logger.info("Generating 9-question quiz challenge for topic: %s", topic)
                 challenge = await self.script_service.generate_quiz(
@@ -332,12 +340,31 @@ class QuizOrchestrator:
                 for q in tier.questions:
                     if q.local_image_path:
                         local_p = Path(q.local_image_path)
+                        if not local_p.is_absolute():
+                            if (images_dir / local_p.name).exists():
+                                q.local_image_path = f"images/{local_p.name}"
+                                continue
+                            ws_candidate = workspace.get_image_path(local_p.name)
+                            if ws_candidate.exists():
+                                local_p = ws_candidate
+
                         if local_p.exists() and local_p.is_file():
                             target_img = images_dir / local_p.name
                             if not target_img.exists():
                                 shutil.copy2(local_p, target_img)
-                        # Relative path within public dir e.g. "images/q1.jpg"
-                        q.local_image_path = f"images/{local_p.name}"
+                            # Relative path within public dir e.g. "images/q1.jpg"
+                            q.local_image_path = f"images/{local_p.name}"
+                        else:
+                            target_img = images_dir / local_p.name
+                            if target_img.exists():
+                                q.local_image_path = f"images/{target_img.name}"
+                            else:
+                                logger.warning(
+                                    "Image file for question %d not found: %s",
+                                    q.question_number,
+                                    q.local_image_path,
+                                )
+                                q.local_image_path = None
 
             # 4. Synthesize synchronized voiceovers and word boundary cue sheet
             logger.info("Synthesizing audio narration and karaoke cues")

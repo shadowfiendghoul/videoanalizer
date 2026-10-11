@@ -12,6 +12,7 @@ import { QuestionLadder } from "./components/QuestionLadder";
 import { RankStatusBar } from "./components/RankStatusBar";
 import { StreakFire } from "./components/StreakFire";
 import { StressTimer } from "./components/StressTimer";
+import { VisualClueCard } from "./components/VisualClueCard";
 import { DifficultyTier, RemotionRenderProps } from "./types";
 import { resolveAssetUrl } from "./utils/assets";
 
@@ -83,6 +84,17 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
         const isLevelUpQuestion =
           cue.question_number === 3 || cue.question_number === 6 || cue.question_number === 9;
 
+        const qItem = challenge.tiers
+          .flatMap((t) => t.questions)
+          .find((item) => item.question_number === cue.question_number);
+
+        const tierColor =
+          tierLevel === "easy"
+            ? "#22C55E"
+            : tierLevel === "medium"
+            ? "#F59E0B"
+            : "#EF4444";
+
         // Choose SFX for think phase: heartbeat on hard tier, else timer_tick
         const thinkSfx =
           isHardTier && sfx_paths?.heartbeat_panic
@@ -99,6 +111,16 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
             durationInFrames={durationInFrames}
             name={`Question ${cue.question_number}`}
           >
+            {/* Visual Clue Illustration Card (renders when question has local_image_path) */}
+            {qItem?.local_image_path && (
+              <VisualClueCard
+                imagePath={qItem.local_image_path}
+                themeColor={tierColor}
+                questionNumber={cue.question_number}
+                revealOffset={revealOffset}
+              />
+            )}
+
             {/* Level-Up SFX Stinger for tier transitions */}
             {isLevelUpQuestion && levelUpSfx && (
               <Audio src={resolveAssetUrl(levelUpSfx)} volume={0.8} />
@@ -129,18 +151,8 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
               currentFrame={currentGlobalFrame}
               revealFrame={cue.reveal_frame}
               questionNumber={cue.question_number}
-              correctAnswer={
-                challenge.tiers
-                  .flatMap((t) => t.questions)
-                  .find((item) => item.question_number === cue.question_number)
-                  ?.correct_answer ?? ""
-              }
-              decoyAnswer={
-                challenge.tiers
-                  .flatMap((t) => t.questions)
-                  .find((item) => item.question_number === cue.question_number)
-                  ?.decoy_answer
-              }
+              correctAnswer={qItem?.correct_answer ?? ""}
+              decoyAnswer={qItem?.decoy_answer}
               enabled={retention?.enabled !== false}
             />
 

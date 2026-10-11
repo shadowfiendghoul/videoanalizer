@@ -89,7 +89,7 @@ export const QuestionLadder: React.FC<QuestionLadderProps> = ({
                   transform: `scale(${popScale})`,
                   transformOrigin: "left center",
                   fontSize: "clamp(26px, 3.2vw, 44px)",
-                  maxWidth: "760px",
+                  maxWidth: "430px",
                   lineHeight: 1.15,
                 }}
                 className="text-white font-black tracking-wide uppercase drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] truncate"
