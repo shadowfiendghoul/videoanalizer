@@ -333,10 +333,16 @@ class AudioService:
         words: list[WordCue] = []
         synthesized_successfully = False
 
+        # Pre-sanitize text: colons and hyphens cause DmitryNeural to fail
+        # with 'No audio was received'
+        tts_text = text.replace(":", " ").replace("—", " ").replace("-", " ")
+        tts_text = " ".join(tts_text.split())
+
         for v in voices_to_try:
-            for attempt in range(2):
+            max_attempts = 1 if "dmitry" in v.lower() and len(voices_to_try) > 1 else 2
+            for attempt in range(max_attempts):
                 try:
-                    communicate = edge_tts.Communicate(text, v, rate="+20%")
+                    communicate = edge_tts.Communicate(tts_text, v, rate="+20%")
                     audio_bytes.clear()
                     words.clear()
                     async for chunk in communicate.stream():
@@ -357,14 +363,15 @@ class AudioService:
                         synthesized_successfully = True
                         break
                 except Exception as e:
-                    logger.warning(
-                        "Voice %s attempt %d/2 failed for text '%s': %s",
+                    logger.info(
+                        "Voice %s attempt %d/%d note for '%s': %s (trying fallback)",
                         v,
                         attempt + 1,
+                        max_attempts,
                         text[:30],
                         e,
                     )
-                    await asyncio.sleep(0.4 * (attempt + 1))
+                    await asyncio.sleep(0.2 * (attempt + 1))
             if synthesized_successfully:
                 break
 
