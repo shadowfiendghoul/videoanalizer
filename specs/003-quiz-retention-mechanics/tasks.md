@@ -131,6 +131,20 @@
 - [x] T039 Add unit tests for fact-checking pass and verifier corrections in `tests/unit/quiz/test_script_service.py`
 - [x] T040 Verify end-to-end with pytest, TypeScript typecheck, and ruff linter
 
+---
+
+## Phase 8: User Story 6 - Video Uniquifier & Anti-Fingerprinting Engine (Уникализатор видео)
+
+**Goal**: Полноценный уникализатор видео против Content ID и алгоритмических фильтров соцсетей (TikTok, YouTube Shorts, Reels) с цветокоррекцией (яркость, контраст, насыщенность, гамма), микро-зумом (101-103%), незаметным цифровым шумом (film grain), микро-сдвигом аудио-темпа (Acoustic Fingerprint Disruption) и полной подменой метаданных.
+
+- [x] T041 [P] Create `VideoUniquifierConfig` model in `videoanalizer/media/uniquifier.py`
+- [x] T042 [P] Implement `apply_video_uniquifier` core function in `videoanalizer/media/uniquifier.py`
+- [x] T043 [P] Add unit tests in `tests/unit/test_uniquifier.py`
+- [x] T044 Integrate uniquifier into `videoanalizer/quiz/orchestrator.py` and `routes_quiz.py`
+- [x] T045 Integrate uniquifier into `videoanalizer/media/renderer.py`
+- [x] T046 Add Uniquifier UI controls and persistence in `videoanalizer/ui/templates/quiz.html`
+- [x] T047 Verify end-to-end with pytest and ruff linter
+
 
 ---
 

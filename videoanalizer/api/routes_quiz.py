@@ -11,6 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, statu
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from videoanalizer.media.uniquifier import VideoUniquifierConfig
 from videoanalizer.quiz.audio_service import probe_audio_duration_ms
 from videoanalizer.quiz.models import (
     ComboStreakConfig,
@@ -95,6 +96,10 @@ class QuizGenerateRequest(BaseModel):
         ge=0.0,
         le=1.0,
         description="Background music volume (0.0 to 1.0, default 0.18).",
+    )
+    uniquifier: VideoUniquifierConfig | None = Field(
+        default=None,
+        description="Optional video uniquifier and anti-fingerprint configuration.",
     )
 
 
@@ -211,6 +216,7 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
             intro_hook=request.intro_hook,
             background_music=request.background_music,
             background_music_volume=request.background_music_volume,
+            uniquifier=request.uniquifier,
         )
 
         job["status"] = "completed"

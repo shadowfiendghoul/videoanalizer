@@ -412,6 +412,179 @@
             </div>
           </div>
 
+          <!-- Final Video Uniquifier & Anti-Fingerprint Card -->
+          <div class="p-4 rounded-xl bg-cyan-500/[0.05] border border-cyan-500/20 space-y-3 text-xs text-slate-300">
+            <div class="flex items-center justify-between">
+              <label class="flex items-center space-x-2.5 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  id="uniquifier-toggle" 
+                  checked 
+                  class="w-4 h-4 rounded text-cyan-500 bg-black/40 border-white/[0.2] focus:ring-cyan-500 focus:ring-offset-0 transition-all cursor-pointer"
+                  onchange="toggleUniquifierSection(); saveSettings();"
+                />
+                <span class="font-semibold text-cyan-300 flex items-center space-x-1.5">
+                  <i data-lucide="shield-alert" class="w-4 h-4 text-cyan-400"></i>
+                  <span>Финальный уникализатор видео (Анти-детект)</span>
+                </span>
+              </label>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                100% Anti-Content ID
+              </span>
+            </div>
+
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Автоматическая модификация видеоряда и звука: микро-сдвиг цветов, легкий зум (+2%), цифровой шум, микро-темп аудио и очистка метаданных для защиты от алгоритмического теневого бана в TikTok / Shorts / Reels.
+            </p>
+
+            <div id="uniquifier-options" class="space-y-3 pt-1">
+              <!-- Mode Selection -->
+              <div class="flex items-center space-x-2">
+                <span class="text-[11px] text-slate-400">Режим:</span>
+                <button 
+                  type="button" 
+                  id="uniq-mode-smart" 
+                  onclick="setUniquifierMode('smart_random')"
+                  class="px-2.5 py-1 rounded-lg text-xs font-medium transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-pointer"
+                >
+                  🎲 Умный рандом (Рекомендуется)
+                </button>
+                <button 
+                  type="button" 
+                  id="uniq-mode-custom" 
+                  onclick="setUniquifierMode('custom')"
+                  class="px-2.5 py-1 rounded-lg text-xs font-medium transition-all bg-black/40 text-slate-400 border border-white/[0.08] hover:text-white cursor-pointer"
+                >
+                  🛠️ Ручная настройка
+                </button>
+              </div>
+
+              <!-- Custom Controls Drawer (hidden in smart_random mode) -->
+              <div id="uniquifier-custom-controls" class="hidden space-y-2.5 p-3 rounded-lg bg-black/40 border border-white/[0.06]">
+                <div class="grid grid-cols-2 gap-3 text-[11px]">
+                  <!-- Brightness -->
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-slate-400">
+                      <span>Яркость:</span>
+                      <span id="uniq-val-brightness" class="font-mono text-cyan-400">+0.02</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      id="uniq-slider-brightness" 
+                      min="-0.10" 
+                      max="0.10" 
+                      step="0.01" 
+                      value="0.02" 
+                      oninput="document.getElementById('uniq-val-brightness').textContent = (this.value >= 0 ? '+' : '') + parseFloat(this.value).toFixed(2); saveSettings();"
+                      class="w-full accent-cyan-500 h-1 bg-black/50 rounded appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  <!-- Contrast -->
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-slate-400">
+                      <span>Контраст:</span>
+                      <span id="uniq-val-contrast" class="font-mono text-cyan-400">1.04</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      id="uniq-slider-contrast" 
+                      min="0.90" 
+                      max="1.20" 
+                      step="0.01" 
+                      value="1.04" 
+                      oninput="document.getElementById('uniq-val-contrast').textContent = parseFloat(this.value).toFixed(2); saveSettings();"
+                      class="w-full accent-cyan-500 h-1 bg-black/50 rounded appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  <!-- Saturation -->
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-slate-400">
+                      <span>Насыщенность:</span>
+                      <span id="uniq-val-saturation" class="font-mono text-cyan-400">1.08</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      id="uniq-slider-saturation" 
+                      min="0.85" 
+                      max="1.30" 
+                      step="0.01" 
+                      value="1.08" 
+                      oninput="document.getElementById('uniq-val-saturation').textContent = parseFloat(this.value).toFixed(2); saveSettings();"
+                      class="w-full accent-cyan-500 h-1 bg-black/50 rounded appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  <!-- Zoom -->
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-slate-400">
+                      <span>Микро-зум:</span>
+                      <span id="uniq-val-zoom" class="font-mono text-cyan-400">+2%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      id="uniq-slider-zoom" 
+                      min="1.00" 
+                      max="1.05" 
+                      step="0.005" 
+                      value="1.02" 
+                      oninput="document.getElementById('uniq-val-zoom').textContent = '+' + Math.round((this.value - 1) * 100) + '%'; saveSettings();"
+                      class="w-full accent-cyan-500 h-1 bg-black/50 rounded appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  <!-- Noise -->
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-slate-400">
+                      <span>Зернистость / шум:</span>
+                      <span id="uniq-val-noise" class="font-mono text-cyan-400">1.5</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      id="uniq-slider-noise" 
+                      min="0.0" 
+                      max="4.0" 
+                      step="0.5" 
+                      value="1.5" 
+                      oninput="document.getElementById('uniq-val-noise').textContent = parseFloat(this.value).toFixed(1); saveSettings();"
+                      class="w-full accent-cyan-500 h-1 bg-black/50 rounded appearance-none cursor-pointer"
+                    />
+                  </div>
+
+                  <!-- Audio Drift -->
+                  <div class="space-y-1">
+                    <div class="flex justify-between text-slate-400">
+                      <span>Сдвиг аудио-темпа:</span>
+                      <span id="uniq-val-audio" class="font-mono text-cyan-400">+0.5%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      id="uniq-slider-audio" 
+                      min="0.99" 
+                      max="1.02" 
+                      step="0.002" 
+                      value="1.005" 
+                      oninput="document.getElementById('uniq-val-audio').textContent = (this.value >= 1 ? '+' : '') + ((this.value - 1) * 100).toFixed(1) + '%'; saveSettings();"
+                      class="w-full accent-cyan-500 h-1 bg-black/50 rounded appearance-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div class="pt-1 flex items-center justify-between border-t border-white/[0.04]">
+                  <label class="flex items-center space-x-2 cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      id="uniq-flip-toggle" 
+                      class="w-3.5 h-3.5 rounded text-cyan-500 bg-black/40 border-white/20"
+                      onchange="saveSettings()"
+                    />
+                    <span class="text-[11px] text-slate-300">🪞 Зеркальное отражение (Flip horizontal)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- Action Buttons -->
           <div class="space-y-2 pt-1">
@@ -561,6 +734,41 @@
     }
 
     const SETTINGS_STORAGE_KEY = 'videoanalyzer_quiz_settings_v1';
+    let currentUniquifierMode = 'smart_random';
+
+    function toggleUniquifierSection() {
+      const checked = document.getElementById('uniquifier-toggle')?.checked ?? false;
+      const opts = document.getElementById('uniquifier-options');
+      if (opts) {
+        if (checked) {
+          opts.classList.remove('hidden');
+        } else {
+          opts.classList.add('hidden');
+        }
+      }
+    }
+
+    function setUniquifierMode(mode, shouldSave = true) {
+      currentUniquifierMode = mode;
+      const smartBtn = document.getElementById('uniq-mode-smart');
+      const customBtn = document.getElementById('uniq-mode-custom');
+      const customControls = document.getElementById('uniquifier-custom-controls');
+
+      if (mode === 'custom') {
+        smartBtn?.classList.remove('bg-cyan-500/20', 'text-cyan-300', 'border-cyan-500/40');
+        smartBtn?.classList.add('bg-black/40', 'text-slate-400', 'border-white/[0.08]');
+        customBtn?.classList.remove('bg-black/40', 'text-slate-400', 'border-white/[0.08]');
+        customBtn?.classList.add('bg-cyan-500/20', 'text-cyan-300', 'border-cyan-500/40');
+        customControls?.classList.remove('hidden');
+      } else {
+        customBtn?.classList.remove('bg-cyan-500/20', 'text-cyan-300', 'border-cyan-500/40');
+        customBtn?.classList.add('bg-black/40', 'text-slate-400', 'border-white/[0.08]');
+        smartBtn?.classList.remove('bg-black/40', 'text-slate-400', 'border-white/[0.08]');
+        smartBtn?.classList.add('bg-cyan-500/20', 'text-cyan-300', 'border-cyan-500/40');
+        customControls?.classList.add('hidden');
+      }
+      if (shouldSave) saveSettings();
+    }
 
     function getStoredSettings() {
       try {
@@ -604,6 +812,15 @@
         trapEnabled: document.getElementById('trap-toggle')?.checked ?? true,
         temperature: document.getElementById('temperature-slider') ? parseFloat(document.getElementById('temperature-slider').value) : 0.95,
         factCheckEnabled: document.getElementById('fact-check-toggle')?.checked ?? true,
+        uniquifierEnabled: document.getElementById('uniquifier-toggle')?.checked ?? true,
+        uniquifierMode: currentUniquifierMode,
+        uniquifierBrightness: document.getElementById('uniq-slider-brightness')?.value,
+        uniquifierContrast: document.getElementById('uniq-slider-contrast')?.value,
+        uniquifierSaturation: document.getElementById('uniq-slider-saturation')?.value,
+        uniquifierZoom: document.getElementById('uniq-slider-zoom')?.value,
+        uniquifierNoise: document.getElementById('uniq-slider-noise')?.value,
+        uniquifierAudio: document.getElementById('uniq-slider-audio')?.value,
+        uniquifierFlip: document.getElementById('uniq-flip-toggle')?.checked ?? false,
       };
       try {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -684,6 +901,42 @@
       if (typeof s.factCheckEnabled === 'boolean' && document.getElementById('fact-check-toggle')) {
         document.getElementById('fact-check-toggle').checked = s.factCheckEnabled;
       }
+      if (typeof s.uniquifierEnabled === 'boolean' && document.getElementById('uniquifier-toggle')) {
+        document.getElementById('uniquifier-toggle').checked = s.uniquifierEnabled;
+        toggleUniquifierSection();
+      }
+      if (s.uniquifierMode) {
+        setUniquifierMode(s.uniquifierMode, false);
+      }
+      if (s.uniquifierBrightness && document.getElementById('uniq-slider-brightness')) {
+        document.getElementById('uniq-slider-brightness').value = s.uniquifierBrightness;
+        const b = parseFloat(s.uniquifierBrightness);
+        document.getElementById('uniq-val-brightness').textContent = (b >= 0 ? '+' : '') + b.toFixed(2);
+      }
+      if (s.uniquifierContrast && document.getElementById('uniq-slider-contrast')) {
+        document.getElementById('uniq-slider-contrast').value = s.uniquifierContrast;
+        document.getElementById('uniq-val-contrast').textContent = parseFloat(s.uniquifierContrast).toFixed(2);
+      }
+      if (s.uniquifierSaturation && document.getElementById('uniq-slider-saturation')) {
+        document.getElementById('uniq-slider-saturation').value = s.uniquifierSaturation;
+        document.getElementById('uniq-val-saturation').textContent = parseFloat(s.uniquifierSaturation).toFixed(2);
+      }
+      if (s.uniquifierZoom && document.getElementById('uniq-slider-zoom')) {
+        document.getElementById('uniq-slider-zoom').value = s.uniquifierZoom;
+        document.getElementById('uniq-val-zoom').textContent = '+' + Math.round((parseFloat(s.uniquifierZoom) - 1) * 100) + '%';
+      }
+      if (s.uniquifierNoise && document.getElementById('uniq-slider-noise')) {
+        document.getElementById('uniq-slider-noise').value = s.uniquifierNoise;
+        document.getElementById('uniq-val-noise').textContent = parseFloat(s.uniquifierNoise).toFixed(1);
+      }
+      if (s.uniquifierAudio && document.getElementById('uniq-slider-audio')) {
+        document.getElementById('uniq-slider-audio').value = s.uniquifierAudio;
+        const a = parseFloat(s.uniquifierAudio);
+        document.getElementById('uniq-val-audio').textContent = (a >= 1 ? '+' : '') + ((a - 1) * 100).toFixed(1) + '%';
+      }
+      if (typeof s.uniquifierFlip === 'boolean' && document.getElementById('uniq-flip-toggle')) {
+        document.getElementById('uniq-flip-toggle').checked = s.uniquifierFlip;
+      }
     }
 
     function handleLanguageChange() {
@@ -749,6 +1002,7 @@
     document.getElementById('timer-toggle')?.addEventListener('change', saveSettings);
     document.getElementById('streak-toggle')?.addEventListener('change', saveSettings);
     document.getElementById('trap-toggle')?.addEventListener('change', saveSettings);
+    document.getElementById('uniquifier-toggle')?.addEventListener('change', () => { toggleUniquifierSection(); saveSettings(); });
 
     function toggleBannerSection() {
       const checked = document.getElementById('banner-toggle').checked;
@@ -1329,6 +1583,21 @@
       document.getElementById('result-video').classList.add('hidden');
       document.getElementById('download-box').classList.add('hidden');
 
+      const uniquifierEnabled = document.getElementById('uniquifier-toggle')?.checked ?? true;
+      const uniquifierConfig = uniquifierEnabled ? {
+        enabled: true,
+        mode: currentUniquifierMode,
+        brightness: parseFloat(document.getElementById('uniq-slider-brightness')?.value || '0.02'),
+        contrast: parseFloat(document.getElementById('uniq-slider-contrast')?.value || '1.04'),
+        saturation: parseFloat(document.getElementById('uniq-slider-saturation')?.value || '1.08'),
+        gamma: 1.01,
+        zoom_percent: parseFloat(document.getElementById('uniq-slider-zoom')?.value || '1.02'),
+        noise_intensity: parseFloat(document.getElementById('uniq-slider-noise')?.value || '1.5'),
+        flip_horizontal: document.getElementById('uniq-flip-toggle')?.checked ?? false,
+        audio_tempo_drift: parseFloat(document.getElementById('uniq-slider-audio')?.value || '1.005'),
+        strip_metadata: true,
+      } : { enabled: false };
+
       try {
         const resp = await fetch('/api/v1/quiz/generate', {
           method: 'POST',
@@ -1349,7 +1618,8 @@
             streak_fire_enabled: document.getElementById('streak-toggle')?.checked ?? true,
             comment_trap_enabled: document.getElementById('trap-toggle')?.checked ?? true,
             temperature: document.getElementById('temperature-slider') ? parseFloat(document.getElementById('temperature-slider').value) : 0.95,
-            fact_check: document.getElementById('fact-check-toggle')?.checked ?? true
+            fact_check: document.getElementById('fact-check-toggle')?.checked ?? true,
+            uniquifier: uniquifierConfig
           })
         });
 

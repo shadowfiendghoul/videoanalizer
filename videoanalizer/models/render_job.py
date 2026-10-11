@@ -5,6 +5,7 @@ from typing import Literal
 from uuid import uuid4
 from pydantic import BaseModel, Field
 
+from videoanalizer.media.uniquifier import VideoUniquifierConfig
 from videoanalizer.models.highlight import HighlightSegment
 from videoanalizer.models.layout import LayoutPreset
 
@@ -138,6 +139,10 @@ class ClipRenderJob(BaseModel):
     banner: BannerConfig = Field(
         default_factory=BannerConfig,
         description="Top hook headline banner configuration.",
+    )
+    uniquifier: VideoUniquifierConfig = Field(
+        default_factory=VideoUniquifierConfig,
+        description="Video uniquifier anti-fingerprint configuration.",
     )
     output_width: int = Field(
         default=1080,

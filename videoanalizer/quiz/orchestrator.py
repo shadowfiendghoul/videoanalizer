@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from videoanalizer.media.uniquifier import VideoUniquifierConfig, apply_video_uniquifier
 from videoanalizer.quiz.audio_service import AudioService
 from videoanalizer.quiz.config import QuizConfig, ensure_system_paths, get_quiz_config
 from videoanalizer.quiz.image_service import ImageService
@@ -217,6 +218,7 @@ class QuizOrchestrator:
         intro_hook: str | None = "Ты гений, если ответишь на все вопросы!",
         background_music: Path | str | None = None,
         background_music_volume: float = 0.18,
+        uniquifier: VideoUniquifierConfig | None = None,
     ) -> Path:
         """Run the full end-to-end quiz short generation pipeline."""
         self.config.output_dir.mkdir(parents=True, exist_ok=True)
@@ -534,6 +536,17 @@ class QuizOrchestrator:
         if not final_output_path.exists() or final_output_path.stat().st_size == 0:
             raise RuntimeError(
                 f"Output video file was not generated or is empty: {final_output_path}"
+            )
+
+        # 9. Apply Video Uniquifier post-processing if enabled
+        if uniquifier and uniquifier.enabled:
+            logger.info("Applying Video Uniquifier post-processing on %s", final_output_path)
+            apply_video_uniquifier(
+                input_path=final_output_path,
+                output_path=final_output_path,
+                config=uniquifier,
+                width=self.config.width,
+                height=self.config.height,
             )
 
         logger.info(

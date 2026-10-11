@@ -10,6 +10,7 @@ from videoanalizer.media.overlay import add_banner
 from videoanalizer.media.reframer import Reframer
 from videoanalizer.media.silence_cutter import cut_silences
 from videoanalizer.media.subtitler import burn_subtitles, generate_ass_subtitles
+from videoanalizer.media.uniquifier import apply_video_uniquifier
 from videoanalizer.models.render_job import ClipRenderJob
 from videoanalizer.models.source_video import SourceVideo
 from videoanalizer.services.silence import SilenceDetector
@@ -149,6 +150,20 @@ class Renderer:
                     frame_width=job.output_width,
                 )
                 current_video = step5_banner
+
+            # Stage 5.5: Final video uniquifier pass
+            if job.uniquifier and job.uniquifier.enabled:
+                if progress_callback:
+                    progress_callback(94, "Финальная уникализация видео (анти-детект)...")
+                step5_unique = workspace / "step5_uniquified.mp4"
+                apply_video_uniquifier(
+                    input_path=current_video,
+                    output_path=step5_unique,
+                    config=job.uniquifier,
+                    width=job.output_width,
+                    height=job.output_height,
+                )
+                current_video = step5_unique
 
             # Stage 6: Copy to final output location
             out_dir = final_output_dir or (session_dir / "output")
