@@ -63,3 +63,10 @@ temp/
 scratch/
 assets/banners/
 
+# Large video and media files
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi
+
