@@ -140,3 +140,27 @@ async def test_generate_challenge_audio_with_retention_config(tmp_path: Path) ->
             assert cue_sheet.cues[3].think_duration_ms == 2200
             assert cue_sheet.cues[6].think_duration_ms == 1500
 
+
+@pytest.mark.asyncio
+async def test_synthesize_speech_offline_fallback_on_error(tmp_path: Path) -> None:
+    """Verify that when edge-tts raises NoAudioReceived, offline fallback produces valid audio."""
+    import edge_tts.exceptions
+
+    service = AudioService()
+    test_out = tmp_path / "fallback_speech.mp3"
+
+    with patch(
+        "edge_tts.Communicate.stream",
+        side_effect=edge_tts.exceptions.NoAudioReceived("No audio received"),
+    ):
+        dur_ms, words = await service.synthesize_speech_with_cues(
+            text="Тестовый вопрос номер один?",
+            voice="ru-RU-SvetlanaNeural",
+            output_path=test_out,
+        )
+
+        assert test_out.exists()
+        assert dur_ms > 0
+        assert len(words) == 4
+        assert words[0].word == "Тестовый"
+

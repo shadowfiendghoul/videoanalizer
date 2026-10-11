@@ -1,5 +1,6 @@
 """AudioService: Generates voiceover narration via edge-tts and master AudioCueSheet."""
 
+import asyncio
 import logging
 import math
 import shutil
@@ -228,6 +229,61 @@ class AudioService:
         """Ensure standard sound effects exist, returning SfxPaths."""
         return ensure_default_sfx(sfx_dir)
 
+    def _synthesize_offline_fallback(self, text: str, output_path: Path) -> None:
+        """Offline fallback using pyttsx3 or synthetic audio when edge-tts is unavailable."""
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            import pyttsx3
+
+            wav_path = output_path.with_suffix(".wav")
+            engine = pyttsx3.init()
+            engine.save_to_file(text, str(wav_path))
+            engine.runAndWait()
+
+            if output_path.suffix.lower() == ".mp3":
+                ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+                subprocess.run(  # noqa: S603
+                    [ffmpeg_bin, "-y", "-i", str(wav_path), "-b:a", "192k", str(output_path)],
+                    check=True,
+                    capture_output=True,
+                )
+                if wav_path.exists():
+                    wav_path.unlink()
+            elif wav_path != output_path:
+                shutil.move(str(wav_path), str(output_path))
+            return
+        except Exception as e:
+            logger.warning("pyttsx3 offline fallback failed: %s. Generating tone fallback.", e)
+
+        # Final safety fallback: synthetic tone file
+        sample_rate = 44100
+        n_samples = int(sample_rate * 1.5)
+        wav_target = (
+            output_path.with_suffix(".wav")
+            if output_path.suffix.lower() == ".mp3"
+            else output_path
+        )
+        with wave.open(str(wav_target), "w") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(sample_rate)
+            data = bytearray()
+            for i in range(n_samples):
+                t = i / sample_rate
+                val = math.sin(2 * math.pi * 440.0 * t) * 16000
+                data.extend(struct.pack("<h", int(val)))
+            f.writeframes(data)
+
+        if output_path.suffix.lower() == ".mp3":
+            ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+            subprocess.run(  # noqa: S603
+                [ffmpeg_bin, "-y", "-i", str(wav_target), "-b:a", "192k", str(output_path)],
+                check=False,
+                capture_output=True,
+            )
+            if wav_target.exists():
+                wav_target.unlink()
+
     async def synthesize_speech_with_cues(
         self,
         text: str,
@@ -236,40 +292,76 @@ class AudioService:
     ) -> tuple[int, list[WordCue]]:
         """Synthesize text via edge-tts, capturing audio and word-level timestamps.
 
-        Returns:
-            Tuple of (duration_ms, list of WordCue).
+        Includes multiple fallback voices, exponential retry backoff, and an offline TTS fallback.
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
         voices_to_try = [voice]
-        if "ru-" in voice.lower() and voice != "ru-RU-SvetlanaNeural":
-            voices_to_try.append("ru-RU-SvetlanaNeural")
-        elif "en-" in voice.lower() and voice != "en-US-GuyNeural":
-            voices_to_try.append("en-US-GuyNeural")
+
+        if "ru-" in voice.lower():
+            for ru_voice in ("ru-RU-SvetlanaNeural", "ru-RU-DmitryNeural"):
+                if ru_voice not in voices_to_try:
+                    voices_to_try.append(ru_voice)
+        elif "en-" in voice.lower():
+            for en_voice in (
+                "en-US-GuyNeural",
+                "en-US-JennyNeural",
+                "en-US-ChristopherNeural",
+            ):
+                if en_voice not in voices_to_try:
+                    voices_to_try.append(en_voice)
 
         audio_bytes = bytearray()
         words: list[WordCue] = []
+        synthesized_successfully = False
 
         for v in voices_to_try:
-            try:
-                communicate = edge_tts.Communicate(text, v, rate="+20%")
-                audio_bytes.clear()
-                words.clear()
-                async for chunk in communicate.stream():
-                    if chunk["type"] == "audio":
-                        audio_bytes.extend(chunk["data"])
-                    elif chunk["type"] == "WordBoundary":
-                        start_ms = chunk["offset"] // 10000
-                        dur_ms = chunk["duration"] // 10000
-                        word_text = chunk["text"]
-                        words.append(
-                            WordCue(word=word_text, start_ms=start_ms, end_ms=start_ms + dur_ms)
-                        )
-                if audio_bytes:
-                    break
-            except Exception as e:
-                logger.warning(f"Voice {v} failed for speech synthesis: {e}")
-                if v == voices_to_try[-1]:
-                    raise
+            for attempt in range(2):
+                try:
+                    communicate = edge_tts.Communicate(text, v, rate="+20%")
+                    audio_bytes.clear()
+                    words.clear()
+                    async for chunk in communicate.stream():
+                        if chunk["type"] == "audio":
+                            audio_bytes.extend(chunk["data"])
+                        elif chunk["type"] == "WordBoundary":
+                            start_ms = chunk["offset"] // 10000
+                            dur_ms = chunk["duration"] // 10000
+                            word_text = chunk["text"]
+                            words.append(
+                                WordCue(
+                                    word=word_text,
+                                    start_ms=start_ms,
+                                    end_ms=start_ms + dur_ms,
+                                )
+                            )
+                    if audio_bytes:
+                        synthesized_successfully = True
+                        break
+                except Exception as e:
+                    logger.warning(
+                        "Voice %s attempt %d/2 failed for text '%s': %s",
+                        v,
+                        attempt + 1,
+                        text[:30],
+                        e,
+                    )
+                    await asyncio.sleep(0.4 * (attempt + 1))
+            if synthesized_successfully:
+                break
+
+        if not synthesized_successfully or not audio_bytes:
+            logger.warning(
+                "All edge-tts voices failed for '%s'. Engaging offline TTS fallback.",
+                text[:40],
+            )
+            self._synthesize_offline_fallback(text, output_path)
+            duration_ms = probe_audio_duration_ms(output_path)
+            tokens = text.split()
+            if tokens and duration_ms > 0:
+                step = duration_ms // len(tokens)
+                for i, tok in enumerate(tokens):
+                    words.append(WordCue(word=tok, start_ms=i * step, end_ms=(i + 1) * step))
+            return duration_ms, words
 
         with open(output_path, "wb") as f:
             f.write(audio_bytes)
@@ -283,6 +375,8 @@ class AudioService:
                 for i, tok in enumerate(tokens):
                     words.append(WordCue(word=tok, start_ms=i * step, end_ms=(i + 1) * step))
 
+        # Pacing pause to prevent edge-tts WebSocket rate limits on rapid calls
+        await asyncio.sleep(0.12)
         return duration_ms, words
 
     async def generate_challenge_audio(

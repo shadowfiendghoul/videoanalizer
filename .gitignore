@@ -61,4 +61,5 @@ templates/**/node_modules/
 outputs/
 temp/
 scratch/
+assets/banners/
 

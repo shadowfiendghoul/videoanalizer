@@ -18,9 +18,15 @@ class ImageService:
         self.timeout_sec = timeout_sec
 
     async def _search_image_urls(self, query: str, max_results: int = 3) -> list[dict[str, str]]:
-        """Search image URLs using duckduckgo_search or search API."""
+        """Search image URLs using ddgs / duckduckgo_search or search API."""
         try:
-            from duckduckgo_search import DDGS
+            try:
+                from ddgs import DDGS
+            except ImportError:
+                from duckduckgo_search import DDGS
+
+            # Small delay between consecutive image queries to prevent DDG 202 Ratelimit
+            await asyncio.sleep(0.35)
 
             loop = asyncio.get_running_loop()
 
@@ -30,7 +36,11 @@ class ImageService:
 
             return await loop.run_in_executor(None, _search)
         except Exception as e:
-            logger.warning(f"Image search query failed for '{query}': {e}")
+            err_str = str(e)
+            if "202" in err_str or "Ratelimit" in err_str:
+                logger.info(f"Image search rate-limited for '{query}', using layout fallback.")
+            else:
+                logger.warning(f"Image search query failed for '{query}': {e}")
             return []
 
     async def _download_bytes(self, url: str) -> bytes | None:
