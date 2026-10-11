@@ -23,19 +23,19 @@ export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({
             muted
             delayRenderTimeoutInMilliseconds={120000}
             delayRenderRetries={3}
-            className="w-full h-full object-cover opacity-85"
+            className="w-full h-full object-cover opacity-100"
           />
         </Loop>
       )}
 
-      {/* Dark Ambient Vignette and Gradients for High Text Contrast */}
+      {/* Subtle Ambient Vignette and Soft Gradients for Clean Contrast without Darkening */}
       <AbsoluteFill
         style={{
           background:
-            "radial-gradient(circle at center, rgba(15, 23, 42, 0.45) 0%, rgba(2, 6, 23, 0.85) 100%)",
+            "radial-gradient(circle at center, rgba(0, 0, 0, 0.05) 0%, rgba(2, 6, 23, 0.35) 100%)",
         }}
       />
-      <AbsoluteFill className="bg-gradient-to-b from-black/80 via-transparent to-black/90 pointer-events-none" />
+      <AbsoluteFill className="bg-gradient-to-b from-black/30 via-transparent to-black/45 pointer-events-none" />
     </AbsoluteFill>
   );
 };

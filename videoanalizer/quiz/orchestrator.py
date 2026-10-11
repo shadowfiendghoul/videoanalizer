@@ -298,11 +298,16 @@ class QuizOrchestrator:
                 image_tasks = []
                 target_items = []
                 for item in challenge.all_questions():
-                    if item.image_query and not item.local_image_path:
+                    if (item.image_url or item.image_query) and not item.local_image_path:
                         dest = workspace.get_image_path(f"q_{item.question_number}.png")
-                        image_tasks.append(
-                            self.image_service.search_and_download(item.image_query, dest)
-                        )
+                        if item.image_url:
+                            image_tasks.append(
+                                self.script_service._download_and_verify_url(item.image_url, dest)
+                            )
+                        else:
+                            image_tasks.append(
+                                self.image_service.search_and_download(item.image_query, dest)
+                            )
                         target_items.append(item)
 
                 if image_tasks:

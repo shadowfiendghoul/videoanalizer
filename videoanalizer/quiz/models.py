@@ -71,6 +71,10 @@ class QuizItem(BaseModel):
         default=None,
         description="Search query for visual topics (e.g. 'Flag of Brazil').",
     )
+    image_url: str | None = Field(
+        default=None,
+        description="Direct URL or web preview of the selected image asset.",
+    )
     local_image_path: str | None = Field(
         default=None,
         description="Local cached file path to the verified image asset.",

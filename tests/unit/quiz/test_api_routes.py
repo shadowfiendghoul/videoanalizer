@@ -194,4 +194,22 @@ def test_generate_quiz_with_retention_flags() -> None:
         assert req_arg.comment_trap_enabled is True
 
 
-
+def test_search_image_endpoint() -> None:
+    """POST /api/v1/quiz/search-image should return candidate images."""
+    mock_results = [
+        {"image": "https://example.com/img1.jpg", "thumbnail": "https://example.com/thumb1.jpg"},
+        {"image": "https://example.com/img2.jpg", "thumbnail": "https://example.com/thumb2.jpg"},
+    ]
+    with patch(
+        "videoanalizer.quiz.image_service.ImageService._search_image_urls",
+        new_callable=AsyncMock,
+        return_value=mock_results,
+    ):
+        payload = {"query": "Флаг Бразилии", "max_results": 2}
+        res = client.post("/api/v1/quiz/search-image", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        assert "images" in data
+        assert len(data["images"]) == 2
+        assert data["images"][0]["image"] == "https://example.com/img1.jpg"
+        assert data["images"][0]["thumbnail"] == "https://example.com/thumb1.jpg"

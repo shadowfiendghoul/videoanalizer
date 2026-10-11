@@ -8,6 +8,7 @@ export interface QuizItem {
   correct_answer: string;
   fun_fact: string;
   image_query: string | null;
+  image_url?: string | null;
   local_image_path: string | null;
   decoy_answer?: string | null;
 }

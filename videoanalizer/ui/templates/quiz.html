@@ -131,8 +131,12 @@
             <div class="space-y-1.5">
               <label class="block text-xs font-medium text-slate-300">Нейросетевой голос</label>
               <select id="voice-select" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all">
-                <option value="ru-RU-SvetlanaNeural" selected>Светлана (SvetlanaNeural)</option>
-                <option value="en-US-GuyNeural">Guy (en-US-GuyNeural)</option>
+                <option value="ru-RU-DmitryNeural" selected>🇷🇺 Дмитрий (Edge-TTS Мужской, энергичный)</option>
+                <option value="ru-RU-SvetlanaNeural">🇷🇺 Светлана (Edge-TTS Женский, четкий)</option>
+                <option value="ru-RU-IrinaSAPI">🇷🇺 Ирина (Windows SAPI5, локальный офлайн)</option>
+                <option value="en-US-GuyNeural">🇺🇸 Guy (Edge-TTS English Male)</option>
+                <option value="en-US-JennyNeural">🇺🇸 Jenny (Edge-TTS English Female)</option>
+                <option value="en-US-ChristopherNeural">🇺🇸 Christopher (Edge-TTS English Male)</option>
               </select>
             </div>
           </div>
@@ -395,6 +399,92 @@
       document.getElementById('topic-input').value = name;
     }
 
+    const SETTINGS_STORAGE_KEY = 'videoanalyzer_quiz_settings_v1';
+
+    function getStoredSettings() {
+      try {
+        const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function saveSettings() {
+      const settings = {
+        language: document.getElementById('language-select')?.value,
+        voice: document.getElementById('voice-select')?.value,
+        background: document.getElementById('background-select')?.value,
+        bannerEnabled: document.getElementById('banner-toggle')?.checked ?? false,
+        bannerFile: uploadedBannerFile,
+        bannerName: document.getElementById('banner-file-name')?.textContent,
+        bannerDuration: document.getElementById('banner-duration-badge')?.textContent,
+        rankEnabled: document.getElementById('rank-toggle')?.checked ?? true,
+        timerEnabled: document.getElementById('timer-toggle')?.checked ?? true,
+        streakEnabled: document.getElementById('streak-toggle')?.checked ?? true,
+        trapEnabled: document.getElementById('trap-toggle')?.checked ?? true,
+      };
+      try {
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      } catch (e) {
+        console.warn('Failed to save settings:', e);
+      }
+    }
+
+    function loadSettings() {
+      const s = getStoredSettings();
+      if (!s) return;
+
+      if (s.language && document.getElementById('language-select')) {
+        document.getElementById('language-select').value = s.language;
+      }
+      if (s.voice && document.getElementById('voice-select')) {
+        document.getElementById('voice-select').value = s.voice;
+      }
+      if (s.background && document.getElementById('background-select')) {
+        document.getElementById('background-select').value = s.background;
+      }
+      if (typeof s.bannerEnabled === 'boolean' && document.getElementById('banner-toggle')) {
+        document.getElementById('banner-toggle').checked = s.bannerEnabled;
+        const section = document.getElementById('banner-upload-section');
+        if (s.bannerEnabled && section) {
+          section.classList.remove('hidden');
+        }
+        if (s.bannerFile && s.bannerName) {
+          uploadedBannerFile = s.bannerFile;
+          document.getElementById('banner-file-name').textContent = s.bannerName;
+          if (s.bannerDuration) {
+            document.getElementById('banner-duration-badge').textContent = s.bannerDuration;
+          }
+          document.getElementById('banner-dropzone')?.classList.add('hidden');
+          document.getElementById('banner-status-box')?.classList.remove('hidden');
+        }
+      }
+      if (typeof s.rankEnabled === 'boolean' && document.getElementById('rank-toggle')) {
+        document.getElementById('rank-toggle').checked = s.rankEnabled;
+      }
+      if (typeof s.timerEnabled === 'boolean' && document.getElementById('timer-toggle')) {
+        document.getElementById('timer-toggle').checked = s.timerEnabled;
+      }
+      if (typeof s.streakEnabled === 'boolean' && document.getElementById('streak-toggle')) {
+        document.getElementById('streak-toggle').checked = s.streakEnabled;
+      }
+      if (typeof s.trapEnabled === 'boolean' && document.getElementById('trap-toggle')) {
+        document.getElementById('trap-toggle').checked = s.trapEnabled;
+      }
+    }
+
+    function handleLanguageChange() {
+      const lang = document.getElementById('language-select').value;
+      const voiceSelect = document.getElementById('voice-select');
+      if (lang === 'en' && voiceSelect.value.startsWith('ru-')) {
+        voiceSelect.value = 'en-US-GuyNeural';
+      } else if (lang === 'ru' && voiceSelect.value.startsWith('en-')) {
+        voiceSelect.value = 'ru-RU-DmitryNeural';
+      }
+      saveSettings();
+    }
+
     async function loadBackgrounds() {
       try {
         const resp = await fetch('/api/v1/quiz/backgrounds');
@@ -416,7 +506,12 @@
             opt.textContent = `${icon} ${bg.name}`;
             select.appendChild(opt);
           });
-          if (current) select.value = current;
+          const saved = getStoredSettings();
+          if (saved && saved.background) {
+            select.value = saved.background;
+          } else if (current) {
+            select.value = current;
+          }
         }
       } catch (e) {
         console.warn('Failed to load backgrounds list:', e);
@@ -427,6 +522,17 @@
     let activeJobId = null;
     let pollInterval = null;
     let uploadedBannerFile = null;
+
+    // Initialize persisted settings and listeners
+    loadSettings();
+    document.getElementById('language-select')?.addEventListener('change', handleLanguageChange);
+    document.getElementById('voice-select')?.addEventListener('change', saveSettings);
+    document.getElementById('background-select')?.addEventListener('change', saveSettings);
+    document.getElementById('banner-toggle')?.addEventListener('change', () => { toggleBannerSection(); saveSettings(); });
+    document.getElementById('rank-toggle')?.addEventListener('change', saveSettings);
+    document.getElementById('timer-toggle')?.addEventListener('change', saveSettings);
+    document.getElementById('streak-toggle')?.addEventListener('change', saveSettings);
+    document.getElementById('trap-toggle')?.addEventListener('change', saveSettings);
 
     function toggleBannerSection() {
       const checked = document.getElementById('banner-toggle').checked;
@@ -487,6 +593,7 @@
 
         dropzone.classList.add('hidden');
         statusBox.classList.remove('hidden');
+        saveSettings();
       } catch (err) {
         alert('Не удалось загрузить видео баннера: ' + err.message);
       } finally {
@@ -501,6 +608,7 @@
       document.getElementById('banner-file-input').value = '';
       document.getElementById('banner-status-box').classList.add('hidden');
       document.getElementById('banner-dropzone').classList.remove('hidden');
+      saveSettings();
       lucide.createIcons();
     }
 
@@ -545,6 +653,110 @@
       }
     }
 
+    function toggleImageSection(qnum) {
+      const box = document.getElementById(`image-box-${qnum}`);
+      const chk = document.querySelector(`input[data-qnum="${qnum}"][data-field="use_image"]`);
+      if (!box || !chk) return;
+      if (chk.checked) {
+        box.classList.remove('hidden');
+        const queryInput = document.getElementById(`img-query-input-${qnum}`);
+        const qTextInput = document.querySelector(`input[data-qnum="${qnum}"][data-field="question_text"]`);
+        if (queryInput && !queryInput.value.trim() && qTextInput) {
+          queryInput.value = qTextInput.value.trim();
+        }
+      } else {
+        box.classList.add('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    async function searchImageOptions(qnum) {
+      const queryInput = document.getElementById(`img-query-input-${qnum}`);
+      const btn = document.getElementById(`img-search-btn-${qnum}`);
+      const strip = document.getElementById(`candidates-strip-${qnum}`);
+      const list = document.getElementById(`candidates-list-${qnum}`);
+      const query = queryInput ? queryInput.value.trim() : '';
+
+      if (!query) {
+        alert('Введите поисковый запрос для картинки!');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+      const origText = btn.innerHTML;
+      btn.innerHTML = '<span class="w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin inline-block"></span>';
+
+      try {
+        const resp = await fetch('/api/v1/quiz/search-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query, max_results: 6 }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Ошибка поиска изображений');
+        }
+        const data = await resp.json();
+        if (!data.images || data.images.length === 0) {
+          alert('По запросу "' + query + '" картинок не найдено. Попробуйте уточнить запрос.');
+          return;
+        }
+
+        list.innerHTML = '';
+        data.images.forEach((it) => {
+          const imgBtn = document.createElement('button');
+          imgBtn.type = 'button';
+          imgBtn.className = 'w-16 h-16 rounded-lg border-2 border-white/20 hover:border-cyan-400 overflow-hidden shrink-0 transition-all focus:outline-none focus:ring-2 focus:ring-cyan-400 cursor-pointer bg-black/40';
+          imgBtn.title = 'Выбрать эту картинку';
+          imgBtn.onclick = () => selectCandidateImage(qnum, it.image);
+
+          const thumbImg = document.createElement('img');
+          thumbImg.src = it.thumbnail || it.image;
+          thumbImg.className = 'w-full h-full object-cover';
+          thumbImg.referrerPolicy = 'no-referrer';
+          imgBtn.appendChild(thumbImg);
+          list.appendChild(imgBtn);
+        });
+
+        strip.classList.remove('hidden');
+      } catch (err) {
+        alert('Ошибка поиска картинок: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+        btn.innerHTML = origText;
+        lucide.createIcons();
+      }
+    }
+
+    function selectCandidateImage(qnum, selectedUrl) {
+      const thumb = document.getElementById(`img-thumb-${qnum}`);
+      const placeholder = document.getElementById(`img-thumb-placeholder-${qnum}`);
+      const urlInput = document.getElementById(`img-url-input-${qnum}`);
+      const chk = document.querySelector(`input[data-qnum="${qnum}"][data-field="use_image"]`);
+
+      if (urlInput) urlInput.value = selectedUrl;
+      if (thumb) {
+        thumb.src = selectedUrl;
+        thumb.classList.remove('hidden');
+      }
+      if (placeholder) placeholder.classList.add('hidden');
+      if (chk) chk.checked = true;
+
+      const list = document.getElementById(`candidates-list-${qnum}`);
+      if (list) {
+        Array.from(list.children).forEach((btn) => {
+          const img = btn.querySelector('img');
+          if (img && (img.src === selectedUrl || img.getAttribute('src') === selectedUrl)) {
+            btn.classList.add('border-cyan-400', 'ring-2', 'ring-cyan-400');
+          } else {
+            btn.classList.remove('border-cyan-400', 'ring-2', 'ring-cyan-400');
+          }
+        });
+      }
+    }
+
     function renderQuestionsPreview(challenge) {
       const card = document.getElementById('questions-preview-card');
       const list = document.getElementById('questions-list');
@@ -570,7 +782,9 @@
 
         tier.questions.forEach((q) => {
           const qBox = document.createElement('div');
-          qBox.className = 'space-y-1.5 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]';
+          qBox.className = 'space-y-2 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]';
+          const hasImage = Boolean(q.image_url || q.image_query || q.has_visual_clue);
+
           qBox.innerHTML = `
             <div class="flex items-start space-x-2.5">
               <span class="w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs shrink-0 mt-0.5" style="background-color: ${color}22; color: ${color}; border: 1px solid ${color}44">${q.question_number}</span>
@@ -593,6 +807,84 @@
                     class="flex-1 bg-black/60 border border-white/[0.1] focus:border-emerald-500 rounded-lg px-2.5 py-1 text-xs text-emerald-400 font-bold focus:outline-none transition-all"
                     title="Правильный ответ"
                   />
+                </div>
+              </div>
+            </div>
+
+            <!-- Visual Asset Approval Box -->
+            <div class="p-2.5 rounded-lg bg-black/40 border border-white/[0.06] space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="flex items-center space-x-2 cursor-pointer text-xs font-medium text-slate-300">
+                  <input 
+                    type="checkbox" 
+                    data-qnum="${q.question_number}" 
+                    data-field="use_image" 
+                    ${hasImage ? 'checked' : ''} 
+                    onchange="toggleImageSection(${q.question_number})"
+                    class="w-3.5 h-3.5 rounded text-cyan-500 bg-black/50 border-white/20 focus:ring-cyan-500 cursor-pointer"
+                  />
+                  <span class="flex items-center space-x-1.5">
+                    <i data-lucide="image" class="w-3.5 h-3.5 text-cyan-400"></i>
+                    <span>Изображение / визуальная подсказка</span>
+                  </span>
+                </label>
+                <span class="text-[10px] text-slate-400 font-mono">1080x1080</span>
+              </div>
+
+              <div id="image-box-${q.question_number}" class="${hasImage ? '' : 'hidden'} space-y-2 pt-1 border-t border-white/[0.04]">
+                <div class="flex items-center space-x-3">
+                  <!-- Thumbnail -->
+                  <div class="relative w-14 h-14 rounded-lg bg-black/60 border border-white/[0.1] overflow-hidden shrink-0 flex items-center justify-center">
+                    <img 
+                      id="img-thumb-${q.question_number}" 
+                      src="${q.image_url || ''}" 
+                      alt="Preview" 
+                      class="w-full h-full object-cover ${q.image_url ? '' : 'hidden'}"
+                      onerror="this.classList.add('hidden'); const ph = document.getElementById('img-thumb-placeholder-${q.question_number}'); if (ph) ph.classList.remove('hidden');"
+                    />
+                    <div id="img-thumb-placeholder-${q.question_number}" class="${q.image_url ? 'hidden' : ''} text-slate-500 text-[10px] text-center p-1">
+                      <i data-lucide="image-off" class="w-4 h-4 mx-auto mb-0.5"></i>
+                      <span>Нет фото</span>
+                    </div>
+                  </div>
+
+                  <!-- Controls -->
+                  <div class="flex-1 space-y-1.5">
+                    <div class="flex items-center space-x-2">
+                      <input 
+                        type="text" 
+                        id="img-query-input-${q.question_number}"
+                        data-qnum="${q.question_number}" 
+                        data-field="image_query" 
+                        value="${(q.image_query || '').replace(/"/g, '&quot;')}" 
+                        placeholder="Поисковый запрос картинки (например, Флаг Бразилии)" 
+                        class="flex-1 bg-black/60 border border-white/[0.1] focus:border-cyan-400 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none transition-all"
+                      />
+                      <button 
+                        type="button" 
+                        id="img-search-btn-${q.question_number}"
+                        onclick="searchImageOptions(${q.question_number})" 
+                        class="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-medium transition-all flex items-center space-x-1 shrink-0 cursor-pointer"
+                        title="Найти альтернативные изображения"
+                      >
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Другое фото</span>
+                      </button>
+                    </div>
+                    <input 
+                      type="hidden" 
+                      id="img-url-input-${q.question_number}"
+                      data-qnum="${q.question_number}" 
+                      data-field="image_url" 
+                      value="${(q.image_url || '').replace(/"/g, '&quot;')}" 
+                    />
+                  </div>
+                </div>
+
+                <!-- Candidate gallery drawer -->
+                <div id="candidates-strip-${q.question_number}" class="hidden space-y-1.5 pt-1.5 border-t border-white/[0.04]">
+                  <span class="text-[10px] text-cyan-400 font-medium">Выберите вариант из найденных (кликните):</span>
+                  <div id="candidates-list-${q.question_number}" class="flex gap-2 overflow-x-auto pb-1 max-w-full"></div>
                 </div>
               </div>
             </div>
@@ -631,19 +923,36 @@
         return;
       }
 
-      // Collect any inline edits
-      const qInputs = document.querySelectorAll('#questions-list input[data-qnum]');
-      qInputs.forEach((input) => {
-        const qnum = parseInt(input.getAttribute('data-qnum'), 10);
-        const field = input.getAttribute('data-field');
-        const val = input.value.trim();
+      // Collect any inline edits including approved images
+      currentChallenge.tiers.forEach((tier) => {
+        tier.questions.forEach((q) => {
+          const qnum = q.question_number;
+          const textInput = document.querySelector(`input[data-qnum="${qnum}"][data-field="question_text"]`);
+          const ansInput = document.querySelector(`input[data-qnum="${qnum}"][data-field="correct_answer"]`);
+          const queryInput = document.getElementById(`img-query-input-${qnum}`);
+          const urlInput = document.getElementById(`img-url-input-${qnum}`);
+          const useImgCheckbox = document.querySelector(`input[data-qnum="${qnum}"][data-field="use_image"]`);
 
-        currentChallenge.tiers.forEach((tier) => {
-          tier.questions.forEach((q) => {
-            if (q.question_number === qnum) {
-              q[field] = val;
-            }
-          });
+          if (textInput) q.question_text = textInput.value.trim();
+          if (ansInput) q.correct_answer = ansInput.value.trim();
+
+          const useImg = useImgCheckbox ? useImgCheckbox.checked : Boolean(q.image_url);
+          const urlVal = urlInput ? urlInput.value.trim() : (q.image_url || '');
+          const queryVal = queryInput ? queryInput.value.trim() : (q.image_query || '');
+
+          if (useImg && urlVal) {
+            q.image_url = urlVal;
+            q.image_query = queryVal || q.question_text;
+            q.has_visual_clue = true;
+          } else if (useImg && queryVal) {
+            q.image_url = null;
+            q.image_query = queryVal;
+            q.has_visual_clue = true;
+          } else {
+            q.image_url = null;
+            q.image_query = null;
+            q.has_visual_clue = false;
+          }
         });
       });
 

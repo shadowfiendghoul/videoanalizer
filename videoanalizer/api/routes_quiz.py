@@ -64,6 +64,26 @@ class QuizGenerateRequest(BaseModel):
 
 
 
+class ImageSearchRequest(BaseModel):
+    """Payload to search candidate images for visual trivia."""
+
+    query: str = Field(..., description="Image search query string.")
+    max_results: int = Field(default=5, description="Maximum candidate images to fetch.")
+
+
+class ImageSearchResultItem(BaseModel):
+    """Candidate image result."""
+
+    image: str
+    thumbnail: str | None = None
+
+
+class ImageSearchResponse(BaseModel):
+    """List of image search candidates."""
+
+    images: list[ImageSearchResultItem]
+
+
 class BannerUploadResponse(BaseModel):
     """Metadata response when a promo banner video is uploaded."""
 
@@ -178,6 +198,26 @@ async def preview_questions(request: QuizQuestionsPreviewRequest) -> QuizChallen
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка генерации вопросов нейросетью: {exc}",
         ) from exc
+
+
+@router.post("/search-image", response_model=ImageSearchResponse)
+async def search_image(request: ImageSearchRequest) -> ImageSearchResponse:
+    """Search candidates for visual trivia question preview."""
+    orchestrator = QuizOrchestrator()
+    items = await orchestrator.image_service._search_image_urls(
+        request.query, max_results=request.max_results
+    )
+    results: list[ImageSearchResultItem] = []
+    for it in items:
+        img_url = it.get("image") or it.get("thumbnail")
+        if img_url:
+            results.append(
+                ImageSearchResultItem(
+                    image=img_url,
+                    thumbnail=it.get("thumbnail") or img_url,
+                )
+            )
+    return ImageSearchResponse(images=results)
 
 
 @router.post("/upload-banner", response_model=BannerUploadResponse)

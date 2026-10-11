@@ -1,12 +1,14 @@
 """ScriptService: Generates structured 9-question 3-tier trivia challenges via Gemini REST API."""
 
 import asyncio
+import io
 import json
 import logging
 from pathlib import Path
 
 from google import genai
 from google.genai import types
+from PIL import Image
 
 from videoanalizer.quiz.config import QuizConfig, get_quiz_config
 from videoanalizer.quiz.image_service import ImageService
@@ -130,16 +132,38 @@ class ScriptService:
         for tier in challenge.tiers:
             tier.theme_color = color_map.get(tier.tier_level, tier.theme_color)
 
-        # Resolve image assets concurrently if queries exist
+        # Resolve image preview URLs for visual questions (allowing user approval in UI)
+        if workspace is None:
+            for item in challenge.all_questions():
+                if item.image_query and not item.image_url:
+                    try:
+                        img_results = await self.image_service._search_image_urls(
+                            item.image_query, max_results=2
+                        )
+                        if img_results:
+                            item.image_url = (
+                                img_results[0].get("image") or img_results[0].get("thumbnail")
+                            )
+                    except Exception as e:
+                        logger.debug(
+                            "Failed to resolve preview image for '%s': %s", item.image_query, e
+                        )
+
+        # Resolve local image assets if workspace provided
         if workspace:
             image_tasks = []
             target_items = []
             for item in challenge.all_questions():
-                if item.image_query:
+                if item.image_url or item.image_query:
                     dest = workspace.get_image_path(f"q_{item.question_number}.png")
-                    image_tasks.append(
-                        self.image_service.search_and_download(item.image_query, dest)
-                    )
+                    if item.image_url:
+                        image_tasks.append(
+                            self._download_and_verify_url(item.image_url, dest)
+                        )
+                    else:
+                        image_tasks.append(
+                            self.image_service.search_and_download(item.image_query, dest)
+                        )
                     target_items.append(item)
 
             if image_tasks:
@@ -155,3 +179,17 @@ class ScriptService:
             len(challenge.all_questions()),
         )
         return challenge
+
+    async def _download_and_verify_url(self, url: str, dest_path: Path) -> Path | None:
+        """Download image from direct URL and verify it opens as valid image."""
+        raw_bytes = await self.image_service._download_bytes(url)
+        if raw_bytes:
+            try:
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                img = Image.open(io.BytesIO(raw_bytes))
+                img = img.convert("RGBA")
+                img.save(dest_path, "PNG")
+                return dest_path
+            except Exception as e:
+                logger.warning("Failed to save image from URL %s: %s", url, e)
+        return None

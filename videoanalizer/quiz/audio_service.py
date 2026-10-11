@@ -229,7 +229,9 @@ class AudioService:
         """Ensure standard sound effects exist, returning SfxPaths."""
         return ensure_default_sfx(sfx_dir)
 
-    def _synthesize_offline_fallback(self, text: str, output_path: Path) -> None:
+    def _synthesize_offline_fallback(
+        self, text: str, output_path: Path, voice: str = ""
+    ) -> None:
         """Offline fallback using pyttsx3 or synthetic audio when edge-tts is unavailable."""
         output_path.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -237,6 +239,11 @@ class AudioService:
 
             wav_path = output_path.with_suffix(".wav")
             engine = pyttsx3.init()
+            if "irina" in voice.lower() or "ru" in voice.lower():
+                for v in engine.getProperty("voices"):
+                    if "irina" in v.id.lower():
+                        engine.setProperty("voice", v.id)
+                        break
             engine.save_to_file(text, str(wav_path))
             engine.runAndWait()
 
@@ -295,10 +302,22 @@ class AudioService:
         Includes multiple fallback voices, exponential retry backoff, and an offline TTS fallback.
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if "sapi" in voice.lower() or "irina" in voice.lower():
+            self._synthesize_offline_fallback(text, output_path, voice=voice)
+            duration_ms = probe_audio_duration_ms(output_path)
+            words: list[WordCue] = []
+            tokens = text.split()
+            if tokens and duration_ms > 0:
+                step = duration_ms // len(tokens)
+                for i, tok in enumerate(tokens):
+                    words.append(WordCue(word=tok, start_ms=i * step, end_ms=(i + 1) * step))
+            return duration_ms, words
+
         voices_to_try = [voice]
 
         if "ru-" in voice.lower():
-            for ru_voice in ("ru-RU-SvetlanaNeural", "ru-RU-DmitryNeural"):
+            for ru_voice in ("ru-RU-DmitryNeural", "ru-RU-SvetlanaNeural"):
                 if ru_voice not in voices_to_try:
                     voices_to_try.append(ru_voice)
         elif "en-" in voice.lower():
