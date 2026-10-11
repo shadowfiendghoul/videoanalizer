@@ -564,9 +564,18 @@ async def regenerate_headline(req: RegenHeadlineRequest) -> dict:
 
 def launch(server_name: str = "0.0.0.0", server_port: int = 7860) -> None:  # noqa: S104
     """Launch the VideoAnalyzer web application using Uvicorn."""
+    import sys
+
+    if hasattr(sys.stdout, "reconfigure"):
+        with contextlib.suppress(Exception):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        with contextlib.suppress(Exception):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     ensure_ffmpeg()
     print("\n=====================================================================")
-    print(f"🎬 VideoAnalyzer Web Dashboard running at http://localhost:{server_port}")
+    print(f"[OK] VideoAnalyzer Web Dashboard running at http://localhost:{server_port}")
     print("=====================================================================\n")
     uvicorn.run(app, host=server_name, port=server_port, log_level="info")
 

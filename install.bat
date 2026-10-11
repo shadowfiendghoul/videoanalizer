@@ -1,5 +1,8 @@
 @echo off
+chcp 65001 >nul
 setlocal enabledelayedexpansion
+set "PYTHONIOENCODING=utf-8"
+set "PYTHONUTF8=1"
 cd /d "%~dp0"
 
 title VideoAnalyzer - Full Setup ^& Installer
@@ -10,9 +13,9 @@ echo =====================================================================
 echo.
 
 :: 1. Locate Node & FFmpeg in WinGet / Program Files if not already in PATH
-for /d /r "%LOCALAPPDATA%\Microsoft\WinGet\Packages" %%D in (bin) do (
-    if exist "%%D\ffmpeg.exe" (
-        set "PATH=%%D;!PATH!"
+if exist "%LOCALAPPDATA%\Microsoft\WinGet\Packages" (
+    for /d /r "%LOCALAPPDATA%\Microsoft\WinGet\Packages" %%D in (bin) do (
+        if exist "%%D\ffmpeg.exe" set "PATH=%%D;!PATH!"
     )
 )
 if exist "%ProgramFiles%\nodejs" (
@@ -58,7 +61,7 @@ if "!PY_CMD!"=="" (
     )
     echo [ERROR] Python 3.11+ is required.
     echo Please install Python from https://www.python.org/
-    echo (Make sure to check "Add Python to PATH" during setup).
+    echo [NOTE] Make sure to check "Add Python to PATH" during setup.
     pause
     exit /b 1
 )

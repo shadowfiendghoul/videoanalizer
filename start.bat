@@ -1,5 +1,8 @@
 @echo off
+chcp 65001 >nul
 setlocal enabledelayedexpansion
+set "PYTHONIOENCODING=utf-8"
+set "PYTHONUTF8=1"
 cd /d "%~dp0"
 
 title VideoAnalyzer - AI Shorts Generator
@@ -10,9 +13,9 @@ echo =====================================================================
 echo.
 
 :: Automatically locate and add WinGet FFmpeg and Node.js to PATH
-for /d /r "%LOCALAPPDATA%\Microsoft\WinGet\Packages" %%D in (bin) do (
-    if exist "%%D\ffmpeg.exe" (
-        set "PATH=%%D;!PATH!"
+if exist "%LOCALAPPDATA%\Microsoft\WinGet\Packages" (
+    for /d /r "%LOCALAPPDATA%\Microsoft\WinGet\Packages" %%D in (bin) do (
+        if exist "%%D\ffmpeg.exe" set "PATH=%%D;!PATH!"
     )
 )
 if exist "%ProgramFiles%\nodejs" (
@@ -85,5 +88,9 @@ if !errorlevel! neq 0 (
     echo [ERROR] Application stopped unexpectedly with error code !errorlevel!.
     echo Try running install.bat to repair dependencies.
     echo =====================================================================
-    pause
 )
+
+echo.
+echo Press any key to exit...
+pause >nul
+exit /b 0
