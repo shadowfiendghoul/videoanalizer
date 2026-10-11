@@ -407,16 +407,31 @@ class QuizOrchestrator:
                     )
                     total_frames = cue_sheet.total_duration_frames
                     banner_duration_frames = min(banner_dur_frames, total_frames)
-                    # Strictly middle of the short: (total - banner) // 2
-                    banner_start_frame = max(
-                        0, (total_frames - banner_duration_frames) // 2
+
+                    # Insert promo banner midway between Level 1 and Level 2 (after Question 4)
+                    insert_idx = (
+                        4 if len(cue_sheet.cues) >= 5 else max(1, len(cue_sheet.cues) // 2)
                     )
+                    banner_start_frame = cue_sheet.cues[insert_idx - 1].end_frame
+
+                    # Shift all subsequent question cues so quiz pauses completely during banner
+                    for cue in cue_sheet.cues[insert_idx:]:
+                        cue.start_frame += banner_duration_frames
+                        cue.think_start_frame += banner_duration_frames
+                        cue.reveal_frame += banner_duration_frames
+                        cue.end_frame += banner_duration_frames
+
+                    cue_sheet.total_duration_frames += banner_duration_frames
+                    cue_sheet.total_duration_ms += int(
+                        banner_duration_frames * 1000 / self.config.fps
+                    )
+
                     logger.info(
                         "Promo banner staged: name=%s, dur_frames=%d, start_frame=%d (total=%d)",
                         staged_banner_name,
                         banner_duration_frames,
                         banner_start_frame,
-                        total_frames,
+                        cue_sheet.total_duration_frames,
                     )
                 else:
                     logger.warning(

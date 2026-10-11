@@ -291,9 +291,8 @@ async def test_orchestrator_generate_with_banner(tmp_path: Path) -> None:
     )
     assert res.exists()
     assert captured_props.get("banner_video_path") == "banner.mp4"
-    assert captured_props.get("banner_duration_frames") == 300
-    # Strict temporal center: (3240 - 300) // 2 = 1470
-    assert captured_props.get("banner_start_frame") == 1470
+    # Mid-roll banner inserted between questions (after Question 4 tier transition: frame 1440)
+    assert captured_props.get("banner_start_frame") == 1440
 
 
 @pytest.mark.asyncio

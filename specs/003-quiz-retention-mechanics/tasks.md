@@ -105,6 +105,22 @@
 
 ---
 
+## Phase 7: Visual Hierarchy, Banner Pause & Subtitle Sync Polish
+
+**Purpose**: Выполнение доработок по запросу пользователя: масштабирование верхнего интерфейса, смещение элементов ниже, пауза видео при показе баннера и синхронизация субтитров с голосом.
+
+- [x] T030 Enlarge upper UI elements in `RankStatusBar.tsx` (scale width to 880px, larger font/badges, thicker bar), `LevelHeader.tsx` (text-5xl, larger padding/glow), and `StreakFire.tsx` (larger flame icon, font, badge)
+- [x] T031 Shift layout down vertically in `RankStatusBar.tsx` (top: 230px), `LevelHeader.tsx` (top: 335px), `StreakFire.tsx` (top: 430px), and `QuestionLadder.tsx` (top: 48% / ~920px)
+- [x] T032 Pause video during promo banner:
+  - In `orchestrator.py`: cleanly insert promo banner midway (after Q4), shifting subsequent cues by `banner_duration_frames` and extending `total_duration_frames`
+  - In `BackgroundLayer.tsx`: during banner duration, freeze/pause the background video using `<Freeze>` or sequence split
+  - In `QuizChallenge.tsx`: pass banner timing props to `BackgroundLayer`
+- [x] T033 Align subtitles with voice in `KaraokeCaptions.tsx`: remove negative offset and calibrate subtitle appearance delay so words sync perfectly with spoken voice; remove unstable `rate="+20%"` in `audio_service.py`
+- [x] T034 Validate changes with `npm.cmd run typecheck`, pytest test suite, and ruff checks
+
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

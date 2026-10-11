@@ -31,7 +31,7 @@ export const QuestionLadder: React.FC<QuestionLadderProps> = ({
   });
 
   return (
-    <div className="absolute left-16 top-[38%] -translate-y-1/2 flex flex-col gap-5 z-20">
+    <div className="absolute left-16 top-[51%] -translate-y-1/2 flex flex-col gap-5 z-20">
       {allQuestions.map((q) => {
         const num = q.question_number;
         const cue = cueMap.get(num);
@@ -67,17 +67,17 @@ export const QuestionLadder: React.FC<QuestionLadderProps> = ({
             className="flex items-center font-black tracking-wide"
             style={{
               filter: "drop-shadow(0px 3px 6px rgba(0, 0, 0, 0.9))",
-              fontSize: "clamp(26px, 3.2vw, 44px)",
+              fontSize: "clamp(28px, 3.5vw, 48px)",
             }}
           >
             {isRed ? (
-              <span className="inline-flex items-center justify-center w-12 h-12 rounded-full border-2 border-white bg-red-600 text-white text-3xl font-black mr-3 shadow-lg flex-shrink-0">
+              <span className="inline-flex items-center justify-center w-14 h-14 rounded-full border-2 border-white bg-red-600 text-white text-3xl font-black mr-3 shadow-lg flex-shrink-0">
                 9
               </span>
             ) : (
               <span
                 style={{ color: numberColor }}
-                className="font-black mr-3 w-10 text-left flex-shrink-0"
+                className="font-black mr-3 w-12 text-left flex-shrink-0 text-3xl"
               >
                 {num}.
               </span>

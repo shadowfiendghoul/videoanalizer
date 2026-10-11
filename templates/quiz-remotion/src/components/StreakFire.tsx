@@ -55,21 +55,21 @@ export const StreakFire: React.FC<StreakFireProps> = ({
       style={{
         transform: `scale(${bounce})`,
         borderColor: activeColor,
-        boxShadow: `0 0 20px ${activeColor}`,
+        boxShadow: `0 0 25px ${activeColor}`,
       }}
-      className="absolute top-[280px] right-[40px] z-30 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/70 border-2 backdrop-blur-md pointer-events-none transition-all duration-100"
+      className="absolute top-[430px] right-[45px] z-30 flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-black/80 border-2 backdrop-blur-md pointer-events-none transition-all duration-100 shadow-xl"
     >
-      <span className="text-2xl drop-shadow-md">
+      <span className="text-3xl drop-shadow-md">
         {isUltra ? "⚡🔥" : "🔥"}
       </span>
       <span
         style={{ color: activeColor }}
-        className="font-black text-xl tracking-wider font-mono drop-shadow-sm"
+        className="font-black text-2xl md:text-3xl tracking-wider font-mono drop-shadow-sm"
       >
         x{currentStreak}
       </span>
       {isUltra && (
-        <span className="text-[10px] font-black uppercase tracking-widest text-[#38BDF8] ml-1 px-1.5 py-0.5 rounded bg-[#38BDF8]/20 border border-[#38BDF8]/40 animate-pulse">
+        <span className="text-xs font-black uppercase tracking-widest text-[#38BDF8] ml-1.5 px-2 py-0.5 rounded-md bg-[#38BDF8]/20 border border-[#38BDF8]/40 animate-pulse">
           ULTRA
         </span>
       )}

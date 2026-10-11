@@ -103,34 +103,37 @@ export const RankStatusBar: React.FC<RankStatusBarProps> = ({
   const isMaxRank = activeQ === 9;
 
   return (
-    <div className="absolute top-[150px] left-1/2 -translate-x-1/2 z-40 w-[680px] flex flex-col items-center pointer-events-none">
+    <div className="absolute top-[230px] left-1/2 -translate-x-1/2 z-40 w-[880px] flex flex-col items-center pointer-events-none">
       {/* Top Header Badge */}
-      <div className="flex items-center justify-between w-full px-3 mb-1.5 text-xs font-black tracking-wider uppercase">
-        <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/15">
-          <span className="text-base">{activeTier.rank_icon}</span>
-          <span style={{ color: activeTier.rank_color }} className="font-extrabold text-sm drop-shadow-sm">
+      <div className="flex items-center justify-between w-full px-4 mb-2.5 tracking-wider uppercase">
+        <div className="flex items-center gap-2.5 bg-black/75 backdrop-blur-md px-5 py-2 rounded-2xl border-2 border-white/20 shadow-lg">
+          <span className="text-2xl drop-shadow-md">{activeTier.rank_icon}</span>
+          <span
+            style={{ color: activeTier.rank_color }}
+            className="font-black text-xl drop-shadow-sm tracking-wide"
+          >
             {activeTier.rank_title}
           </span>
         </div>
-        <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 text-white/90 font-mono text-xs">
+        <div className="bg-black/75 backdrop-blur-md px-4 py-2 rounded-2xl border-2 border-white/20 text-white font-mono text-base font-bold shadow-lg">
           {activeTier.iq_label}
         </div>
       </div>
 
       {/* Progress Track */}
-      <div className="w-full h-3 rounded-full bg-slate-900/80 p-[2px] border border-white/20 backdrop-blur-md overflow-hidden relative shadow-[0_4px_16px_rgba(0,0,0,0.6)]">
+      <div className="w-full h-6 rounded-full bg-slate-900/90 p-[3px] border-2 border-white/25 backdrop-blur-md overflow-hidden relative shadow-[0_8px_24px_rgba(0,0,0,0.75)]">
         <div
           style={{
             width: `${animatedPercent}%`,
             backgroundColor: activeTier.rank_color,
-            boxShadow: `0 0 14px ${activeTier.rank_color}`,
+            boxShadow: `0 0 20px ${activeTier.rank_color}`,
           }}
           className={`h-full rounded-full transition-all duration-75 relative ${
             isMaxRank ? "animate-pulse" : ""
           }`}
         >
           {/* Shimmer light streak */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-shimmer" />
         </div>
       </div>
     </div>

@@ -29,8 +29,12 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
 
   return (
     <AbsoluteFill className="bg-slate-950 text-white font-sans overflow-hidden">
-      {/* 1. Global Looping Background Video */}
-      <BackgroundLayer videoPath={background_video_path} />
+      {/* 1. Global Looping Background Video (pauses during promo banner) */}
+      <BackgroundLayer
+        videoPath={background_video_path}
+        bannerStartFrame={banner_start_frame}
+        bannerDurationFrames={banner_duration_frames}
+      />
 
       {/* 2. Persistent Left-Side 1-9 Question & Answer Ladder */}
       <QuestionLadder

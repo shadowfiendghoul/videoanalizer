@@ -342,7 +342,7 @@ class AudioService:
             max_attempts = 1 if "dmitry" in v.lower() and len(voices_to_try) > 1 else 2
             for attempt in range(max_attempts):
                 try:
-                    communicate = edge_tts.Communicate(tts_text, v, rate="+20%")
+                    communicate = edge_tts.Communicate(tts_text, v)
                     audio_bytes.clear()
                     words.clear()
                     async for chunk in communicate.stream():

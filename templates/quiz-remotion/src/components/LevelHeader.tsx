@@ -67,24 +67,24 @@ export const LevelHeader: React.FC<LevelHeaderProps> = ({
     : language === "en" ? "HARD" : "ТЯЖЕЛЫЙ";
 
   return (
-    <div className="absolute top-[210px] left-0 right-0 flex justify-center items-center z-30 pointer-events-none">
+    <div className="absolute top-[330px] left-0 right-0 flex justify-center items-center z-30 pointer-events-none">
       <div
-        className="inline-flex items-center gap-3 px-8 py-3.5 rounded-2xl backdrop-blur-md border shadow-2xl"
+        className="inline-flex items-center gap-4 px-10 py-4 rounded-3xl backdrop-blur-md border-2 shadow-2xl"
         style={{
-          backgroundColor: "rgba(10, 15, 29, 0.82)",
-          borderColor: `${tierColor}55`,
-          boxShadow: `0 8px 30px rgba(0, 0, 0, 0.65), 0 0 25px ${tierColor}44`,
+          backgroundColor: "rgba(10, 15, 29, 0.85)",
+          borderColor: `${tierColor}66`,
+          boxShadow: `0 10px 35px rgba(0, 0, 0, 0.7), 0 0 30px ${tierColor}55`,
           transform: `scale(${bounce})`,
         }}
       >
-        <span className="text-white/95 font-black text-3xl tracking-wider uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+        <span className="text-white/95 font-black text-4xl md:text-5xl tracking-wider uppercase drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
           {prefix}
         </span>
         <span
-          className="font-black text-3xl tracking-wider uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+          className="font-black text-4xl md:text-5xl tracking-wider uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]"
           style={{
             color: tierColor,
-            textShadow: `0 0 18px ${tierColor}99`,
+            textShadow: `0 0 24px ${tierColor}aa`,
           }}
         >
           {tierLabel}

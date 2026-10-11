@@ -20,22 +20,26 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
   // Convert current relative frame to milliseconds
   const currentMs = (frame / fps) * 1000;
 
+  // Audio playback calibration offset (Edge-TTS word boundaries report onset early + MP3 priming)
+  const SUBTITLE_SYNC_DELAY_MS = 140;
+  const syncMs = currentMs - SUBTITLE_SYNC_DELAY_MS;
+
   const firstStart = words[0].start_ms;
   const lastEnd = words[words.length - 1].end_ms;
 
   // Only display during spoken range
-  if (currentMs < firstStart - 50 || currentMs > lastEnd + 250) {
+  if (syncMs < firstStart || syncMs > lastEnd + 200) {
     return null;
   }
 
   // Find currently active word
   let activeWord = words.find(
-    (w) => currentMs >= w.start_ms - 50 && currentMs <= w.end_ms + 100
+    (w) => syncMs >= w.start_ms && syncMs <= w.end_ms + 80
   );
 
   // If between consecutive words during the phrase, hold the latest word
   if (!activeWord) {
-    activeWord = [...words].reverse().find((w) => currentMs >= w.start_ms);
+    activeWord = [...words].reverse().find((w) => syncMs >= w.start_ms);
   }
 
   if (!activeWord) {
