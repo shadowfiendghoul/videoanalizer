@@ -22,23 +22,33 @@ QUIZ_SYSTEM_PROMPT = """You are an elite short-form trivia creator specializing 
 and YouTube Shorts quizzes in the signature QuizyPeasy channel style.
 
 RULES & CONSTRAINTS:
-1. Format: Open-Recall trivia challenge (NO multiple-choice options).
-   The viewer is presented with a question prompt or visual clue, gets 3 seconds to think,
-   and then sees the definitive answer.
-2. Structure: Exactly 9 questions, strictly organized into 3 progressive tiers:
-   - Level 1 (Easy): 3 questions, theme_color '#22C55E', question numbers 1, 2, 3.
-   - Level 2 (Medium): 3 questions, theme_color '#F59E0B', question numbers 4, 5, 6.
-   - Level 3 (Hard): 3 questions, theme_color '#EF4444', question numbers 7, 8, 9.
-3. Content Quality & Layout Guard:
-   - Question texts must be punchy, direct, and strictly <= 65 characters
-     (never exceed 80 characters).
-   - Correct answers must be crisp, 1 to 4 words, and strictly <= 25 characters
-     (never exceed 35 characters).
-   - Fun facts must be fascinating, educational, and under 150 characters.
-   - If the topic is visual (flags, country shapes, brand logos, monuments),
-     provide a precise 'image_query' (e.g. 'Flag of Argentina', 'Starbucks Logo')
-     for each question. If non-visual, set 'image_query' to null.
-4. Output: You MUST strictly return valid JSON adhering to the QuizChallenge schema."""
+1. Format & Multi-Topic Chaos:
+   - Format: Open-Recall trivia challenge (NO multiple-choice options).
+     The viewer sees the question number in a vertical ladder, gets 3 seconds to think,
+     and then sees the definitive answer pop onto the ladder row.
+   - Unless an explicit single topic is specified, every single question MUST come from a
+     completely different category (e.g. Gaming, Pop Culture, Food, Bizarre Laws, Body Paradoxes,
+     Tech History, Nature/Animals).
+   - Zero-cliché filter: Strictly FORBIDDEN to use overused school trivia (no capital cities,
+     no "how many planets", no "cheetah is fastest animal", no "how many hearts octopus has").
+
+2. Structure (Strict 9-Question Progressive Ramp):
+   - Level 1 (Warmup): 3 questions, theme_color '#22C55E', question numbers 1, 2, 3.
+     Non-trivial but quick to answer.
+   - Level 2 (Mind Traps): 3 questions, theme_color '#F59E0B', question numbers 4, 5, 6.
+     Cognitive traps, counter-intuitive facts, Mandela effects.
+   - Level 3 (Hardcore Paradoxes): 3 questions, theme_color '#EF4444', question numbers 7, 8, 9.
+     Shocking, debate-provoking paradoxes.
+
+3. Strict Layout & Retention Guard:
+   - Question text: Direct, punchy, strictly <= 65 characters (never exceed 80 characters).
+   - Correct answer: Crisp, 1 to 4 words, strictly <= 25 characters (never exceed 35 characters).
+   - Fun fact / Punchline: Fascinating, educational, strictly <= 90 characters for fast voiceover.
+   - Visual Clues: If visual (logo, flag silhouette, landmark), provide precise 'image_query'
+     (e.g. 'Flag of Argentina', 'Starbucks Logo'). If non-visual, set 'image_query' to null.
+
+4. Output:
+   - You MUST strictly return valid JSON adhering to the QuizChallenge schema."""
 
 
 class ScriptService:
@@ -58,7 +68,8 @@ class ScriptService:
         prompt = (
             f"Generate a viral 9-question 3-tier trivia challenge on the topic: '{topic}'.\n"
             f"Language: {language}.\n"
-            f"Ensure 3 Easy, 3 Medium, and 3 Hard questions strictly matching the required schema."
+            f"Adhere strictly to the 3-tier progression: Level 1 (Warmup), Level 2 (Mind Traps), "
+            f"Level 3 (Hardcore Paradoxes). Zero clichés, non-trivial questions, punchy text."
         )
 
         config = types.GenerateContentConfig(
