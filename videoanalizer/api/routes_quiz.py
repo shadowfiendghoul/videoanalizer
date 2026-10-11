@@ -29,6 +29,16 @@ class QuizQuestionsPreviewRequest(BaseModel):
 
     topic: str = Field(..., description="Topic prompt for the 9-question quiz challenge.")
     language: Literal["ru", "en"] = Field(default="ru", description="Narration and text language.")
+    temperature: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature for creative generation (0.2-1.2, default 0.95).",
+    )
+    fact_check: bool | None = Field(
+        default=None,
+        description="Enable strict secondary fact-checking pass to correct inaccuracies and myths.",
+    )
 
 
 class QuizGenerateRequest(BaseModel):
@@ -36,6 +46,16 @@ class QuizGenerateRequest(BaseModel):
 
     topic: str = Field(..., description="Topic prompt for the 9-question quiz challenge.")
     language: Literal["ru", "en"] = Field(default="ru", description="Narration and text language.")
+    temperature: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature for creative generation (0.2-1.2, default 0.95).",
+    )
+    fact_check: bool | None = Field(
+        default=None,
+        description="Enable strict secondary fact-checking pass to correct inaccuracies and myths.",
+    )
     background_video: str | None = Field(
         default=None, description="Optional custom background video filename or path, or 'random'."
     )
@@ -162,6 +182,8 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
             banner_video=request.banner_video,
             challenge=request.challenge,
             retention_config=retention_config,
+            creative_temperature=request.temperature,
+            fact_check=request.fact_check,
         )
 
         job["status"] = "completed"
@@ -190,6 +212,8 @@ async def preview_questions(request: QuizQuestionsPreviewRequest) -> QuizChallen
         challenge = await orchestrator.script_service.generate_quiz(
             topic=request.topic,
             language=request.language,
+            creative_temperature=request.temperature,
+            fact_check=request.fact_check,
         )
         return challenge
     except Exception as exc:

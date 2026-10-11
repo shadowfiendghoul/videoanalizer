@@ -146,3 +146,61 @@ def test_quiz_item_rejects_answer_over_35_chars() -> None:
             fun_fact="Факт",
         )
     assert "35" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_two_stage_fact_checking_pass() -> None:
+    """Verify generate_quiz invokes both creative generation and secondary fact-checking pass."""
+    from videoanalizer.quiz.script_service import FACT_CHECK_SYSTEM_PROMPT
+
+    assert "scientific fact-checker" in FACT_CHECK_SYSTEM_PROMPT
+    assert "Strict Factual Veracity" in FACT_CHECK_SYSTEM_PROMPT
+
+    service = ScriptService()
+    initial_challenge = make_mock_challenge()
+
+    # Fact-checker corrects a debunked myth in Q1
+    refined_challenge = make_mock_challenge()
+    refined_challenge.tiers[0].questions[0].fun_fact = "Научно доказанный факт без мифов."
+
+    with (
+        patch.object(
+            service, "_call_gemini", new=AsyncMock(return_value=initial_challenge)
+        ) as mock_creative,
+        patch.object(
+            service, "_verify_and_refine_facts", new=AsyncMock(return_value=refined_challenge)
+        ) as mock_verifier,
+    ):
+        result = await service.generate_quiz(
+            topic="Bizarre Science",
+            language="ru",
+            creative_temperature=0.95,
+            fact_check=True,
+        )
+
+        mock_creative.assert_called_once_with("Bizarre Science", "ru", temperature=0.95)
+        mock_verifier.assert_called_once_with(initial_challenge, "ru")
+        assert result.tiers[0].questions[0].fun_fact == "Научно доказанный факт без мифов."
+
+
+@pytest.mark.asyncio
+async def test_fact_checking_bypassed_when_disabled() -> None:
+    """Verify fact-checking pass is skipped when fact_check=False."""
+    service = ScriptService()
+    mock_challenge = make_mock_challenge()
+
+    with (
+        patch.object(
+            service, "_call_gemini", new=AsyncMock(return_value=mock_challenge)
+        ) as mock_creative,
+        patch.object(service, "_verify_and_refine_facts", new=AsyncMock()) as mock_verifier,
+    ):
+        result = await service.generate_quiz(
+            topic="Quick Trivia",
+            language="ru",
+            fact_check=False,
+        )
+
+        mock_creative.assert_called_once()
+        mock_verifier.assert_not_called()
+        assert result == mock_challenge

@@ -51,6 +51,28 @@ RULES & CONSTRAINTS:
    - You MUST strictly return valid JSON adhering to the QuizChallenge schema."""
 
 
+FACT_CHECK_SYSTEM_PROMPT = """You are a rigorous scientific fact-checker and trivia auditor
+with encyclopedic precision. Your job is to audit and refine a 9-question trivia challenge.
+
+VERIFICATION RULES:
+1. Strict Factual Veracity:
+   - Verify questions, answers, and fun facts against verified scientific/historical facts.
+   - Banish popular myths, misconceptions, and outdated school trivia (e.g. "taste zones on tongue",
+     "Great Wall visible from space with naked eye", "humans use only 10% of brain").
+   - If a question or fact is based on a debunked myth, REWRITE it into a true, verified paradox.
+2. Unambiguous Answers:
+   - Ensure the 'correct_answer' is undeniably accurate and specific.
+3. Strict Layout Length Constraints:
+   - 'question_text': punchy, direct, strictly <= 65 chars (never exceed 80 chars).
+   - 'correct_answer': crisp, 1 to 4 words, strictly <= 25 chars (never exceed 35 chars).
+   - 'fun_fact': educational takeaway, strictly <= 90 chars.
+4. Preserve Structure:
+   - Keep exactly 9 questions across 3 tiers (Level 1: 1-3, Level 2: 4-6, Level 3: 7-9).
+   - Retain question numbers and tier theme colors.
+5. Output:
+   - You MUST strictly return valid JSON adhering to the QuizChallenge schema."""
+
+
 class ScriptService:
     """Service responsible for generating quiz trivia content using Gemini REST API."""
 
@@ -60,7 +82,9 @@ class ScriptService:
         self.config = config or get_quiz_config()
         self.image_service = image_service or ImageService()
 
-    async def _call_gemini(self, topic: str, language: str) -> QuizChallenge:
+    async def _call_gemini(
+        self, topic: str, language: str, temperature: float | None = None
+    ) -> QuizChallenge:
         """Execute Gemini REST API call with structured Pydantic v2 schema."""
         api_key = self.config.effective_api_key.get_secret_value()
         client = genai.Client(api_key=api_key)
@@ -72,11 +96,15 @@ class ScriptService:
             f"Level 3 (Hardcore Paradoxes). Zero clichés, non-trivial questions, punchy text."
         )
 
+        eff_temp = (
+            temperature if temperature is not None else self.config.creative_temperature
+        )
+
         config = types.GenerateContentConfig(
             system_instruction=QUIZ_SYSTEM_PROMPT,
             response_mime_type="application/json",
             response_schema=QuizChallenge,
-            temperature=0.7,
+            temperature=eff_temp,
         )
 
         # Execute call with retry on 503 temporary demand spikes
@@ -124,15 +152,68 @@ class ScriptService:
             raise last_error
         raise RuntimeError("Failed to generate content from Gemini API.")
 
+    async def _verify_and_refine_facts(
+        self, challenge: QuizChallenge, language: str
+    ) -> QuizChallenge:
+        """Run strict secondary fact-checking pass to correct inaccuracies and myths."""
+        logger.info("Running secondary strict fact-checking pass on 9-question challenge...")
+        api_key = self.config.effective_api_key.get_secret_value()
+        client = genai.Client(api_key=api_key)
+
+        prompt = (
+            f"Audit and verify this 9-question trivia challenge in language '{language}'.\n"
+            f"Verify all questions are unambiguous and all facts are scientifically true.\n"
+            f"Debunk any myths and ensure strict character length limits.\n"
+            f"Input Challenge JSON:\n{challenge.model_dump_json()}"
+        )
+
+        config = types.GenerateContentConfig(
+            system_instruction=FACT_CHECK_SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            response_schema=QuizChallenge,
+            temperature=self.config.verifier_temperature,
+        )
+
+        loop = asyncio.get_running_loop()
+        try:
+            response = await loop.run_in_executor(
+                None,
+                lambda: client.models.generate_content(
+                    model=self.config.gemini_model,
+                    contents=prompt,
+                    config=config,
+                ),
+            )
+            raw_text = response.text or "{}"
+            data = json.loads(raw_text)
+            verified = QuizChallenge.model_validate(data)
+            logger.info("Fact-checking verifier pass completed successfully.")
+            return verified
+        except Exception as exc:
+            logger.warning(
+                "Fact-checking verifier pass encountered an error, falling back to original: %s",
+                exc,
+            )
+            return challenge
+
     async def generate_quiz(
         self,
         topic: str,
         language: str = "ru",
         workspace: QuizWorkspace | None = None,
+        creative_temperature: float | None = None,
+        fact_check: bool | None = None,
     ) -> QuizChallenge:
         """Generate 9-question trivia challenge and download visual assets if applicable."""
         logger.info(f"Generating 9-question quiz challenge for topic: '{topic}' (lang={language})")
-        challenge = await self._call_gemini(topic, language)
+        challenge = await self._call_gemini(topic, language, temperature=creative_temperature)
+
+        # Stage 2: Strict fact-checking pass
+        do_fact_check = (
+            self.config.fact_check_enabled if fact_check is None else fact_check
+        )
+        if do_fact_check:
+            challenge = await self._verify_and_refine_facts(challenge, language)
 
         # Normalize total count and tier colors if needed
         color_map = {

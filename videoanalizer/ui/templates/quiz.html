@@ -141,6 +141,55 @@
             </div>
           </div>
 
+          <!-- Neural Creativity (Temperature) & 2-Stage Fact-Checking -->
+          <div class="space-y-2.5 pt-2 border-t border-white/[0.06]">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-medium text-slate-300 flex items-center space-x-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>Оригинальность и креатив (Температура ИИ)</span>
+              </label>
+              <span id="temp-badge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                0.95 (Креативный рандом)
+              </span>
+            </div>
+            <div class="flex items-center space-x-3">
+              <input 
+                type="range" 
+                id="temperature-slider" 
+                min="0.2" 
+                max="1.2" 
+                step="0.05" 
+                value="0.95" 
+                oninput="updateTempBadge(this.value); saveSettings();"
+                class="flex-1 accent-amber-500 cursor-pointer h-1.5 bg-black/50 rounded-lg appearance-none"
+              />
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-400 px-0.5 font-mono">
+              <span>0.2 Строгие факты</span>
+              <span>0.7 Баланс</span>
+              <span class="text-amber-400 font-bold">0.95 Оригинальные факты</span>
+              <span>1.2 Хаос</span>
+            </div>
+
+            <!-- Two-Pass Fact Checking Toggle -->
+            <div class="flex items-center justify-between pt-1">
+              <label class="flex items-center space-x-2.5 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  id="fact-check-toggle" 
+                  checked 
+                  class="w-4 h-4 rounded text-emerald-500 bg-black/40 border-white/[0.2] focus:ring-emerald-500 focus:ring-offset-0 transition-all cursor-pointer"
+                  onchange="saveSettings()"
+                />
+                <span class="text-xs font-medium text-slate-200 flex items-center space-x-1.5">
+                  <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  <span>Строгая нейропроверка фактов (2-й прогон T=0.1)</span>
+                </span>
+              </label>
+              <span class="text-[10px] text-slate-400 font-mono">Анти-миф фильтр</span>
+            </div>
+          </div>
+
           <!-- Background Video Selector -->
           <div class="space-y-1.5 pt-1">
             <div class="flex items-center justify-between">
@@ -410,6 +459,18 @@
       }
     }
 
+    function updateTempBadge(val) {
+      const num = parseFloat(val);
+      const badge = document.getElementById('temp-badge');
+      if (!badge) return;
+      let label = 'Баланс';
+      if (num <= 0.4) label = 'Строгие факты';
+      else if (num <= 0.75) label = 'Классика';
+      else if (num <= 1.0) label = 'Креативный рандом';
+      else label = 'Макс. оригинальность';
+      badge.textContent = `${num.toFixed(2)} (${label})`;
+    }
+
     function saveSettings() {
       const settings = {
         language: document.getElementById('language-select')?.value,
@@ -423,6 +484,8 @@
         timerEnabled: document.getElementById('timer-toggle')?.checked ?? true,
         streakEnabled: document.getElementById('streak-toggle')?.checked ?? true,
         trapEnabled: document.getElementById('trap-toggle')?.checked ?? true,
+        temperature: document.getElementById('temperature-slider') ? parseFloat(document.getElementById('temperature-slider').value) : 0.95,
+        factCheckEnabled: document.getElementById('fact-check-toggle')?.checked ?? true,
       };
       try {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -471,6 +534,13 @@
       }
       if (typeof s.trapEnabled === 'boolean' && document.getElementById('trap-toggle')) {
         document.getElementById('trap-toggle').checked = s.trapEnabled;
+      }
+      if (typeof s.temperature === 'number' && document.getElementById('temperature-slider')) {
+        document.getElementById('temperature-slider').value = s.temperature;
+        updateTempBadge(s.temperature);
+      }
+      if (typeof s.factCheckEnabled === 'boolean' && document.getElementById('fact-check-toggle')) {
+        document.getElementById('fact-check-toggle').checked = s.factCheckEnabled;
       }
     }
 
@@ -618,6 +688,10 @@
       const topic = document.getElementById('topic-input').value.trim();
       const language = document.getElementById('language-select').value;
       const previewBtn = document.getElementById('preview-btn');
+      const tempSlider = document.getElementById('temperature-slider');
+      const factCheckToggle = document.getElementById('fact-check-toggle');
+      const temperature = tempSlider ? parseFloat(tempSlider.value) : 0.95;
+      const factCheck = factCheckToggle ? factCheckToggle.checked : true;
 
       if (!topic) {
         alert('Пожалуйста, укажите тему викторины!');
@@ -627,13 +701,20 @@
       previewBtn.disabled = true;
       previewBtn.classList.add('opacity-50', 'cursor-not-allowed');
       const origHtml = previewBtn.innerHTML;
-      previewBtn.innerHTML = '<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></span><span>ИИ генерирует 9 вопросов...</span>';
+      previewBtn.innerHTML = factCheck
+        ? '<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></span><span>1/2 Креатив → 2/2 Факт-чекинг...</span>'
+        : '<span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></span><span>ИИ генерирует 9 вопросов...</span>';
 
       try {
         const resp = await fetch('/api/v1/quiz/preview-questions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic, language })
+          body: JSON.stringify({
+            topic,
+            language,
+            temperature,
+            fact_check: factCheck,
+          })
         });
 
         if (!resp.ok) {
@@ -1028,7 +1109,9 @@
             rank_bar_enabled: document.getElementById('rank-toggle')?.checked ?? true,
             stress_timer_enabled: document.getElementById('timer-toggle')?.checked ?? true,
             streak_fire_enabled: document.getElementById('streak-toggle')?.checked ?? true,
-            comment_trap_enabled: document.getElementById('trap-toggle')?.checked ?? true
+            comment_trap_enabled: document.getElementById('trap-toggle')?.checked ?? true,
+            temperature: document.getElementById('temperature-slider') ? parseFloat(document.getElementById('temperature-slider').value) : 0.95,
+            fact_check: document.getElementById('fact-check-toggle')?.checked ?? true
           })
         });
 

@@ -118,6 +118,19 @@
 - [x] T033 Align subtitles with voice in `KaraokeCaptions.tsx`: remove negative offset and calibrate subtitle appearance delay so words sync perfectly with spoken voice; remove unstable `rate="+20%"` in `audio_service.py`
 - [x] T034 Validate changes with `npm.cmd run typecheck`, pytest test suite, and ruff checks
 
+---
+
+## Phase 8: Two-Stage Creative Generation & Strict Fact-Checking Pipeline
+
+**Purpose**: Реализация двухэтапного пайплайна: первичная высокотемпературная ($T=0.95$) генерация оригинальных фактов и парадоксов + вторичный низкотемпературный ($T=0.1$) строгий факт-чекинг для устранения мифов и неточностей.
+
+- [x] T035 [P] Implement `verify_and_refine_facts` with `FACT_CHECK_SYSTEM_PROMPT` ($T=0.1$) in `videoanalizer/quiz/script_service.py`
+- [x] T036 Update `QuizConfig` in `videoanalizer/quiz/config.py` with `creative_temperature: float = 0.95`, `verifier_temperature: float = 0.1`, and `fact_check_enabled: bool = True`
+- [x] T037 Update API routes and schemas in `videoanalizer/api/routes_quiz.py` (`QuizPreviewRequest`, `QuizGenerateRequest`)
+- [x] T038 Update Web UI in `videoanalizer/ui/templates/quiz.html` with temperature slider/preset selector, fact-check toggle, and 2-stage status indicator
+- [x] T039 Add unit tests for fact-checking pass and verifier corrections in `tests/unit/quiz/test_script_service.py`
+- [x] T040 Verify end-to-end with pytest, TypeScript typecheck, and ruff linter
+
 
 ---
 

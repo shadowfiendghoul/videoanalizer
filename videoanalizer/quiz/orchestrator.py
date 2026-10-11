@@ -212,6 +212,8 @@ class QuizOrchestrator:
         banner_video: Path | str | None = None,
         challenge: QuizChallenge | None = None,
         retention_config: QuizRetentionConfig | None = None,
+        creative_temperature: float | None = None,
+        fact_check: bool | None = None,
     ) -> Path:
         """Run the full end-to-end quiz short generation pipeline."""
         self.config.output_dir.mkdir(parents=True, exist_ok=True)
@@ -321,6 +323,8 @@ class QuizOrchestrator:
                     topic=topic,
                     language=language,
                     workspace=workspace,
+                    creative_temperature=creative_temperature,
+                    fact_check=fact_check,
                 )
 
             # Ensure image paths in challenge are staged and relative to public directory

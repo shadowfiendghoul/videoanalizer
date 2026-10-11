@@ -69,6 +69,25 @@ class QuizConfig(BaseSettings):
         validation_alias="QUIZ_GEMINI_MODEL",
         description="Gemini model for quiz generation.",
     )
+    creative_temperature: float = Field(
+        default=0.95,
+        ge=0.0,
+        le=2.0,
+        validation_alias="QUIZ_CREATIVE_TEMPERATURE",
+        description="Sampling temperature for creative initial quiz generation (0.7-1.1).",
+    )
+    verifier_temperature: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=1.0,
+        validation_alias="QUIZ_VERIFIER_TEMPERATURE",
+        description="Strict sampling temperature for fact-checking verifier pass (0.0-0.2).",
+    )
+    fact_check_enabled: bool = Field(
+        default=True,
+        validation_alias="QUIZ_FACT_CHECK_ENABLED",
+        description="Whether to run the strict secondary fact-checking verifier pass.",
+    )
 
     default_voices: dict[str, str] = Field(
         default={
