@@ -14,7 +14,6 @@ from pathlib import Path
 
 from videoanalizer.media.uniquifier import VideoUniquifierConfig, apply_video_uniquifier
 from videoanalizer.quiz.audio_service import AudioService
-from videoanalizer.quiz.build_cache import RemotionBundleManager
 from videoanalizer.quiz.config import QuizConfig, ensure_system_paths, get_quiz_config
 from videoanalizer.quiz.image_service import ImageService
 from videoanalizer.quiz.models import (
@@ -256,21 +255,6 @@ class QuizOrchestrator:
                             )
                             q.local_image_path = None
 
-    async def _ensure_bundle_safe(self) -> Path | None:
-        """Safely ensure Remotion bundle is built/cached without failing tests on mocked dirs."""
-        if not self.config.enable_bundle_cache:
-            return None
-        try:
-            bundle_mgr = RemotionBundleManager(self.config.remotion_dir)
-            if bundle_mgr.is_bundle_ready():
-                return bundle_mgr.bundle_dir
-            if (self.config.remotion_dir / "src" / "index.ts").exists():
-                return await asyncio.to_thread(bundle_mgr.ensure_bundle)
-            return None
-        except Exception as e:
-            logger.warning("Bundle cache check/build skipped: %s", e)
-            return None
-
     def _resolve_node_binary(self) -> str:
         """Locate the Node.js binary across system PATH and known Windows locations."""
         ensure_system_paths()
@@ -293,7 +277,6 @@ class QuizOrchestrator:
         public_dir: Path,
         output_path: Path,
         profile: RenderProfile | None = None,
-        bundle_dir: Path | None = None,
     ) -> list[str]:
         """Construct the Remotion CLI rendering command."""
         node_bin = self._resolve_node_binary()
@@ -311,18 +294,10 @@ class QuizOrchestrator:
         # Dynamic concurrency: scaled to 75-80% CPU logical cores with RAM quota guard
         concurrency = calculate_optimal_concurrency(effective_profile)
 
-        # Pre-built Webpack bundle reuse: bypass compilation if bundle index.html exists
-        entry_point = "src/index.ts"
-        if bundle_dir and (bundle_dir / "index.html").exists():
-            entry_point = str(bundle_dir.resolve())
-        elif self.config.enable_bundle_cache:
-            default_bundle = remotion_dir / "build"
-            if (default_bundle / "index.html").exists():
-                entry_point = str(default_bundle.resolve())
-
+        # Entry point is always src/index.ts so Remotion serves dynamic --public-dir assets
         args = [
             "render",
-            entry_point,
+            "src/index.ts",
             "QuizChallenge",
             str(abs_output),
             f"--props={abs_props}",
@@ -355,7 +330,6 @@ class QuizOrchestrator:
         output_path: Path,
         progress_callback: Callable[[int, str], None] | None = None,
         profile: RenderProfile | None = None,
-        bundle_dir: Path | None = None,
     ) -> None:
         """Execute Remotion CLI subprocess to render MP4 with real-time streaming."""
         ensure_system_paths()
@@ -365,7 +339,6 @@ class QuizOrchestrator:
             public_dir=public_dir,
             output_path=output_path,
             profile=effective_profile,
-            bundle_dir=bundle_dir,
         )
 
         caps = get_hardware_capabilities()
@@ -488,7 +461,6 @@ class QuizOrchestrator:
                     output_path=output_path,
                     progress_callback=progress_callback,
                     profile=RenderProfile.CPU_SAFE,
-                    bundle_dir=bundle_dir,
                 )
             raise RuntimeError(
                 f"Remotion render failed (code {process.returncode}):\n{err_msg}\n{out_msg}"
@@ -615,9 +587,9 @@ class QuizOrchestrator:
                     topic,
                 )
 
-            # 4. Concurrent Data Pipeline: Parallelize TTS, images, media, and bundle cache
+            # 4. Concurrent Data Pipeline: Parallelize TTS, images, and media assets
             if progress_callback:
-                progress_callback(25, "Параллельная подготовка аудио, медиа-ассетов и бандла...")
+                progress_callback(25, "Параллельная подготовка аудио и медиа-ассетов...")
 
             target_bg = public_dir / "background.mp4"
 
@@ -636,23 +608,20 @@ class QuizOrchestrator:
             task_bg = asyncio.to_thread(self._prepare_background, bg_source, target_bg, 120.0)
             task_banner = asyncio.to_thread(self._prepare_banner, banner_video, public_dir)
             task_music = asyncio.to_thread(self._prepare_music, background_music, public_dir)
-            task_bundle = self._ensure_bundle_safe()
 
-            logger.info("Awaiting concurrent completion of TTS, assets, and bundle cache")
+            logger.info("Awaiting concurrent completion of TTS and media assets")
             (
                 cue_sheet,
                 _,
                 staged_bg_name,
                 (staged_banner_name, banner_dur_frames),
                 staged_music_name,
-                bundle_dir,
             ) = await asyncio.gather(
                 task_audio,
                 task_images,
                 task_bg,
                 task_banner,
                 task_music,
-                task_bundle,
             )
 
             # 5. Normalize cue audio file paths relative to public dir (e.g. "audio/...")
@@ -727,7 +696,6 @@ class QuizOrchestrator:
                 output_path=final_output_path,
                 progress_callback=progress_callback,
                 profile=render_profile,
-                bundle_dir=bundle_dir,
             )
 
         if not final_output_path.exists() or final_output_path.stat().st_size == 0:

@@ -499,7 +499,7 @@ async def test_orchestrator_render_remotion_times_out_when_configured(tmp_path: 
 
 @pytest.mark.asyncio
 async def test_orchestrator_build_remotion_command_bundle_reuse(tmp_path: Path) -> None:
-    """Verify that _build_remotion_command prioritizes pre-built bundle when index.html exists."""
+    """Verify _build_remotion_command uses src/index.ts for dynamic public assets."""
     config = QuizConfig(
         output_dir=tmp_path / "outputs",
         temp_dir=tmp_path / "temp",
@@ -507,27 +507,14 @@ async def test_orchestrator_build_remotion_command_bundle_reuse(tmp_path: Path) 
     )
     orchestrator = QuizOrchestrator(config=config)
 
-    # 1. Without bundle -> uses src/index.ts
-    cmd1 = orchestrator._build_remotion_command(
+    cmd = orchestrator._build_remotion_command(
         props_path=tmp_path / "props.json",
         public_dir=tmp_path / "public",
         output_path=tmp_path / "out.mp4",
     )
-    assert "src/index.ts" in cmd1
-
-    # 2. With bundle directory containing index.html -> uses bundle path
-    fake_bundle = tmp_path / "remotion" / "build"
-    fake_bundle.mkdir(parents=True)
-    (fake_bundle / "index.html").write_text("<html></html>", encoding="utf-8")
-
-    cmd2 = orchestrator._build_remotion_command(
-        props_path=tmp_path / "props.json",
-        public_dir=tmp_path / "public",
-        output_path=tmp_path / "out.mp4",
-        bundle_dir=fake_bundle,
-    )
-    assert str(fake_bundle.resolve()) in cmd2
-    assert "src/index.ts" not in cmd2
+    assert "src/index.ts" in cmd
+    assert "--bundle-cache" in cmd
+    assert any(arg.startswith("--concurrency=") for arg in cmd)
 
 
 @pytest.mark.asyncio
