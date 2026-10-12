@@ -294,7 +294,6 @@ class QuizOrchestrator:
         # Dynamic concurrency: scaled to 75-80% CPU logical cores with RAM quota guard
         concurrency = calculate_optimal_concurrency(effective_profile)
 
-        # Entry point is always src/index.ts so Remotion serves dynamic --public-dir assets
         args = [
             "render",
             "src/index.ts",
