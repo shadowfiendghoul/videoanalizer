@@ -71,13 +71,13 @@ export const QuestionLadder: React.FC<QuestionLadderProps> = ({
             }}
           >
             {isRed ? (
-              <span className="inline-flex items-center justify-center w-14 h-14 rounded-full border-2 border-white bg-red-600 text-white text-3xl font-black mr-3 shadow-lg flex-shrink-0">
+              <span className="inline-flex items-center justify-center w-16 h-16 rounded-full border-3 border-white bg-red-600 text-white text-4xl font-black mr-4 shadow-xl flex-shrink-0">
                 9
               </span>
             ) : (
               <span
                 style={{ color: numberColor }}
-                className="font-black mr-3 w-12 text-left flex-shrink-0 text-3xl"
+                className="font-black mr-4 w-16 text-left flex-shrink-0 text-5xl leading-none"
               >
                 {num}.
               </span>

@@ -571,7 +571,7 @@ class AudioService:
                 q_speech = (
                     q.question_text
                     if q.question_text.lower().startswith("вопрос")
-                    else f"Вопрос номер {n_str}. {q.question_text}"
+                    else f"Вопрос номер {n_str}, {q.question_text}"
                 )
                 a_speech = (
                     q.correct_answer
@@ -594,7 +594,7 @@ class AudioService:
                 q_speech = (
                     q.question_text
                     if q.question_text.lower().startswith("question")
-                    else f"Question number {n_str}. {q.question_text}"
+                    else f"Question number {n_str}, {q.question_text}"
                 )
                 a_speech = (
                     q.correct_answer
@@ -622,11 +622,10 @@ class AudioService:
             reveal_frame = think_start_frame + think_frames
             ans_frames = max(1, int(ans_dur_ms * fps / 1000))
 
-            # Generous reveal hold duration so the viewer can comfortably read the answer:
-            # Hold for at least 2.2 seconds (or answer voiceover + 1.2s padding),
-            # ensuring the answer never flashes for just a fraction of a second.
-            min_reveal_frames = int(2.2 * fps)
-            hold_padding_frames = int(1.2 * fps)
+            # Snappy reveal hold duration: comfortable to see the answer and visual illustration
+            # without sluggish dead air before the next question begins (0.4s padding, min 1.25s)
+            min_reveal_frames = int(1.25 * fps)
+            hold_padding_frames = int(0.4 * fps)
             reveal_duration_frames = max(min_reveal_frames, ans_frames + hold_padding_frames)
             end_frame = reveal_frame + reveal_duration_frames
             current_frame = end_frame
