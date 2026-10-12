@@ -142,9 +142,16 @@ class QuizConfig(BaseSettings):
         default=1920,
         description="Render height in pixels.",
     )
-    render_timeout_sec: int = Field(
-        default=900,
-        description="Maximum seconds before timing out Remotion rendering subprocess.",
+    render_timeout_sec: int | None = Field(
+        default=None,
+        description=(
+            "Maximum seconds before timing out Remotion rendering subprocess. "
+            "Set None or 0 to disable."
+        ),
+    )
+    remotion_delay_render_timeout_ms: int = Field(
+        default=3600000,
+        description="Puppeteer delayRender timeout in ms for Remotion CLI (>=7000ms).",
     )
 
     @property

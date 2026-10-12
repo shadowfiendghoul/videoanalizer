@@ -151,7 +151,7 @@ class QuizOrchestrator:
             f"--props={abs_props}",
             f"--public-dir={abs_public}",
             f"--concurrency={concurrency}",
-            "--timeout=120000",
+            f"--timeout={self.config.remotion_delay_render_timeout_ms}",
             "--x264-preset=faster",
             "--overwrite",
         ]
@@ -241,14 +241,18 @@ class QuizOrchestrator:
             try:
                 assert process.stdout is not None
                 assert process.stderr is not None
-                await asyncio.wait_for(
-                    asyncio.gather(
-                        read_stream(process.stdout, False),
-                        read_stream(process.stderr, True),
-                        process.wait(),
-                    ),
-                    timeout=self.config.render_timeout_sec,
+                gather_coro = asyncio.gather(
+                    read_stream(process.stdout, False),
+                    read_stream(process.stderr, True),
+                    process.wait(),
                 )
+                if self.config.render_timeout_sec and self.config.render_timeout_sec > 0:
+                    await asyncio.wait_for(
+                        gather_coro,
+                        timeout=self.config.render_timeout_sec,
+                    )
+                else:
+                    await gather_coro
             except TimeoutError as exc:
                 process.kill()
                 raise TimeoutError(

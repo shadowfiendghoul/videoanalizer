@@ -113,6 +113,7 @@ async def test_orchestrator_build_remotion_command(tmp_path: Path) -> None:
     assert f"--public-dir={public_dir.resolve()}" in cmd_str
     assert str(output_path.resolve()) in cmd_str
     assert "--concurrency=" in cmd_str
+    assert f"--timeout={config.remotion_delay_render_timeout_ms}" in cmd_str
     assert "--overwrite" in cmd_str
 
 
@@ -424,6 +425,69 @@ async def test_orchestrator_generate_with_progress_callback(tmp_path: Path) -> N
     assert 100 in percentages
     # Ensure percentages are monotonically non-decreasing
     assert percentages == sorted(percentages)
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_render_remotion_no_timeout_by_default(tmp_path: Path) -> None:
+    """Verify that by default render_timeout_sec is None and wait_for is not invoked."""
+    config = QuizConfig(
+        output_dir=tmp_path / "outputs",
+        temp_dir=tmp_path / "temp",
+        remotion_dir=tmp_path / "remotion",
+    )
+    assert config.render_timeout_sec is None
+    assert config.remotion_delay_render_timeout_ms == 3600000
+
+    orchestrator = QuizOrchestrator(config=config)
+    mock_process = AsyncMock()
+    mock_process.stdout = AsyncMock()
+    mock_process.stdout.readline = AsyncMock(side_effect=[b"rendered 10/10\n", b""])
+    mock_process.stderr = AsyncMock()
+    mock_process.stderr.readline = AsyncMock(side_effect=[b""])
+    mock_process.wait = AsyncMock(return_value=0)
+    mock_process.returncode = 0
+
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_process),
+        patch("asyncio.wait_for", new_callable=AsyncMock) as mock_wait_for,
+    ):
+        await orchestrator._render_remotion(
+            props_path=tmp_path / "props.json",
+            public_dir=tmp_path / "public",
+            output_path=tmp_path / "out.mp4",
+        )
+        mock_wait_for.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_render_remotion_times_out_when_configured(tmp_path: Path) -> None:
+    """Verify that render_timeout_sec raises TimeoutError and terminates process if exceeded."""
+    config = QuizConfig(
+        output_dir=tmp_path / "outputs",
+        temp_dir=tmp_path / "temp",
+        remotion_dir=tmp_path / "remotion",
+        render_timeout_sec=5,
+    )
+    orchestrator = QuizOrchestrator(config=config)
+    mock_process = AsyncMock()
+    mock_process.stdout = AsyncMock()
+    mock_process.stdout.readline = AsyncMock(side_effect=[b""])
+    mock_process.stderr = AsyncMock()
+    mock_process.stderr.readline = AsyncMock(side_effect=[b""])
+    mock_process.wait = AsyncMock()
+    mock_process.kill = MagicMock()
+
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_process),
+        patch("asyncio.wait_for", side_effect=TimeoutError()),
+    ):
+        with pytest.raises(TimeoutError, match="Remotion render timed out after 5 seconds"):
+            await orchestrator._render_remotion(
+                props_path=tmp_path / "props.json",
+                public_dir=tmp_path / "public",
+                output_path=tmp_path / "out.mp4",
+            )
+        mock_process.kill.assert_called_once()
 
 
 
