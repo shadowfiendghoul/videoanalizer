@@ -14,10 +14,10 @@ from pathlib import Path
 
 from videoanalizer.media.uniquifier import VideoUniquifierConfig, apply_video_uniquifier
 from videoanalizer.quiz.audio_service import AudioService
+from videoanalizer.quiz.build_cache import RemotionBundleManager
 from videoanalizer.quiz.config import QuizConfig, ensure_system_paths, get_quiz_config
 from videoanalizer.quiz.image_service import ImageService
 from videoanalizer.quiz.models import (
-    AudioCueSheet,
     QuizChallenge,
     QuizRetentionConfig,
     RemotionRenderProps,
@@ -26,7 +26,10 @@ from videoanalizer.quiz.models import (
 )
 from videoanalizer.quiz.script_service import ScriptService
 from videoanalizer.quiz.workspace import QuizWorkspace
-from videoanalizer.utils.hardware import get_hardware_capabilities
+from videoanalizer.utils.hardware import (
+    calculate_optimal_concurrency,
+    get_hardware_capabilities,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +111,166 @@ class QuizOrchestrator:
             logger.warning("Could not probe video duration for %s: %s", video_path, exc)
             return fps * 5
 
+    def _prepare_background(
+        self, bg_source: Path, target_bg: Path, duration_sec: float = 120.0
+    ) -> str:
+        """Stage background video into public dir with continuous stream loop."""
+        ensure_system_paths()
+        ffmpeg_bin = shutil.which("ffmpeg")
+        looped = False
+        if ffmpeg_bin:
+            try:
+                cmd_loop = [
+                    ffmpeg_bin,
+                    "-y",
+                    "-stream_loop",
+                    "-1",
+                    "-i",
+                    str(bg_source),
+                    "-t",
+                    f"{duration_sec:.1f}",
+                    "-c",
+                    "copy",
+                    str(target_bg),
+                ]
+                subprocess.run(cmd_loop, capture_output=True, check=True)  # noqa: S603
+                looped = True
+            except Exception as loop_err:
+                logger.warning(
+                    "FFmpeg stream loop failed (%s), falling back to copy", loop_err
+                )
+        if not looped:
+            shutil.copy2(bg_source, target_bg)
+        return target_bg.name
+
+    def _prepare_banner(
+        self, banner_video: Path | str | None, public_dir: Path
+    ) -> tuple[str | None, int | None]:
+        """Stage optional promo banner and probe frame duration."""
+        if not banner_video:
+            return None, None
+
+        banner_path = Path(banner_video)
+        if not banner_path.is_file():
+            alt_path = self.config.banners_dir / banner_video
+            if alt_path.is_file():
+                banner_path = alt_path
+
+        if not banner_path.is_file():
+            logger.warning("Banner video '%s' not found, skipping banner", banner_video)
+            return None, None
+
+        banner_ext = banner_path.suffix.lower() or ".mp4"
+        staged_banner_name = f"banner{banner_ext}"
+        staged_banner_target = public_dir / staged_banner_name
+        shutil.copy2(banner_path, staged_banner_target)
+
+        banner_dur_frames = self._probe_video_duration_frames(
+            banner_path, fps=self.config.fps
+        )
+        return staged_banner_name, banner_dur_frames
+
+    def _prepare_music(
+        self, background_music: Path | str | None, public_dir: Path
+    ) -> str | None:
+        """Stage optional background music file into public directory."""
+        if not background_music:
+            return None
+
+        music_path = Path(background_music)
+        if not music_path.is_file():
+            alt_path = self.config.music_dir / background_music
+            if alt_path.is_file():
+                music_path = alt_path
+
+        if not music_path.is_file():
+            logger.warning("Background music '%s' not found, skipping music", background_music)
+            return None
+
+        music_ext = music_path.suffix.lower() or ".mp3"
+        staged_music_name = f"music{music_ext}"
+        staged_music_target = public_dir / staged_music_name
+        shutil.copy2(music_path, staged_music_target)
+        logger.info("Background music staged: %s", staged_music_name)
+        return staged_music_name
+
+    async def _prepare_challenge_images(
+        self, challenge: QuizChallenge, workspace: QuizWorkspace, images_dir: Path
+    ) -> None:
+        """Download and stage visual trivia images concurrently for all questions."""
+        image_tasks = []
+        target_items = []
+        for item in challenge.all_questions():
+            has_local_file = False
+            if item.local_image_path:
+                p = Path(item.local_image_path)
+                if p.exists() and p.is_file():
+                    has_local_file = True
+
+            if (item.image_url or item.image_query) and not has_local_file:
+                dest = workspace.get_image_path(f"q_{item.question_number}.png")
+                if item.image_url:
+                    image_tasks.append(
+                        self.script_service._download_and_verify_url(item.image_url, dest)
+                    )
+                else:
+                    image_tasks.append(
+                        self.image_service.search_and_download(item.image_query, dest)
+                    )
+                target_items.append(item)
+
+        if image_tasks:
+            results = await asyncio.gather(*image_tasks, return_exceptions=True)
+            for item, res in zip(target_items, results, strict=False):
+                if isinstance(res, Path) and res.exists():
+                    item.local_image_path = str(res)
+                else:
+                    item.local_image_path = None
+
+        for tier in challenge.tiers:
+            for q in tier.questions:
+                if q.local_image_path:
+                    local_p = Path(q.local_image_path)
+                    if not local_p.is_absolute():
+                        if (images_dir / local_p.name).exists():
+                            q.local_image_path = f"images/{local_p.name}"
+                            continue
+                        ws_candidate = workspace.get_image_path(local_p.name)
+                        if ws_candidate.exists():
+                            local_p = ws_candidate
+
+                    if local_p.exists() and local_p.is_file():
+                        target_img = images_dir / local_p.name
+                        if not target_img.exists():
+                            shutil.copy2(local_p, target_img)
+                        q.local_image_path = f"images/{local_p.name}"
+                    else:
+                        target_img = images_dir / local_p.name
+                        if target_img.exists():
+                            q.local_image_path = f"images/{target_img.name}"
+                        else:
+                            logger.warning(
+                                "Image file for question %d not found: %s",
+                                q.question_number,
+                                q.local_image_path,
+                            )
+                            q.local_image_path = None
+
+    async def _ensure_bundle_safe(self) -> Path | None:
+        """Safely ensure Remotion bundle is built/cached without failing tests on mocked dirs."""
+        if not self.config.enable_bundle_cache:
+            return None
+        try:
+            bundle_mgr = RemotionBundleManager(self.config.remotion_dir)
+            if bundle_mgr.is_bundle_ready():
+                return bundle_mgr.bundle_dir
+            if (self.config.remotion_dir / "src" / "index.ts").exists():
+                return await asyncio.to_thread(bundle_mgr.ensure_bundle)
+            return None
+        except Exception as e:
+            logger.warning("Bundle cache check/build skipped: %s", e)
+            return None
+
     def _resolve_node_binary(self) -> str:
         """Locate the Node.js binary across system PATH and known Windows locations."""
         ensure_system_paths()
@@ -130,6 +293,7 @@ class QuizOrchestrator:
         public_dir: Path,
         output_path: Path,
         profile: RenderProfile | None = None,
+        bundle_dir: Path | None = None,
     ) -> list[str]:
         """Construct the Remotion CLI rendering command."""
         node_bin = self._resolve_node_binary()
@@ -144,16 +308,21 @@ class QuizOrchestrator:
 
         effective_profile = profile or self.config.render_profile
 
-        # Dynamic concurrency: in GPU_FAST mode, GPU rasterization offloads CPU
-        cpu_count = os.cpu_count() or 4
-        if effective_profile == RenderProfile.GPU_FAST:
-            concurrency = min(8, max(4, cpu_count))
-        else:
-            concurrency = min(6, max(2, cpu_count // 2 if cpu_count >= 6 else cpu_count - 1))
+        # Dynamic concurrency: scaled to 75-80% CPU logical cores with RAM quota guard
+        concurrency = calculate_optimal_concurrency(effective_profile)
+
+        # Pre-built Webpack bundle reuse: bypass compilation if bundle index.html exists
+        entry_point = "src/index.ts"
+        if bundle_dir and (bundle_dir / "index.html").exists():
+            entry_point = str(bundle_dir.resolve())
+        elif self.config.enable_bundle_cache:
+            default_bundle = remotion_dir / "build"
+            if (default_bundle / "index.html").exists():
+                entry_point = str(default_bundle.resolve())
 
         args = [
             "render",
-            "src/index.ts",
+            entry_point,
             "QuizChallenge",
             str(abs_output),
             f"--props={abs_props}",
@@ -186,6 +355,7 @@ class QuizOrchestrator:
         output_path: Path,
         progress_callback: Callable[[int, str], None] | None = None,
         profile: RenderProfile | None = None,
+        bundle_dir: Path | None = None,
     ) -> None:
         """Execute Remotion CLI subprocess to render MP4 with real-time streaming."""
         ensure_system_paths()
@@ -195,6 +365,7 @@ class QuizOrchestrator:
             public_dir=public_dir,
             output_path=output_path,
             profile=effective_profile,
+            bundle_dir=bundle_dir,
         )
 
         caps = get_hardware_capabilities()
@@ -317,6 +488,7 @@ class QuizOrchestrator:
                     output_path=output_path,
                     progress_callback=progress_callback,
                     profile=RenderProfile.CPU_SAFE,
+                    bundle_dir=bundle_dir,
                 )
             raise RuntimeError(
                 f"Remotion render failed (code {process.returncode}):\n{err_msg}\n{out_msg}"
@@ -424,44 +596,10 @@ class QuizOrchestrator:
             )
 
 
-            # 3. Generate structured 9-question challenge or use pre-approved challenge
-            if progress_callback:
-                progress_callback(20, "Подготовка вопросов и визуальных подсказок...")
-            if challenge is not None:
-                logger.info(
-                    "Using pre-approved quiz challenge with %d questions for topic: %s",
-                    len(challenge.all_questions()),
-                    topic,
-                )
-                image_tasks = []
-                target_items = []
-                for item in challenge.all_questions():
-                    has_local_file = False
-                    if item.local_image_path:
-                        p = Path(item.local_image_path)
-                        if p.exists() and p.is_file():
-                            has_local_file = True
-
-                    if (item.image_url or item.image_query) and not has_local_file:
-                        dest = workspace.get_image_path(f"q_{item.question_number}.png")
-                        if item.image_url:
-                            image_tasks.append(
-                                self.script_service._download_and_verify_url(item.image_url, dest)
-                            )
-                        else:
-                            image_tasks.append(
-                                self.image_service.search_and_download(item.image_query, dest)
-                            )
-                        target_items.append(item)
-
-                if image_tasks:
-                    results = await asyncio.gather(*image_tasks, return_exceptions=True)
-                    for item, res in zip(target_items, results, strict=False):
-                        if isinstance(res, Path) and res.exists():
-                            item.local_image_path = str(res)
-                        else:
-                            item.local_image_path = None
-            else:
+            # 3. Generate structured 9-question challenge if not already provided
+            if challenge is None:
+                if progress_callback:
+                    progress_callback(20, "Генерация 9 вопросов квиза...")
                 logger.info("Generating 9-question quiz challenge for topic: %s", topic)
                 challenge = await self.script_service.generate_quiz(
                     topic=topic,
@@ -470,51 +608,54 @@ class QuizOrchestrator:
                     creative_temperature=creative_temperature,
                     fact_check=fact_check,
                 )
+            else:
+                logger.info(
+                    "Using pre-approved quiz challenge with %d questions for topic: %s",
+                    len(challenge.all_questions()),
+                    topic,
+                )
 
-            # Ensure image paths in challenge are staged and relative to public directory
-            for tier in challenge.tiers:
-                for q in tier.questions:
-                    if q.local_image_path:
-                        local_p = Path(q.local_image_path)
-                        if not local_p.is_absolute():
-                            if (images_dir / local_p.name).exists():
-                                q.local_image_path = f"images/{local_p.name}"
-                                continue
-                            ws_candidate = workspace.get_image_path(local_p.name)
-                            if ws_candidate.exists():
-                                local_p = ws_candidate
-
-                        if local_p.exists() and local_p.is_file():
-                            target_img = images_dir / local_p.name
-                            if not target_img.exists():
-                                shutil.copy2(local_p, target_img)
-                            # Relative path within public dir e.g. "images/q1.jpg"
-                            q.local_image_path = f"images/{local_p.name}"
-                        else:
-                            target_img = images_dir / local_p.name
-                            if target_img.exists():
-                                q.local_image_path = f"images/{target_img.name}"
-                            else:
-                                logger.warning(
-                                    "Image file for question %d not found: %s",
-                                    q.question_number,
-                                    q.local_image_path,
-                                )
-                                q.local_image_path = None
-
-            # 4. Synthesize synchronized voiceovers and word boundary cue sheet
+            # 4. Concurrent Data Pipeline: Parallelize TTS, images, media, and bundle cache
             if progress_callback:
-                progress_callback(30, "Синтез речи нейросетью Edge-TTS...")
-            logger.info("Synthesizing audio narration and karaoke cues")
-            cue_sheet: AudioCueSheet = await self.audio_service.synthesize_cue_sheet(
+                progress_callback(25, "Параллельная подготовка аудио, медиа-ассетов и бандла...")
+
+            target_bg = public_dir / "background.mp4"
+
+            task_audio = self.audio_service.synthesize_cue_sheet(
                 challenge=challenge,
                 output_dir=audio_dir,
                 voice=voice,
                 retention_config=retention_config,
                 intro_hook=intro_hook,
             )
+            task_images = self._prepare_challenge_images(
+                challenge=challenge,
+                workspace=workspace,
+                images_dir=images_dir,
+            )
+            task_bg = asyncio.to_thread(self._prepare_background, bg_source, target_bg, 120.0)
+            task_banner = asyncio.to_thread(self._prepare_banner, banner_video, public_dir)
+            task_music = asyncio.to_thread(self._prepare_music, background_music, public_dir)
+            task_bundle = self._ensure_bundle_safe()
 
-            # Normalize cue audio file paths to be relative to public dir (e.g. "audio/...")
+            logger.info("Awaiting concurrent completion of TTS, assets, and bundle cache")
+            (
+                cue_sheet,
+                _,
+                staged_bg_name,
+                (staged_banner_name, banner_dur_frames),
+                staged_music_name,
+                bundle_dir,
+            ) = await asyncio.gather(
+                task_audio,
+                task_images,
+                task_bg,
+                task_banner,
+                task_music,
+                task_bundle,
+            )
+
+            # 5. Normalize cue audio file paths relative to public dir (e.g. "audio/...")
             if cue_sheet.intro_hook_audio_file:
                 cue_sheet.intro_hook_audio_file = (
                     f"audio/{Path(cue_sheet.intro_hook_audio_file).name}"
@@ -525,116 +666,35 @@ class QuizOrchestrator:
                 if cue.answer_audio_file:
                     cue.answer_audio_file = f"audio/{Path(cue.answer_audio_file).name}"
 
-            # 5. Stage Background Video into public/background.mp4 with continuous duration loop
-            if progress_callback:
-                progress_callback(38, "Подготовка фонового видеоряда...")
-            staged_bg_name = "background.mp4"
-            target_bg = public_dir / staged_bg_name
-            target_duration_sec = (cue_sheet.total_duration_ms / 1000.0) + 15.0
-
-            ensure_system_paths()
-            ffmpeg_bin = shutil.which("ffmpeg")
-            looped = False
-            if ffmpeg_bin:
-                try:
-                    cmd_loop = [
-                        ffmpeg_bin,
-                        "-y",
-                        "-stream_loop",
-                        "-1",
-                        "-i",
-                        str(bg_source),
-                        "-t",
-                        f"{target_duration_sec:.1f}",
-                        "-c",
-                        "copy",
-                        str(target_bg),
-                    ]
-                    subprocess.run(cmd_loop, capture_output=True, check=True)  # noqa: S603
-                    looped = True
-                except Exception as loop_err:
-                    logger.warning(
-                        "FFmpeg stream loop failed (%s), falling back to copy", loop_err
-                    )
-
-            if not looped:
-                shutil.copy2(bg_source, target_bg)
-
-            # 6. Optional promo banner staging & temporal center positioning
-            staged_banner_name: str | None = None
+            # 6. Apply promo banner temporal offset to cue sheet if staged
             banner_start_frame: int | None = None
             banner_duration_frames: int | None = None
+            if staged_banner_name and banner_dur_frames:
+                total_frames = cue_sheet.total_duration_frames
+                banner_duration_frames = min(banner_dur_frames, total_frames)
+                insert_idx = (
+                    4 if len(cue_sheet.cues) >= 5 else max(1, len(cue_sheet.cues) // 2)
+                )
+                banner_start_frame = cue_sheet.cues[insert_idx - 1].end_frame
 
-            if banner_video:
-                banner_path = Path(banner_video)
-                if not banner_path.is_file():
-                    alt_path = self.config.banners_dir / banner_video
-                    if alt_path.is_file():
-                        banner_path = alt_path
+                for cue in cue_sheet.cues[insert_idx:]:
+                    cue.start_frame += banner_duration_frames
+                    cue.think_start_frame += banner_duration_frames
+                    cue.reveal_frame += banner_duration_frames
+                    cue.end_frame += banner_duration_frames
 
-                if banner_path.is_file():
-                    banner_ext = banner_path.suffix.lower() or ".mp4"
-                    staged_banner_name = f"banner{banner_ext}"
-                    staged_banner_target = public_dir / staged_banner_name
-                    shutil.copy2(banner_path, staged_banner_target)
+                cue_sheet.total_duration_frames += banner_duration_frames
+                cue_sheet.total_duration_ms += int(
+                    banner_duration_frames * 1000 / self.config.fps
+                )
+                logger.info(
+                    "Promo banner integrated into timeline: name=%s, dur_frames=%d, start_frame=%d",
+                    staged_banner_name,
+                    banner_duration_frames,
+                    banner_start_frame,
+                )
 
-                    banner_dur_frames = self._probe_video_duration_frames(
-                        banner_path, fps=self.config.fps
-                    )
-                    total_frames = cue_sheet.total_duration_frames
-                    banner_duration_frames = min(banner_dur_frames, total_frames)
-
-                    # Insert promo banner midway between Level 1 and Level 2 (after Question 4)
-                    insert_idx = (
-                        4 if len(cue_sheet.cues) >= 5 else max(1, len(cue_sheet.cues) // 2)
-                    )
-                    banner_start_frame = cue_sheet.cues[insert_idx - 1].end_frame
-
-                    # Shift all subsequent question cues so quiz pauses completely during banner
-                    for cue in cue_sheet.cues[insert_idx:]:
-                        cue.start_frame += banner_duration_frames
-                        cue.think_start_frame += banner_duration_frames
-                        cue.reveal_frame += banner_duration_frames
-                        cue.end_frame += banner_duration_frames
-
-                    cue_sheet.total_duration_frames += banner_duration_frames
-                    cue_sheet.total_duration_ms += int(
-                        banner_duration_frames * 1000 / self.config.fps
-                    )
-
-                    logger.info(
-                        "Promo banner staged: name=%s, dur_frames=%d, start_frame=%d (total=%d)",
-                        staged_banner_name,
-                        banner_duration_frames,
-                        banner_start_frame,
-                        cue_sheet.total_duration_frames,
-                    )
-                else:
-                    logger.warning(
-                        "Banner video '%s' not found, skipping banner", banner_video
-                    )
-
-            # 7. Optional background music staging
-            staged_music_name: str | None = None
-            if background_music:
-                music_path = Path(background_music)
-                if not music_path.is_file():
-                    alt_path = self.config.music_dir / background_music
-                    if alt_path.is_file():
-                        music_path = alt_path
-
-                if music_path.is_file():
-                    music_ext = music_path.suffix.lower() or ".mp3"
-                    staged_music_name = f"music{music_ext}"
-                    staged_music_target = public_dir / staged_music_name
-                    shutil.copy2(music_path, staged_music_target)
-                    logger.info("Background music staged: %s", staged_music_name)
-                else:
-                    logger.warning(
-                        "Background music '%s' not found, skipping music", background_music
-                    )
-
-            # 8. Assemble RemotionRenderProps
+            # 7. Assemble RemotionRenderProps
             remotion_props = RemotionRenderProps(
                 challenge=challenge,
                 cue_sheet=cue_sheet,
@@ -651,14 +711,13 @@ class QuizOrchestrator:
                 background_music_volume=background_music_volume,
             )
 
-
             props_file = workspace.path / "remotion-props.json"
             props_file.write_text(
                 remotion_props.model_dump_json(indent=2),
                 encoding="utf-8",
             )
 
-            # 7. Execute Remotion CLI render
+            # 8. Execute Remotion CLI render
             if progress_callback:
                 progress_callback(40, "Запуск рендеринга Remotion...")
             logger.info("Rendering final vertical video to %s", final_output_path)
@@ -668,6 +727,7 @@ class QuizOrchestrator:
                 output_path=final_output_path,
                 progress_callback=progress_callback,
                 profile=render_profile,
+                bundle_dir=bundle_dir,
             )
 
         if not final_output_path.exists() or final_output_path.stat().st_size == 0:

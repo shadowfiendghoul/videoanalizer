@@ -68,6 +68,26 @@ class HardwareCapabilities(BaseModel):
         default=True,
         description="Whether persistent Remotion Webpack bundle caching is active.",
     )
+    cpu_logical_cores: int = Field(
+        default=4,
+        description="Number of logical processor cores detected on host.",
+    )
+    ram_total_gb: float = Field(
+        default=8.0,
+        description="Total physical RAM in Gigabytes.",
+    )
+    ram_available_gb: float = Field(
+        default=4.0,
+        description="Available physical RAM in Gigabytes.",
+    )
+    optimal_concurrency: int = Field(
+        default=4,
+        description="Calculated optimal Remotion concurrency (75-80% CPU with OOM guard).",
+    )
+    build_reuse_enabled: bool = Field(
+        default=True,
+        description="Whether Remotion pre-built React bundle caching and reuse is active.",
+    )
 
     @computed_field  # type: ignore[prop-decorator]
     @property

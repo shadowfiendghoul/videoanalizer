@@ -3,10 +3,23 @@
 import asyncio
 import io
 import logging
+import warnings
 from pathlib import Path
 
 import httpx
 from PIL import Image
+
+# Suppress transitional package rename warnings from legacy duckduckgo_search
+warnings.filterwarnings("ignore", message=".*duckduckgo_search.*")
+warnings.filterwarnings("ignore", message=".*renamed to.*")
+
+try:
+    from ddgs import DDGS
+except ImportError:
+    try:
+        from duckduckgo_search import DDGS
+    except ImportError:
+        DDGS = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -19,30 +32,18 @@ class ImageService:
 
     async def _search_image_urls(self, query: str, max_results: int = 3) -> list[dict[str, str]]:
         """Search image URLs using ddgs / duckduckgo_search or search API."""
+        if DDGS is None:
+            return []
+
         try:
-            try:
-                from ddgs import DDGS
-            except ImportError:
-                import warnings
-
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", category=RuntimeWarning)
-                    from duckduckgo_search import DDGS
-
             # Small delay between consecutive image queries to prevent DDG 202 Ratelimit
             await asyncio.sleep(0.35)
 
             loop = asyncio.get_running_loop()
 
             def _search() -> list[dict[str, str]]:
-                import warnings
-
                 with warnings.catch_warnings():
-                    warnings.filterwarnings(
-                        "ignore",
-                        category=RuntimeWarning,
-                        message=".*duckduckgo_search.*",
-                    )
+                    warnings.simplefilter("ignore")
                     with DDGS() as ddgs:
                         return list(ddgs.images(query, max_results=max_results))
 

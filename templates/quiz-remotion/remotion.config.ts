@@ -29,13 +29,15 @@ Config.overrideFfmpegCommand(({ args }) => {
       const presetIdx = newArgs.indexOf("-preset");
       if (presetIdx !== -1) {
         if (hwEncoder === "h264_amf") {
-          newArgs.splice(presetIdx, 2, "-quality", "speed", "-rc", "cbr", "-b:v", "10M");
+          newArgs.splice(presetIdx, 2, "-quality", "speed", "-rc", "cbr", "-b:v", "12M");
         } else if (hwEncoder === "h264_nvenc") {
-          newArgs.splice(presetIdx, 2, "-preset", "p4", "-cq", "19", "-b:v", "10M");
+          newArgs.splice(presetIdx, 2, "-preset", "p1", "-tune", "ull", "-rc", "cbr", "-b:v", "12M");
         } else if (hwEncoder === "h264_qsv") {
-          newArgs.splice(presetIdx, 2, "-global_quality", "20", "-b:v", "10M");
+          newArgs.splice(presetIdx, 2, "-preset", "veryfast", "-b:v", "12M");
+        } else if (hwEncoder === "h264_videotoolbox") {
+          newArgs.splice(presetIdx, 2, "-realtime", "1", "-b:v", "12M");
         } else if (hwEncoder === "h264_mf") {
-          newArgs.splice(presetIdx, 2, "-b:v", "10M");
+          newArgs.splice(presetIdx, 2, "-rate_control", "cbr", "-b:v", "12M");
         }
       }
     }

@@ -1,6 +1,7 @@
 """Hardware acceleration and GPU detection utilities for VideoAnalyzer."""
 
 import logging
+import os
 import platform
 import shutil
 import subprocess
@@ -15,6 +16,7 @@ CANDIDATE_HARDWARE_ENCODERS = [
     ("h264_nvenc", GpuVendor.NVIDIA),
     ("h264_amf", GpuVendor.AMD),
     ("h264_qsv", GpuVendor.INTEL),
+    ("h264_videotoolbox", GpuVendor.APPLE),
     ("h264_mf", GpuVendor.GENERIC_WINDOWS),
 ]
 
@@ -154,6 +156,91 @@ def validate_encoder(encoder_name: str, ffmpeg_bin: str = "ffmpeg") -> bool:
         return False
 
 
+def get_system_memory_mb() -> tuple[int, int]:
+    """Retrieve system physical memory (total_mb, available_mb) cross-platform."""
+    sys_name = platform.system()
+
+    if sys_name == "Windows":
+        try:
+            import ctypes
+
+            class MemoryStatusEx(ctypes.Structure):
+                _fields_ = [
+                    ("dwLength", ctypes.c_ulong),
+                    ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong),
+                    ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("sullAvailExtendedVirtual", ctypes.c_ulonglong),
+                ]
+
+            stat = MemoryStatusEx()
+            stat.dwLength = ctypes.sizeof(MemoryStatusEx)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
+                return (
+                    int(stat.ullTotalPhys // (1024 * 1024)),
+                    int(stat.ullAvailPhys // (1024 * 1024)),
+                )
+        except Exception as e:
+            logger.debug("Win32 memory query failed: %s", e)
+
+    elif sys_name == "Linux":
+        try:
+            mem_total = 0
+            mem_avail = 0
+            with open("/proc/meminfo", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        mem_total = int(line.split()[1]) // 1024
+                    elif line.startswith("MemAvailable:"):
+                        mem_avail = int(line.split()[1]) // 1024
+            if mem_total > 0:
+                return (mem_total, mem_avail or (mem_total // 2))
+        except Exception as e:
+            logger.debug("Linux /proc/meminfo query failed: %s", e)
+
+    elif sys_name == "Darwin":
+        try:
+            cmd = ["sysctl", "-n", "hw.memsize"]
+            proc = subprocess.run(  # noqa: S603
+                cmd, capture_output=True, text=True, timeout=2, check=False
+            )
+            if proc.returncode == 0 and proc.stdout.strip():
+                total_mb = int(proc.stdout.strip()) // (1024 * 1024)
+                return (total_mb, total_mb // 2)
+        except Exception as e:
+            logger.debug("macOS memory query failed: %s", e)
+
+    return (8192, 4096)
+
+
+def calculate_optimal_concurrency(
+    profile: RenderProfile = RenderProfile.GPU_FAST,
+    safety_margin: float = 0.75,
+) -> int:
+    """Dynamically calculate Remotion rendering concurrency based on CPU cores and RAM quota.
+
+    Scales to 75-80% of logical CPU cores with strict memory guarding (~450MB per Chromium tab)
+    to eliminate Out-Of-Memory (OOM) risks.
+    """
+    cores = os.cpu_count() or 4
+    _total_mb, avail_mb = get_system_memory_mb()
+
+    # Memory constraint: ~450MB per headless Chromium tab, reserve 15% headroom
+    max_workers_by_ram = max(2, int((avail_mb * 0.85) // 450))
+
+    if profile == RenderProfile.GPU_FAST:
+        target_cores = max(2, int(cores * safety_margin))
+    else:
+        # In CPU_SAFE mode reserve extra cycles for x264 software encoder
+        target_cores = max(2, int(cores * 0.60))
+
+    return max(2, min(target_cores, max_workers_by_ram))
+
+
 @lru_cache(maxsize=1)
 def get_hardware_capabilities() -> HardwareCapabilities:
     """Probe and return cached host hardware capabilities and optimal video encoder."""
@@ -177,6 +264,10 @@ def get_hardware_capabilities() -> HardwareCapabilities:
     gpu_available = active_encoder is not None
     recommended_profile = RenderProfile.GPU_FAST if gpu_available else RenderProfile.CPU_SAFE
 
+    cpu_cores = os.cpu_count() or 4
+    total_mem_mb, avail_mem_mb = get_system_memory_mb()
+    concurrency = calculate_optimal_concurrency(recommended_profile)
+
     caps = HardwareCapabilities(
         gpu_available=gpu_available,
         gpu_name=gpu_name,
@@ -185,14 +276,24 @@ def get_hardware_capabilities() -> HardwareCapabilities:
         supported_encoders=working_encoders,
         gl_backend="angle" if platform.system() == "Windows" else "egl",
         recommended_profile=recommended_profile,
+        bundle_cache_enabled=True,
+        cpu_logical_cores=cpu_cores,
+        ram_total_gb=round(total_mem_mb / 1024.0, 2),
+        ram_available_gb=round(avail_mem_mb / 1024.0, 2),
+        optimal_concurrency=concurrency,
+        build_reuse_enabled=True,
     )
 
     logger.info(
-        "Hardware capability probe: GPU='%s' (%s), Active Encoder=%s, Profile=%s",
+        "Hardware capability probe: GPU='%s' (%s), Active Encoder=%s, CPU=%d cores, "
+        "RAM=%.1f/%.1f GB, Optimal Concurrency=%d",
         caps.gpu_name,
         caps.gpu_vendor,
         caps.active_hw_encoder or "libx264",
-        caps.recommended_profile,
+        caps.cpu_logical_cores,
+        caps.ram_available_gb,
+        caps.ram_total_gb,
+        caps.optimal_concurrency,
     )
     return caps
 
@@ -201,17 +302,41 @@ def get_active_encoder_args(
     encoder_name: str | None,
     profile: RenderProfile,
 ) -> list[str]:
-    """Generate vendor-tailored FFmpeg encoding quality and bitrate arguments."""
+    """Generate vendor-tailored FFmpeg encoding quality and ultra-fast bitrate arguments."""
     if profile == RenderProfile.CPU_SAFE or not encoder_name or encoder_name == "libx264":
-        return ["-c:v", "libx264", "-preset", "fast", "-crf", "18"]
+        return [
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-tune",
+            "fastdecode",
+            "-threads",
+            "0",
+            "-crf",
+            "20",
+        ]
 
     if encoder_name == "h264_amf":
-        return ["-c:v", "h264_amf", "-quality", "speed", "-rc", "cbr", "-b:v", "10M"]
+        return ["-c:v", "h264_amf", "-quality", "speed", "-rc", "cbr", "-b:v", "12M"]
     if encoder_name == "h264_nvenc":
-        return ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "19", "-b:v", "10M"]
+        return [
+            "-c:v",
+            "h264_nvenc",
+            "-preset",
+            "p1",
+            "-tune",
+            "ull",
+            "-rc",
+            "cbr",
+            "-b:v",
+            "12M",
+        ]
     if encoder_name == "h264_qsv":
-        return ["-c:v", "h264_qsv", "-global_quality", "20", "-b:v", "10M"]
+        return ["-c:v", "h264_qsv", "-preset", "veryfast", "-b:v", "12M"]
+    if encoder_name == "h264_videotoolbox":
+        return ["-c:v", "h264_videotoolbox", "-realtime", "1", "-b:v", "12M"]
     if encoder_name == "h264_mf":
-        return ["-c:v", "h264_mf", "-b:v", "10M"]
+        return ["-c:v", "h264_mf", "-rate_control", "cbr", "-b:v", "12M"]
 
-    return ["-c:v", encoder_name, "-b:v", "10M"]
+    return ["-c:v", encoder_name, "-b:v", "12M"]

@@ -88,11 +88,11 @@
 
 **Purpose**: Автоматическое масштабирование Remotion concurrency под 75–80% логических ядер процессора с предотвращением риска OOM.
 
-- [ ] T026 [MAX] Implement cross-platform memory detection `get_system_memory_mb()` (Win32 GlobalMemoryStatusEx via ctypes, /proc/meminfo, sysctl) in `videoanalizer/utils/hardware.py`
-- [ ] T027 [MAX] Implement `calculate_optimal_concurrency(profile: RenderProfile, safety_margin: float = 0.75) -> int` in `videoanalizer/utils/hardware.py` taking into account CPU threads and RAM quota (~450 MB per tab)
-- [ ] T028 [MAX] Update `HardwareCapabilities` in `videoanalizer/quiz/models.py` to include `cpu_logical_cores`, `ram_total_gb`, `ram_available_gb`, and `optimal_concurrency`
-- [ ] T029 [MAX] Update `_build_remotion_command` in `videoanalizer/quiz/orchestrator.py` to use dynamic `calculate_optimal_concurrency()` instead of hardcoded thread caps
-- [ ] T030 [MAX] Add unit tests in `tests/unit/test_hardware.py` for RAM detection, concurrency scaling across core counts (4, 8, 16, 32), and OOM constraint validation
+- [x] T026 [MAX] Implement cross-platform memory detection `get_system_memory_mb()` (Win32 GlobalMemoryStatusEx via ctypes, /proc/meminfo, sysctl) in `videoanalizer/utils/hardware.py`
+- [x] T027 [MAX] Implement `calculate_optimal_concurrency(profile: RenderProfile, safety_margin: float = 0.75) -> int` in `videoanalizer/utils/hardware.py` taking into account CPU threads and RAM quota (~450 MB per tab)
+- [x] T028 [MAX] Update `HardwareCapabilities` in `videoanalizer/quiz/models.py` to include `cpu_logical_cores`, `ram_total_gb`, `ram_available_gb`, and `optimal_concurrency`
+- [x] T029 [MAX] Update `_build_remotion_command` in `videoanalizer/quiz/orchestrator.py` to use dynamic `calculate_optimal_concurrency()` instead of hardcoded thread caps
+- [x] T030 [MAX] Add unit tests in `tests/unit/test_hardware.py` for RAM detection, concurrency scaling across core counts (4, 8, 16, 32), and OOM constraint validation
 
 ---
 
@@ -100,10 +100,10 @@
 
 **Purpose**: Устранение повторной компиляции Webpack на каждом видео через кэширование и прямой запуск готового бандла.
 
-- [ ] T031 [MAX] Create `videoanalizer/quiz/build_cache.py` with `RemotionBundleManager` calculating source content hashes for `templates/quiz-remotion/src/` and dependencies
-- [ ] T032 [MAX] Implement bundle build and manifest persistence (`.bundle_manifest.json`) in `RemotionBundleManager.ensure_bundle() -> Path`
-- [ ] T033 [MAX] Update `_build_remotion_command` in `videoanalizer/quiz/orchestrator.py` to pass the pre-built bundle directory instead of `src/index.ts`
-- [ ] T034 [MAX] Add unit tests in `tests/unit/quiz/test_build_cache.py` verifying hash detection, manifest verification, and instant bundle resolution
+- [x] T031 [MAX] Create `videoanalizer/quiz/build_cache.py` with `RemotionBundleManager` calculating source content hashes for `templates/quiz-remotion/src/` and dependencies
+- [x] T032 [MAX] Implement bundle build and manifest persistence (`.bundle_manifest.json`) in `RemotionBundleManager.ensure_bundle() -> Path`
+- [x] T033 [MAX] Update `_build_remotion_command` in `videoanalizer/quiz/orchestrator.py` to pass the pre-built bundle directory instead of `src/index.ts`
+- [x] T034 [MAX] Add unit tests in `tests/unit/quiz/test_build_cache.py` verifying hash detection, manifest verification, and instant bundle resolution
 
 ---
 
@@ -111,10 +111,10 @@
 
 **Purpose**: Максимизация пропускной способности кодирования через пресеты наивысшей скорости (NVENC p1, libx264 ultrafast).
 
-- [ ] T035 [MAX] Add Apple VideoToolbox (`h264_videotoolbox`) support to candidate hardware encoders in `videoanalizer/utils/hardware.py`
-- [ ] T036 [MAX] Update `get_active_encoder_args()` in `videoanalizer/utils/hardware.py` with ultra-fast presets: `h264_nvenc` (`-preset p1 -tune ull`), `h264_amf` (`-quality speed`), `h264_qsv` (`-preset veryfast`), `h264_videotoolbox` (`-realtime 1`), and `libx264` (`-preset ultrafast -tune fastdecode -threads 0`)
-- [ ] T037 [MAX] Update `templates/quiz-remotion/remotion.config.ts` to mirror the ultra-fast encoder flags during video stream muxing
-- [ ] T038 [MAX] Add unit tests in `tests/unit/test_hardware.py` ensuring correct generation of ultra-fast rate control parameters and instant fallback to `libx264 ultrafast`
+- [x] T035 [MAX] Add Apple VideoToolbox (`h264_videotoolbox`) support to candidate hardware encoders in `videoanalizer/utils/hardware.py`
+- [x] T036 [MAX] Update `get_active_encoder_args()` in `videoanalizer/utils/hardware.py` with ultra-fast presets: `h264_nvenc` (`-preset p1 -tune ull`), `h264_amf` (`-quality speed`), `h264_qsv` (`-preset veryfast`), `h264_videotoolbox` (`-realtime 1`), and `libx264` (`-preset ultrafast -tune fastdecode -threads 0`)
+- [x] T037 [MAX] Update `templates/quiz-remotion/remotion.config.ts` to mirror the ultra-fast encoder flags during video stream muxing
+- [x] T038 [MAX] Add unit tests in `tests/unit/test_hardware.py` ensuring correct generation of ultra-fast rate control parameters and instant fallback to `libx264 ultrafast`
 
 ---
 
@@ -122,9 +122,9 @@
 
 **Purpose**: Полное распараллеливание подготовки медиа-ассетов, фонов, музыки, баннеров и синтеза речи.
 
-- [ ] T039 [MAX] Refactor asset staging in `videoanalizer/quiz/orchestrator.py`: run `synthesize_cue_sheet`, `prepare_visual_trivia_assets`, `_prepare_background`, `_prepare_music`, `_prepare_banner`, and bundle verification concurrently via `asyncio.gather`
-- [ ] T040 [MAX] Update cue sheet timeline offsets and Remotion props generation to seamlessly consume concurrent asset outcomes
-- [ ] T041 [MAX] Add unit tests in `tests/unit/quiz/test_orchestrator.py` testing concurrent asset pipeline execution and timing resilience
+- [x] T039 [MAX] Refactor asset staging in `videoanalizer/quiz/orchestrator.py`: run `synthesize_cue_sheet`, `prepare_visual_trivia_assets`, `_prepare_background`, `_prepare_music`, `_prepare_banner`, and bundle verification concurrently via `asyncio.gather`
+- [x] T040 [MAX] Update cue sheet timeline offsets and Remotion props generation to seamlessly consume concurrent asset outcomes
+- [x] T041 [MAX] Add unit tests in `tests/unit/quiz/test_orchestrator.py` testing concurrent asset pipeline execution and timing resilience
 
 ---
 
@@ -132,6 +132,6 @@
 
 **Purpose**: Полная валидация качества, стабильности и замер прироста скорости.
 
-- [ ] T042 [MAX] Run full pytest suite `python -m pytest tests/` verifying 100% test pass rate
-- [ ] T043 [MAX] Run `python -m ruff check videoanalizer/ tests/` ensuring zero lint issues
-- [ ] T044 [MAX] Benchmark end-to-end quiz generation time before and after optimizations
+- [x] T042 [MAX] Run full pytest suite `python -m pytest tests/` verifying 100% test pass rate
+- [x] T043 [MAX] Run `python -m ruff check videoanalizer/ tests/` ensuring zero lint issues
+- [x] T044 [MAX] Benchmark end-to-end quiz generation time before and after optimizations

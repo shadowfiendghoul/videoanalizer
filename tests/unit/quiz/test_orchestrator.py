@@ -1,5 +1,6 @@
 """Unit tests for QuizOrchestrator pipeline coordination and CLI command construction."""
 
+import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -494,6 +495,92 @@ async def test_orchestrator_render_remotion_times_out_when_configured(tmp_path: 
                 output_path=tmp_path / "out.mp4",
             )
         mock_process.kill.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_build_remotion_command_bundle_reuse(tmp_path: Path) -> None:
+    """Verify that _build_remotion_command prioritizes pre-built bundle when index.html exists."""
+    config = QuizConfig(
+        output_dir=tmp_path / "outputs",
+        temp_dir=tmp_path / "temp",
+        remotion_dir=tmp_path / "remotion",
+    )
+    orchestrator = QuizOrchestrator(config=config)
+
+    # 1. Without bundle -> uses src/index.ts
+    cmd1 = orchestrator._build_remotion_command(
+        props_path=tmp_path / "props.json",
+        public_dir=tmp_path / "public",
+        output_path=tmp_path / "out.mp4",
+    )
+    assert "src/index.ts" in cmd1
+
+    # 2. With bundle directory containing index.html -> uses bundle path
+    fake_bundle = tmp_path / "remotion" / "build"
+    fake_bundle.mkdir(parents=True)
+    (fake_bundle / "index.html").write_text("<html></html>", encoding="utf-8")
+
+    cmd2 = orchestrator._build_remotion_command(
+        props_path=tmp_path / "props.json",
+        public_dir=tmp_path / "public",
+        output_path=tmp_path / "out.mp4",
+        bundle_dir=fake_bundle,
+    )
+    assert str(fake_bundle.resolve()) in cmd2
+    assert "src/index.ts" not in cmd2
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_concurrent_pipeline_execution(tmp_path: Path) -> None:
+    """Verify that TTS, image downloads, background, and banner execute concurrently."""
+    config = QuizConfig(
+        output_dir=tmp_path / "outputs",
+        temp_dir=tmp_path / "temp",
+        backgrounds_dir=tmp_path / "backgrounds",
+        sfx_dir=tmp_path / "sfx",
+        banners_dir=tmp_path / "banners",
+    )
+    config.backgrounds_dir.mkdir(parents=True, exist_ok=True)
+    config.sfx_dir.mkdir(parents=True, exist_ok=True)
+    (config.backgrounds_dir / "bg.mp4").write_bytes(b"dummy bg")
+    for sfx_name in ("timer_tick.wav", "reveal_ding.wav", "level_up.wav"):
+        (config.sfx_dir / sfx_name).write_bytes(b"dummy sfx")
+
+    orchestrator = QuizOrchestrator(config=config)
+    orchestrator.audio_service = AsyncMock()
+    mock_cue_sheet = make_sample_cue_sheet()
+    orchestrator.audio_service.synthesize_cue_sheet.return_value = mock_cue_sheet
+    orchestrator.audio_service.ensure_default_sfx = MagicMock(
+        return_value=SfxPaths(
+            timer_tick=str(config.sfx_dir / "timer_tick.wav"),
+            reveal_ding=str(config.sfx_dir / "reveal_ding.wav"),
+            level_up=str(config.sfx_dir / "level_up.wav"),
+        )
+    )
+
+    rendered_props_data: dict | None = None
+
+    async def fake_render(props_path: Path, output_path: Path, **kwargs: object) -> None:
+        nonlocal rendered_props_data
+        rendered_props_data = json.loads(props_path.read_text(encoding="utf-8"))
+        output_path.write_bytes(b"rendered mp4")
+
+    challenge = make_sample_challenge()
+
+    with (
+        patch.object(orchestrator, "_render_remotion", side_effect=fake_render),
+        patch.object(orchestrator, "_probe_video_duration_frames", return_value=120),
+    ):
+        result = await orchestrator.generate(
+            topic="History Quiz",
+            challenge=challenge,
+            output_filename="history.mp4",
+        )
+        assert result.exists()
+        assert rendered_props_data is not None
+        assert rendered_props_data["background_video_path"] == "background.mp4"
+        assert len(rendered_props_data["challenge"]["tiers"]) == 3
+
 
 
 
