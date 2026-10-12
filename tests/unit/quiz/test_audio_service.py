@@ -164,3 +164,34 @@ async def test_synthesize_speech_offline_fallback_on_error(tmp_path: Path) -> No
         assert len(words) == 4
         assert words[0].word == "Тестовый"
 
+
+@pytest.mark.asyncio
+async def test_synthesize_speech_voice_profiles(tmp_path: Path) -> None:
+    """Verify custom voice profiles route to edge-tts with appropriate rate/filters."""
+    service = AudioService()
+    test_out = tmp_path / "voice_profile.mp3"
+
+    # Mock edge_tts streaming
+    async def mock_stream(*args: object, **kwargs: object):  # noqa: ANN202
+        yield {"type": "audio", "data": b"mock_audio_data"}
+
+    with (
+        patch("edge_tts.Communicate.stream", side_effect=mock_stream),
+        patch("videoanalizer.quiz.audio_service.probe_audio_duration_ms", return_value=1200),
+        patch("subprocess.run") as mock_subproc,
+    ):
+        dur_ms, _ = await service.synthesize_speech_with_cues(
+            text="Тест голоса",
+            voice="ru-RU-MaleBaritone",
+            output_path=test_out,
+        )
+
+        assert test_out.exists()
+        assert dur_ms == 1200
+        # Check that FFmpeg was invoked to apply acoustic pitch shift filter
+        assert mock_subproc.called
+        cmd = mock_subproc.call_args[0][0]
+        assert "-af" in cmd
+        assert "asetrate=" in cmd[cmd.index("-af") + 1]
+
+

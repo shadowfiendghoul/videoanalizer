@@ -317,13 +317,36 @@ class AudioService:
                     words.append(WordCue(word=tok, start_ms=i * step, end_ms=(i + 1) * step))
             return duration_ms, words
 
-        voices_to_try = [voice]
+        rate_arg = "+0%"
+        af_filter: str | None = None
+        base_voice = voice
 
-        if "ru-" in voice.lower():
-            for ru_voice in ("ru-RU-DmitryNeural", "ru-RU-SvetlanaNeural"):
+        if voice == "ru-RU-SvetlanaEnergetic":
+            base_voice = "ru-RU-SvetlanaNeural"
+            rate_arg = "+15%"
+        elif voice == "ru-RU-MaleBaritone":
+            base_voice = "ru-RU-SvetlanaNeural"
+            af_filter = (
+                "asetrate=44100*0.82,atempo=1/0.82,"
+                "equalizer=f=150:t=q:w=1:g=4,equalizer=f=2500:t=q:w=1:g=2"
+            )
+        elif voice == "ru-RU-EpicAnnouncer":
+            base_voice = "ru-RU-SvetlanaNeural"
+            af_filter = (
+                "asetrate=44100*0.74,atempo=1/0.74,"
+                "equalizer=f=100:t=q:w=1.2:g=7,aecho=0.8:0.7:40:0.25"
+            )
+        elif voice == "ru-RU-ChibiCartoon":
+            base_voice = "ru-RU-SvetlanaNeural"
+            af_filter = "asetrate=44100*1.28,atempo=1/1.28,equalizer=f=3000:t=q:w=1:g=3"
+
+        voices_to_try = [base_voice]
+
+        if "ru-" in base_voice.lower():
+            for ru_voice in ("ru-RU-SvetlanaNeural", "ru-RU-DmitryNeural"):
                 if ru_voice not in voices_to_try:
                     voices_to_try.append(ru_voice)
-        elif "en-" in voice.lower():
+        elif "en-" in base_voice.lower():
             for en_voice in (
                 "en-US-GuyNeural",
                 "en-US-JennyNeural",
@@ -345,7 +368,7 @@ class AudioService:
             max_attempts = 1 if "dmitry" in v.lower() and len(voices_to_try) > 1 else 2
             for attempt in range(max_attempts):
                 try:
-                    communicate = edge_tts.Communicate(tts_text, v)
+                    communicate = edge_tts.Communicate(tts_text, v, rate=rate_arg)
                     audio_bytes.clear()
                     words.clear()
                     async for chunk in communicate.stream():
@@ -394,6 +417,28 @@ class AudioService:
 
         with open(output_path, "wb") as f:
             f.write(audio_bytes)
+
+        if af_filter:
+            ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+            filtered_target = output_path.with_name(f"flt_{output_path.name}")
+            try:
+                subprocess.run(  # noqa: S603
+                    [
+                        ffmpeg_bin,
+                        "-y",
+                        "-i",
+                        str(output_path),
+                        "-af",
+                        af_filter,
+                        str(filtered_target),
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
+                if filtered_target.exists():
+                    shutil.move(str(filtered_target), str(output_path))
+            except Exception as flt_err:
+                logger.warning("Failed to apply voice audio filter (%s): %s", af_filter, flt_err)
 
         duration_ms = probe_audio_duration_ms(output_path)
         if not words:
