@@ -44,9 +44,9 @@ export const StreakFire: React.FC<StreakFireProps> = ({
     frame: Math.max(0, currentFrame - lastRevealFrame),
     fps,
     config: {
-      damping: 12,
-      mass: 0.5,
-      stiffness: 160,
+      damping: 15,
+      mass: 0.7,
+      stiffness: 100,
     },
   });
 

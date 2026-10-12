@@ -358,6 +358,8 @@ class AudioService:
         audio_bytes = bytearray()
         words: list[WordCue] = []
         synthesized_successfully = False
+        detected_speech_start_ms: int | None = None
+        detected_speech_duration_ms: int | None = None
 
         # Pre-sanitize text: colons and hyphens cause DmitryNeural to fail
         # with 'No audio was received'
@@ -371,6 +373,8 @@ class AudioService:
                     communicate = edge_tts.Communicate(tts_text, v, rate=rate_arg)
                     audio_bytes.clear()
                     words.clear()
+                    detected_speech_start_ms = None
+                    detected_speech_duration_ms = None
                     async for chunk in communicate.stream():
                         if chunk["type"] == "audio":
                             audio_bytes.extend(chunk["data"])
@@ -385,6 +389,9 @@ class AudioService:
                                     end_ms=start_ms + dur_ms,
                                 )
                             )
+                        elif chunk["type"] == "SentenceBoundary":
+                            detected_speech_start_ms = chunk["offset"] // 10000
+                            detected_speech_duration_ms = chunk["duration"] // 10000
                     if audio_bytes:
                         synthesized_successfully = True
                         break
@@ -442,12 +449,34 @@ class AudioService:
 
         duration_ms = probe_audio_duration_ms(output_path)
         if not words:
-            # Fallback approximate cues if engine emitted none
+            # Fallback high-precision cues using SentenceBoundary and character length weights
             tokens = text.split()
             if tokens and duration_ms > 0:
-                step = duration_ms // len(tokens)
+                start_offset = (
+                    detected_speech_start_ms
+                    if detected_speech_start_ms is not None
+                    else 80  # Default leading priming offset
+                )
+                effective_duration = (
+                    detected_speech_duration_ms
+                    if detected_speech_duration_ms is not None
+                    else max(200, duration_ms - start_offset - 250)
+                )
+
+                token_weights = [max(1, len(tok)) for tok in tokens]
+                total_weight = sum(token_weights) or 1
+
+                curr_ms = start_offset
                 for i, tok in enumerate(tokens):
-                    words.append(WordCue(word=tok, start_ms=i * step, end_ms=(i + 1) * step))
+                    w_dur = int((token_weights[i] / total_weight) * effective_duration)
+                    words.append(
+                        WordCue(
+                            word=tok,
+                            start_ms=curr_ms,
+                            end_ms=curr_ms + max(120, w_dur),
+                        )
+                    )
+                    curr_ms += w_dur
 
         # Pacing pause to prevent edge-tts WebSocket rate limits on rapid calls
         await asyncio.sleep(0.12)
@@ -593,9 +622,13 @@ class AudioService:
             reveal_frame = think_start_frame + think_frames
             ans_frames = max(1, int(ans_dur_ms * fps / 1000))
 
-            # Add a 6-frame breathing buffer before next question (snappy blitz transition)
-            pause_frames = 6
-            end_frame = reveal_frame + ans_frames + pause_frames
+            # Generous reveal hold duration so the viewer can comfortably read the answer:
+            # Hold for at least 2.2 seconds (or answer voiceover + 1.2s padding),
+            # ensuring the answer never flashes for just a fraction of a second.
+            min_reveal_frames = int(2.2 * fps)
+            hold_padding_frames = int(1.2 * fps)
+            reveal_duration_frames = max(min_reveal_frames, ans_frames + hold_padding_frames)
+            end_frame = reveal_frame + reveal_duration_frames
             current_frame = end_frame
 
 

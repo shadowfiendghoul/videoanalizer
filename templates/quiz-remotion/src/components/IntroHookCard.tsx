@@ -25,9 +25,9 @@ export const IntroHookCard: React.FC<IntroHookCardProps> = ({
     frame,
     fps,
     config: {
-      damping: 12,
-      mass: 0.5,
-      stiffness: 140,
+      damping: 15,
+      mass: 0.75,
+      stiffness: 95,
     },
   });
 

@@ -31,9 +31,9 @@ export const CommentTrapOutro: React.FC<CommentTrapOutroProps> = ({
     frame: frameInTrap,
     fps,
     config: {
-      damping: 14,
-      mass: 0.7,
-      stiffness: 150,
+      damping: 16,
+      mass: 0.75,
+      stiffness: 95,
     },
   });
 

@@ -40,8 +40,8 @@ export const StressTimer: React.FC<StressTimerProps> = ({
     fps,
     config: {
       damping: 15,
-      mass: 0.6,
-      stiffness: 160,
+      mass: 0.75,
+      stiffness: 95,
     },
   });
 

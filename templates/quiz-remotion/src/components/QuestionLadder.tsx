@@ -54,9 +54,9 @@ export const QuestionLadder: React.FC<QuestionLadderProps> = ({
             frame: currentFrame - cue.reveal_frame,
             fps,
             config: {
-              damping: 12,
-              mass: 0.5,
-              stiffness: 140,
+              damping: 14,
+              mass: 0.7,
+              stiffness: 100,
             },
           });
         }

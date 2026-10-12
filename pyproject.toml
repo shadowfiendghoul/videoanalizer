@@ -26,7 +26,6 @@ dependencies = [
     "pillow>=10.0.0",
     "edge-tts>=6.1.9",
     "pyttsx3>=2.90",
-    "duckduckgo_search>=4.4.0",
     "ddgs>=8.0.0",
 ]
 

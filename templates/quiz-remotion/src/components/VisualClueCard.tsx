@@ -23,9 +23,9 @@ export const VisualClueCard: React.FC<VisualClueCardProps> = ({
     frame,
     fps,
     config: {
-      damping: 14,
-      mass: 0.6,
-      stiffness: 130,
+      damping: 15,
+      mass: 0.7,
+      stiffness: 95,
     },
   });
 
@@ -35,9 +35,9 @@ export const VisualClueCard: React.FC<VisualClueCardProps> = ({
         frame: frame - revealOffset,
         fps,
         config: {
-          damping: 12,
-          mass: 0.5,
-          stiffness: 150,
+          damping: 15,
+          mass: 0.7,
+          stiffness: 95,
         },
       })
     : 0;

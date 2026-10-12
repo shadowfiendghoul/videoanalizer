@@ -23,7 +23,11 @@ class ImageService:
             try:
                 from ddgs import DDGS
             except ImportError:
-                from duckduckgo_search import DDGS
+                import warnings
+
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=RuntimeWarning)
+                    from duckduckgo_search import DDGS
 
             # Small delay between consecutive image queries to prevent DDG 202 Ratelimit
             await asyncio.sleep(0.35)
@@ -31,8 +35,16 @@ class ImageService:
             loop = asyncio.get_running_loop()
 
             def _search() -> list[dict[str, str]]:
-                with DDGS() as ddgs:
-                    return list(ddgs.images(query, max_results=max_results))
+                import warnings
+
+                with warnings.catch_warnings():
+                    warnings.filterwarnings(
+                        "ignore",
+                        category=RuntimeWarning,
+                        message=".*duckduckgo_search.*",
+                    )
+                    with DDGS() as ddgs:
+                        return list(ddgs.images(query, max_results=max_results))
 
             return await loop.run_in_executor(None, _search)
         except Exception as e:

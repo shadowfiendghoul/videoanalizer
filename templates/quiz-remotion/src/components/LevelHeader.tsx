@@ -47,9 +47,9 @@ export const LevelHeader: React.FC<LevelHeaderProps> = ({
     frame: Math.max(0, currentFrame - tierStartFrame),
     fps,
     config: {
-      damping: 12,
-      mass: 0.5,
-      stiffness: 140,
+      damping: 15,
+      mass: 0.75,
+      stiffness: 95,
     },
   });
 

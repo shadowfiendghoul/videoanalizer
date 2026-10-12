@@ -25,11 +25,11 @@ export const DecoyFakeOut: React.FC<DecoyFakeOutProps> = ({
     return null;
   }
 
-  // 0.3s tease window before reveal (approx 9-10 frames at 30fps)
-  // Visible from (revealFrame - 9) up to (revealFrame + 18)
-  const teaseDurationFrames = Math.round(fps * 0.3); // ~9 frames
+  // 0.35s tease window before reveal
+  const teaseDurationFrames = Math.round(fps * 0.35);
   const startFrame = revealFrame - teaseDurationFrames;
-  const endFrame = revealFrame + 18;
+  // Hold the confirmation stamp for 1.8s so the viewer can read it clearly!
+  const endFrame = revealFrame + Math.round(fps * 1.8);
 
   if (currentFrame < startFrame || currentFrame > endFrame) {
     return null;
@@ -39,15 +39,15 @@ export const DecoyFakeOut: React.FC<DecoyFakeOutProps> = ({
   const fallbackDecoy = questionNumber === 4 ? "ПАРИЖ" : "СОЛНЦЕ";
   const decoyText = decoyAnswer || fallbackDecoy;
 
-  // Spring animation for stamp punch
+  // Smooth cinematic spring animation for stamp punch
   const animFrame = isRevealed ? currentFrame - revealFrame : currentFrame - startFrame;
   const scale = spring({
     frame: animFrame,
     fps,
     config: {
-      damping: 10,
-      mass: 0.5,
-      stiffness: 220,
+      damping: 15,
+      mass: 0.7,
+      stiffness: 100,
     },
   });
 
