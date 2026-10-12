@@ -87,3 +87,37 @@ specs/004-gpu-fast-rendering/
 
 #### [MODIFY] `videoanalizer/ui/templates/quiz.html`
 Интеграция переключателя режимов рендеринга `⚡ GPU Fast` / `🖥️ CPU Safe` с авто-определением GPU и сохранением в `localStorage`.
+
+---
+
+## ⚡ Max Hardware Utilization (Режим максимальной производительности)
+
+### 1. Архитектура автомасштабирования под CPU и RAM
+- **Динамический Concurrency**:
+  - `videoanalizer/utils/hardware.py`: функция `calculate_optimal_concurrency(profile: RenderProfile, safety_margin: float = 0.75) -> int`.
+  - Задействование 75–80% доступных логических ядер процессора (`os.cpu_count() * 0.75`).
+  - Предотвращение OOM (Out Of Memory): проверка доступной оперативной памяти (`get_system_memory_mb()`) с расчетом квоты ~450 МБ на поток Remotion Chromium.
+  - Итоговый concurrency масштабируется в диапазоне от 2 до 24+ потоков без риска падения по памяти.
+
+### 2. Кэширование сборки Remotion (Build Reuse)
+- **Менеджер бандла (`videoanalizer/quiz/build_cache.py`)**:
+  - Вычисление хэша исходных кодов React-компонентов в `templates/quiz-remotion/src/`.
+  - Однократная сборка бандла `npx remotion bundle src/index.ts --out-dir=build` при первом старте или изменении шаблона.
+  - При всех последующих рендерах Remotion CLI вызывается напрямую с указанием готовой директории бандла `build` вместо `src/index.ts`.
+  - Время старта рендеринга сокращается до **0.1 секунды**, полностью устраняя задержку на компиляцию Webpack.
+
+### 3. Автоопределение и ультраскоростные пресеты аппаратного кодирования
+- **Расширенный каскад энкодеров**:
+  - NVIDIA (`h264_nvenc`) -> AMD (`h264_amf`) -> Intel (`h264_qsv`) -> Apple (`h264_videotoolbox`) -> Windows MediaFoundation (`h264_mf`).
+- **Ультраскоростные профили**:
+  - `h264_nvenc`: `-preset p1 -tune ull -rc cbr -b:v 12M` (быстрейший профиль с ультранизкой задержкой).
+  - `h264_amf`: `-quality speed -rc cbr -b:v 12M`.
+  - `h264_qsv`: `-preset veryfast -b:v 12M`.
+  - `h264_videotoolbox`: `-realtime 1 -b:v 12M`.
+  - `h264_mf`: `-rate_control cbr -b:v 12M`.
+  - `libx264` (fallback): `-preset ultrafast -tune fastdecode -threads 0 -crf 20`.
+
+### 4. Параллельный асинхронный пайплайн данных (Concurrent Data Staging)
+- **Асинхронный сбор медиа-ресурсов**:
+  - Как только получена структура вопросов квиза, этапы синтеза речи Edge-TTS, поиска и скачивания изображений DuckDuckGo, подготовки фона, музыки, промо-баннера и валидации бандла Remotion запускаются одновременно через `asyncio.gather`.
+  - Задержка фазы подготовки сокращается с 25–35 секунд до времени выполнения одного сетевого запроса TTS (~5–7 секунд).
