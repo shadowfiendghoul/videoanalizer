@@ -44,8 +44,10 @@ RULES & CONSTRAINTS:
    - Question text: Direct, punchy, strictly <= 65 characters (never exceed 80 characters).
    - Correct answer: Crisp, 1 to 4 words, strictly <= 25 characters (never exceed 35 characters).
    - Fun fact / Punchline: Fascinating, educational, strictly <= 90 characters for fast voiceover.
-   - Visual Clues: If visual (logo, flag silhouette, landmark), provide precise 'image_query'
-     (e.g. 'Flag of Argentina', 'Starbucks Logo'). If non-visual, set 'image_query' to null.
+   - Visual Answer Illustrations: Provide a concise, descriptive English search query in
+     'image_query' depicting the correct answer (e.g. for 'Золото' -> 'gold bullion bars',
+     for 'Бедренная кость' -> 'human femur bone', for '60 минут' -> 'stopwatch clock 60 min').
+     The image will be displayed as an illustration card together with the revealed answer.
 
 4. Output:
    - You MUST strictly return valid JSON adhering to the QuizChallenge schema."""
@@ -66,6 +68,7 @@ VERIFICATION RULES:
    - 'question_text': punchy, direct, strictly <= 65 chars (never exceed 80 chars).
    - 'correct_answer': crisp, 1 to 4 words, strictly <= 25 chars (never exceed 35 chars).
    - 'fun_fact': educational takeaway, strictly <= 90 chars.
+   - 'image_query': accurate English search query clearly depicting the verified correct answer.
 4. Preserve Structure:
    - Keep exactly 9 questions across 3 tiers (Level 1: 1-3, Level 2: 4-6, Level 3: 7-9).
    - Retain question numbers and tier theme colors.

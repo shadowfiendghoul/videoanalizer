@@ -130,14 +130,20 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
             durationInFrames={durationInFrames}
             name={`Question ${cue.question_number}`}
           >
-            {/* Visual Clue Illustration Card (renders when question has local_image_path) */}
+            {/* Answer Illustration Card (renders together with the revealed answer) */}
             {qItem?.local_image_path && (
-              <VisualClueCard
-                imagePath={qItem.local_image_path}
-                themeColor={tierColor}
-                questionNumber={cue.question_number}
-                revealOffset={revealOffset}
-              />
+              <Sequence
+                from={revealOffset}
+                durationInFrames={answerDurationFrames}
+                name={`AnswerCard-${cue.question_number}`}
+              >
+                <VisualClueCard
+                  imagePath={qItem.local_image_path}
+                  themeColor={tierColor}
+                  questionNumber={cue.question_number}
+                  answerText={qItem.correct_answer}
+                />
+              </Sequence>
             )}
 
             {/* Level-Up SFX Stinger for tier transitions */}
