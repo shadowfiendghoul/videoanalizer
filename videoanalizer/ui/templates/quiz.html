@@ -802,16 +802,22 @@
       const gpuBtn = document.getElementById('btn-profile-gpu');
       const cpuBtn = document.getElementById('btn-profile-cpu');
 
+      const gpuActiveClasses = ['bg-amber-500/15', 'border-amber-500/40', 'text-amber-200', 'shadow-lg', 'shadow-amber-500/10'];
+      const cpuActiveClasses = ['bg-emerald-500/15', 'border-emerald-500/40', 'text-emerald-200', 'shadow-lg', 'shadow-emerald-500/10'];
+      const inactiveClasses = ['bg-black/40', 'border-white/[0.08]', 'text-slate-400'];
+
       if (profile === 'gpu_fast') {
-        gpuBtn?.classList.remove('bg-black/40', 'border-white/[0.08]', 'text-slate-400');
-        gpuBtn?.classList.add('bg-amber-500/15', 'border-amber-500/40', 'text-amber-200', 'shadow-lg', 'shadow-amber-500/10');
-        cpuBtn?.classList.remove('bg-amber-500/15', 'border-amber-500/40', 'text-amber-200', 'shadow-lg', 'shadow-amber-500/10');
-        cpuBtn?.classList.add('bg-black/40', 'border-white/[0.08]', 'text-slate-400');
+        gpuBtn?.classList.remove(...inactiveClasses);
+        gpuBtn?.classList.add(...gpuActiveClasses);
+
+        cpuBtn?.classList.remove(...cpuActiveClasses);
+        cpuBtn?.classList.add(...inactiveClasses);
       } else {
-        cpuBtn?.classList.remove('bg-black/40', 'border-white/[0.08]', 'text-slate-400');
-        cpuBtn?.classList.add('bg-emerald-500/15', 'border-emerald-500/40', 'text-emerald-200', 'shadow-lg', 'shadow-emerald-500/10');
-        gpuBtn?.classList.remove('bg-amber-500/15', 'border-amber-500/40', 'text-amber-200', 'shadow-lg', 'shadow-amber-500/10');
-        gpuBtn?.classList.add('bg-black/40', 'border-white/[0.08]', 'text-slate-400');
+        cpuBtn?.classList.remove(...inactiveClasses);
+        cpuBtn?.classList.add(...cpuActiveClasses);
+
+        gpuBtn?.classList.remove(...gpuActiveClasses);
+        gpuBtn?.classList.add(...inactiveClasses);
       }
 
       if (shouldSave) {
