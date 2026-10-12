@@ -153,6 +153,22 @@ class QuizConfig(BaseSettings):
         default=3600000,
         description="Puppeteer delayRender timeout in ms for Remotion CLI (>=7000ms).",
     )
+    crf: int = Field(
+        default=18,
+        ge=0,
+        le=51,
+        description="x264 Constant Rate Factor (18 is visually lossless).",
+    )
+    remotion_x264_preset: str = Field(
+        default="fast",
+        description="x264 preset for Remotion CLI ('fast', 'medium', 'faster').",
+    )
+    remotion_jpeg_quality: int = Field(
+        default=95,
+        ge=50,
+        le=100,
+        description="Puppeteer frame screenshot JPEG quality (default 95).",
+    )
 
     @property
     def effective_api_key(self) -> SecretStr:

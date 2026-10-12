@@ -114,6 +114,10 @@ async def test_orchestrator_build_remotion_command(tmp_path: Path) -> None:
     assert str(output_path.resolve()) in cmd_str
     assert "--concurrency=" in cmd_str
     assert f"--timeout={config.remotion_delay_render_timeout_ms}" in cmd_str
+    assert f"--crf={config.crf}" in cmd_str
+    assert f"--jpeg-quality={config.remotion_jpeg_quality}" in cmd_str
+    assert f"--x264-preset={config.remotion_x264_preset}" in cmd_str
+    assert "--pixel-format=yuv420p" in cmd_str
     assert "--overwrite" in cmd_str
 
 

@@ -58,7 +58,8 @@ def test_generate_uniquifier_parameters_smart_random() -> None:
     p1 = generate_uniquifier_parameters(cfg)
     p2 = generate_uniquifier_parameters(cfg)
 
-    # Random parameters should stay within safe bounds
+    # Random parameters should stay within safe bounds and produce variation
+    assert -0.15 <= p2["brightness"] <= 0.15
     assert -0.15 <= p1["brightness"] <= 0.15
     assert 1.0 <= p1["contrast"] <= 1.15
     assert 1.0 <= p1["saturation"] <= 1.20
@@ -127,7 +128,7 @@ def test_apply_video_uniquifier_success_invocation(
     out_file = tmp_path / "out.mp4"
 
     # Simulate FFmpeg creating the file
-    def fake_run(cmd, **kwargs):
+    def fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
         out_target = Path(cmd[-1])
         out_target.write_bytes(b"uniquified_bytes")
         mock_res = MagicMock()
@@ -146,3 +147,5 @@ def test_apply_video_uniquifier_success_invocation(
     assert "-vf" in cmd
     assert "-af" in cmd
     assert "-map_metadata" in cmd
+    assert "-pix_fmt" in cmd
+    assert "yuv420p" in cmd

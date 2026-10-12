@@ -2,10 +2,10 @@ import React from "react";
 import {
   AbsoluteFill,
   interpolate,
+  OffthreadVideo,
   spring,
   useCurrentFrame,
   useVideoConfig,
-  Video,
 } from "remotion";
 import { resolveAssetUrl } from "../utils/assets";
 
@@ -68,10 +68,8 @@ export const CenterBanner: React.FC<CenterBannerProps> = ({
         }}
       >
         {src && (
-          <Video
+          <OffthreadVideo
             src={src}
-            delayRenderTimeoutInMilliseconds={120000}
-            delayRenderRetries={3}
             className="w-full h-full object-cover"
           />
         )}

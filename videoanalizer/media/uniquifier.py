@@ -242,6 +242,8 @@ def apply_video_uniquifier(
         "aac",
         "-b:a",
         "192k",
+        "-pix_fmt",
+        "yuv420p",
         "-movflags",
         "+faststart",
         str(temp_target),

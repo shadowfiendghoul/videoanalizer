@@ -152,7 +152,10 @@ class QuizOrchestrator:
             f"--public-dir={abs_public}",
             f"--concurrency={concurrency}",
             f"--timeout={self.config.remotion_delay_render_timeout_ms}",
-            "--x264-preset=faster",
+            f"--crf={self.config.crf}",
+            f"--jpeg-quality={self.config.remotion_jpeg_quality}",
+            f"--x264-preset={self.config.remotion_x264_preset}",
+            "--pixel-format=yuv420p",
             "--overwrite",
         ]
 

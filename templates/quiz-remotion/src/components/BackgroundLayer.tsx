@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Freeze, Loop, Sequence, Video } from "remotion";
+import { AbsoluteFill, Freeze, Loop, OffthreadVideo, Sequence, useVideoConfig } from "remotion";
 import { resolveAssetUrl } from "../utils/assets";
 
 interface BackgroundLayerProps {
@@ -11,11 +11,16 @@ interface BackgroundLayerProps {
 
 export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({
   videoPath,
-  loopDurationInFrames = 450, // Loop every 15s (450 frames) to safely loop short backgrounds
+  loopDurationInFrames,
   bannerStartFrame,
   bannerDurationFrames,
 }) => {
+  const { durationInFrames } = useVideoConfig();
   const src = resolveAssetUrl(videoPath);
+
+  // Default to entire video duration so the background video plays continuously
+  // without jumping/cutting back to 0 every 7.5 seconds (450 frames).
+  const effectiveLoopDuration = loopDurationInFrames || durationInFrames;
 
   const hasBannerPause =
     typeof bannerStartFrame === "number" &&
@@ -26,12 +31,10 @@ export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({
     <AbsoluteFill className="bg-slate-950">
       {/* Background Video with pause support during promo banner */}
       {src && !hasBannerPause && (
-        <Loop durationInFrames={loopDurationInFrames}>
-          <Video
+        <Loop durationInFrames={effectiveLoopDuration}>
+          <OffthreadVideo
             src={src}
             muted
-            delayRenderTimeoutInMilliseconds={120000}
-            delayRenderRetries={3}
             className="w-full h-full object-cover opacity-100"
           />
         </Loop>
@@ -39,44 +42,34 @@ export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({
 
       {src && hasBannerPause && (
         <>
-          {/* Phase 1: Before banner (normal playback) */}
+          {/* Phase 1: Before banner (normal continuous playback) */}
           <Sequence from={0} durationInFrames={bannerStartFrame!}>
-            <Loop durationInFrames={loopDurationInFrames}>
-              <Video
-                src={src}
-                muted
-                delayRenderTimeoutInMilliseconds={120000}
-                delayRenderRetries={3}
-                className="w-full h-full object-cover opacity-100"
-              />
-            </Loop>
+            <OffthreadVideo
+              src={src}
+              muted
+              className="w-full h-full object-cover opacity-100"
+            />
           </Sequence>
 
           {/* Phase 2: During banner (PAUSED / FROZEN on bannerStartFrame) */}
           <Sequence from={bannerStartFrame!} durationInFrames={bannerDurationFrames!}>
-            <Freeze frame={bannerStartFrame! % loopDurationInFrames}>
-              <Video
+            <Freeze frame={bannerStartFrame!}>
+              <OffthreadVideo
                 src={src}
                 muted
-                delayRenderTimeoutInMilliseconds={120000}
-                delayRenderRetries={3}
                 className="w-full h-full object-cover opacity-100"
               />
             </Freeze>
           </Sequence>
 
-          {/* Phase 3: After banner (resumes playing from bannerStartFrame) */}
+          {/* Phase 3: After banner (resumes playing from bannerStartFrame onwards) */}
           <Sequence from={bannerStartFrame! + bannerDurationFrames!}>
-            <Loop durationInFrames={loopDurationInFrames}>
-              <Video
-                src={src}
-                startFrom={bannerStartFrame! % loopDurationInFrames}
-                muted
-                delayRenderTimeoutInMilliseconds={120000}
-                delayRenderRetries={3}
-                className="w-full h-full object-cover opacity-100"
-              />
-            </Loop>
+            <OffthreadVideo
+              src={src}
+              startFrom={bannerStartFrame!}
+              muted
+              className="w-full h-full object-cover opacity-100"
+            />
           </Sequence>
         </>
       )}
@@ -92,3 +85,4 @@ export const BackgroundLayer: React.FC<BackgroundLayerProps> = ({
     </AbsoluteFill>
   );
 };
+
