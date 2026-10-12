@@ -234,6 +234,17 @@ class QuizChallenge(BaseModel):
         return sorted(result, key=lambda q: q.question_number)
 
 
+class RegeneratedQuestionsPayload(BaseModel):
+    """Container schema for selectively regenerated trivia questions from Gemini."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    questions: list[QuizItem] = Field(
+        ...,
+        description="List of selectively regenerated trivia questions.",
+    )
+
+
 class WordCue(BaseModel):
     """Word-level alignment timestamp for dynamic karaoke captions."""
 

@@ -667,7 +667,7 @@
 
         <!-- Panel: Questions Review & Confirmation Card -->
         <div id="questions-preview-card" class="glass-panel p-6 space-y-5 hidden border border-emerald-500/30">
-          <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/[0.08] pb-4 gap-3">
             <div class="flex items-center space-x-2.5">
               <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                 <i data-lucide="list-checks" class="w-5 h-5"></i>
@@ -677,10 +677,29 @@
                   <span>Проверка вопросов викторины</span>
                   <span id="preview-topic-badge" class="text-xs px-2 py-0.5 rounded-full bg-white/[0.08] text-slate-300 font-mono truncate max-w-[200px]">Школьные знания</span>
                 </h3>
-                <p class="text-xs text-slate-400">Проверьте или скорректируйте вопросы перед озвучкой и рендером</p>
+                <p class="text-xs text-slate-400">Проверьте, отредактируйте или перегенерируйте выбранные вопросы</p>
               </div>
             </div>
-            <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-medium">9 вопросов</span>
+            <div class="flex items-center space-x-2 self-start sm:self-auto">
+              <button 
+                type="button" 
+                onclick="selectAllQuestions(true)"
+                class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/[0.08] transition-all cursor-pointer font-medium"
+                title="Отметить все вопросы для перегенерации"
+              >
+                Выбрать все
+              </button>
+              <button 
+                type="button" 
+                onclick="selectAllQuestions(false)"
+                class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-slate-200 border border-white/[0.08] transition-all cursor-pointer font-medium"
+                title="Снять отметки со всех вопросов"
+              >
+                Снять выбор
+              </button>
+              <span id="preview-selected-badge" class="hidden text-xs px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono font-medium">Выбрано: 0</span>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-medium">9 вопросов</span>
+            </div>
           </div>
 
           <!-- Question Cards Container (populated by JS) -->
@@ -690,15 +709,30 @@
 
           <!-- Confirmation Actions Bar -->
           <div class="pt-3 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-3">
-            <button 
-              id="regen-btn"
-              type="button" 
-              onclick="regenerateQuestions()"
-              class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 text-xs font-semibold border border-white/[0.1] transition-all flex items-center justify-center space-x-2 cursor-pointer"
-            >
-              <i data-lucide="refresh-cw" class="w-4 h-4 text-amber-400"></i>
-              <span>Перегенерировать вопросы</span>
-            </button>
+            <div class="flex items-center space-x-2 w-full sm:w-auto">
+              <button 
+                id="btn-regen-selected"
+                type="button" 
+                onclick="regenerateSelectedQuestions()"
+                disabled
+                class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-amber-500/10 text-amber-300 text-xs font-semibold border border-amber-500/30 transition-all flex items-center justify-center space-x-2 opacity-40 cursor-not-allowed"
+                title="Выберите хотя бы один вопрос галочкой выше, чтобы перегенерировать его"
+              >
+                <i data-lucide="refresh-cw" class="w-4 h-4 text-slate-500"></i>
+                <span id="btn-regen-selected-text">Перегенерировать выбранные (0)</span>
+              </button>
+
+              <button 
+                id="regen-btn"
+                type="button" 
+                onclick="regenerateQuestions()"
+                class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 text-xs font-semibold border border-white/[0.1] transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                title="Сгенерировать полностью все 9 вопросов заново"
+              >
+                <i data-lucide="sparkles" class="w-4 h-4 text-slate-400"></i>
+                <span>Все заново (9)</span>
+              </button>
+            </div>
 
             <button 
               id="confirm-btn"
@@ -1473,13 +1507,120 @@
       }
     }
 
-    function renderQuestionsPreview(challenge) {
+    function syncChallengeFromInputs() {
+      if (!currentChallenge) return;
+      currentChallenge.tiers.forEach((tier) => {
+        tier.questions.forEach((q) => {
+          const qnum = q.question_number;
+          const textInput = document.querySelector(`input[data-qnum="${qnum}"][data-field="question_text"]`);
+          const ansInput = document.querySelector(`input[data-qnum="${qnum}"][data-field="correct_answer"]`);
+          const queryInput = document.getElementById(`img-query-input-${qnum}`);
+          const urlInput = document.getElementById(`img-url-input-${qnum}`);
+          const useImgCheckbox = document.querySelector(`input[data-qnum="${qnum}"][data-field="use_image"]`);
+
+          if (textInput) q.question_text = textInput.value.trim();
+          if (ansInput) q.correct_answer = ansInput.value.trim();
+
+          const useImg = useImgCheckbox ? useImgCheckbox.checked : Boolean(q.image_url);
+          const urlVal = urlInput ? urlInput.value.trim() : (q.image_url || '');
+          const queryVal = queryInput ? queryInput.value.trim() : (q.image_query || '');
+
+          if (useImg && urlVal) {
+            q.image_url = urlVal;
+            q.image_query = queryVal || q.correct_answer;
+            q.has_visual_clue = true;
+          } else if (useImg && queryVal) {
+            q.image_url = null;
+            q.image_query = queryVal;
+            q.has_visual_clue = true;
+          } else {
+            q.image_url = null;
+            q.image_query = null;
+            q.has_visual_clue = false;
+          }
+        });
+      });
+    }
+
+    function updateSelectedQuestionsUI() {
+      const checkboxes = document.querySelectorAll('.q-select-checkbox');
+      let selectedCount = 0;
+
+      checkboxes.forEach((chk) => {
+        const qnum = chk.getAttribute('data-qnum');
+        const card = document.getElementById(`q-card-${qnum}`);
+        const label = document.getElementById(`q-select-label-${qnum}`);
+
+        if (chk.checked) {
+          selectedCount++;
+          if (card) {
+            card.classList.add('ring-1', 'ring-amber-500/60', 'bg-amber-500/[0.04]', 'border-amber-500/30');
+            card.classList.remove('bg-white/[0.02]', 'border-white/[0.04]');
+          }
+          if (label) {
+            label.textContent = 'Выбран';
+            label.className = 'text-[11px] font-semibold text-amber-300';
+          }
+        } else {
+          if (card) {
+            card.classList.remove('ring-1', 'ring-amber-500/60', 'bg-amber-500/[0.04]', 'border-amber-500/30');
+            card.classList.add('bg-white/[0.02]', 'border-white/[0.04]');
+          }
+          if (label) {
+            label.textContent = 'Выбрать';
+            label.className = 'text-[11px] font-medium text-slate-400 group-hover:text-amber-300 transition-colors';
+          }
+        }
+      });
+
+      const badge = document.getElementById('preview-selected-badge');
+      if (badge) {
+        if (selectedCount > 0) {
+          badge.textContent = `Выбрано: ${selectedCount}`;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+
+      const regenBtn = document.getElementById('btn-regen-selected');
+      const regenText = document.getElementById('btn-regen-selected-text');
+      if (regenBtn && regenText) {
+        regenText.textContent = `Перегенерировать выбранные (${selectedCount})`;
+        if (selectedCount > 0) {
+          regenBtn.disabled = false;
+          regenBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+          regenBtn.classList.add('cursor-pointer', 'hover:bg-amber-500/20');
+          const icon = regenBtn.querySelector('i');
+          if (icon) icon.className = 'w-4 h-4 text-amber-400';
+        } else {
+          regenBtn.disabled = true;
+          regenBtn.classList.add('opacity-40', 'cursor-not-allowed');
+          regenBtn.classList.remove('cursor-pointer', 'hover:bg-amber-500/20');
+          const icon = regenBtn.querySelector('i');
+          if (icon) icon.className = 'w-4 h-4 text-slate-500';
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function selectAllQuestions(checked) {
+      const checkboxes = document.querySelectorAll('.q-select-checkbox');
+      checkboxes.forEach((chk) => {
+        chk.checked = checked;
+      });
+      updateSelectedQuestionsUI();
+    }
+
+    function renderQuestionsPreview(challenge, preserveSelected = []) {
       const card = document.getElementById('questions-preview-card');
       const list = document.getElementById('questions-list');
       const topicBadge = document.getElementById('preview-topic-badge');
 
       topicBadge.textContent = challenge.topic;
       list.innerHTML = '';
+
+      const preserveSet = new Set(preserveSelected);
 
       challenge.tiers.forEach((tier) => {
         const tierSection = document.createElement('div');
@@ -1498,32 +1639,49 @@
 
         tier.questions.forEach((q) => {
           const qBox = document.createElement('div');
-          qBox.className = 'space-y-2 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]';
+          qBox.id = `q-card-${q.question_number}`;
+          qBox.className = 'space-y-2 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] transition-all duration-200';
           const hasImage = Boolean(q.image_url || q.image_query || q.has_visual_clue);
+          const isSelected = preserveSet.has(q.question_number);
 
           qBox.innerHTML = `
-            <div class="flex items-start space-x-2.5">
-              <span class="w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs shrink-0 mt-0.5" style="background-color: ${color}22; color: ${color}; border: 1px solid ${color}44">${q.question_number}</span>
-              <div class="flex-1 space-y-1.5">
+            <div class="flex items-center justify-between pb-1.5 border-b border-white/[0.04]">
+              <div class="flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs shrink-0" style="background-color: ${color}22; color: ${color}; border: 1px solid ${color}44">${q.question_number}</span>
+                <span class="text-[11px] font-semibold text-slate-300">Вопрос #${q.question_number}</span>
+              </div>
+              <label class="group flex items-center space-x-1.5 cursor-pointer text-xs select-none">
+                <input 
+                  type="checkbox" 
+                  class="q-select-checkbox w-4 h-4 rounded text-amber-500 bg-black/60 border-white/20 focus:ring-amber-500 cursor-pointer accent-amber-500" 
+                  data-qnum="${q.question_number}" 
+                  id="q-select-${q.question_number}"
+                  ${isSelected ? 'checked' : ''}
+                  onchange="updateSelectedQuestionsUI()"
+                />
+                <span class="text-[11px] font-medium text-slate-400 group-hover:text-amber-300 transition-colors" id="q-select-label-${q.question_number}">Выбрать</span>
+              </label>
+            </div>
+
+            <div class="space-y-1.5 pt-1">
+              <input 
+                type="text" 
+                data-qnum="${q.question_number}" 
+                data-field="question_text"
+                value="${q.question_text.replace(/"/g, '&quot;')}" 
+                class="w-full bg-black/60 border border-white/[0.1] focus:border-emerald-500 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none transition-all"
+                title="Текст вопроса"
+              />
+              <div class="flex items-center space-x-2">
+                <span class="text-[11px] text-slate-400 shrink-0 font-medium">Ответ:</span>
                 <input 
                   type="text" 
                   data-qnum="${q.question_number}" 
-                  data-field="question_text"
-                  value="${q.question_text.replace(/"/g, '&quot;')}" 
-                  class="w-full bg-black/60 border border-white/[0.1] focus:border-emerald-500 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none transition-all"
-                  title="Текст вопроса"
+                  data-field="correct_answer"
+                  value="${q.correct_answer.replace(/"/g, '&quot;')}" 
+                  class="flex-1 bg-black/60 border border-white/[0.1] focus:border-emerald-500 rounded-lg px-2.5 py-1 text-xs text-emerald-400 font-bold focus:outline-none transition-all"
+                  title="Правильный ответ"
                 />
-                <div class="flex items-center space-x-2">
-                  <span class="text-[11px] text-slate-400 shrink-0 font-medium">Ответ:</span>
-                  <input 
-                    type="text" 
-                    data-qnum="${q.question_number}" 
-                    data-field="correct_answer"
-                    value="${q.correct_answer.replace(/"/g, '&quot;')}" 
-                    class="flex-1 bg-black/60 border border-white/[0.1] focus:border-emerald-500 rounded-lg px-2.5 py-1 text-xs text-emerald-400 font-bold focus:outline-none transition-all"
-                    title="Правильный ответ"
-                  />
-                </div>
               </div>
             </div>
 
@@ -1613,7 +1771,77 @@
 
       card.classList.remove('hidden');
       card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      updateSelectedQuestionsUI();
       lucide.createIcons();
+    }
+
+    async function regenerateSelectedQuestions() {
+      const selectedCheckboxes = Array.from(document.querySelectorAll('.q-select-checkbox:checked'));
+      const selectedNums = selectedCheckboxes.map(cb => parseInt(cb.getAttribute('data-qnum'), 10));
+
+      if (selectedNums.length === 0) {
+        alert('Пожалуйста, отметьте галочками вопросы, которые хотите перегенерировать!');
+        return;
+      }
+
+      if (!currentChallenge) {
+        alert('Нет загруженной структуры викторины!');
+        return;
+      }
+
+      // Sync existing user edits first so unselected questions keep their changes
+      syncChallengeFromInputs();
+
+      const btn = document.getElementById('btn-regen-selected');
+      const origHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.classList.add('opacity-70', 'cursor-not-allowed');
+      btn.innerHTML = `<span class="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin inline-block mr-1"></span><span>ИИ обновляет ${selectedNums.length} ${selectedNums.length === 1 ? 'вопрос' : 'вопроса'}...</span>`;
+
+      try {
+        const tempSlider = document.getElementById('temperature-slider');
+        const temperature = tempSlider ? parseFloat(tempSlider.value) : 0.95;
+        const factCheckToggle = document.getElementById('fact-check-toggle');
+        const factCheck = factCheckToggle ? factCheckToggle.checked : true;
+
+        const resp = await fetch('/api/v1/quiz/regenerate-questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            challenge: currentChallenge,
+            question_numbers: selectedNums,
+            temperature: temperature,
+            fact_check: factCheck,
+          })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Ошибка перегенерации вопросов');
+        }
+
+        currentChallenge = await resp.json();
+        renderQuestionsPreview(currentChallenge);
+
+        // Highlight updated questions with a smooth green flash
+        selectedNums.forEach((num) => {
+          const el = document.getElementById(`q-card-${num}`);
+          if (el) {
+            el.classList.add('ring-2', 'ring-emerald-400', 'bg-emerald-500/10');
+            setTimeout(() => {
+              el.classList.remove('ring-2', 'ring-emerald-400', 'bg-emerald-500/10');
+            }, 3000);
+          }
+        });
+      } catch (err) {
+        alert('Ошибка перегенерации выбранных вопросов: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        btn.innerHTML = origHtml;
+        updateSelectedQuestionsUI();
+        lucide.createIcons();
+      }
     }
 
     async function regenerateQuestions() {
@@ -1640,37 +1868,7 @@
       }
 
       // Collect any inline edits including approved images
-      currentChallenge.tiers.forEach((tier) => {
-        tier.questions.forEach((q) => {
-          const qnum = q.question_number;
-          const textInput = document.querySelector(`input[data-qnum="${qnum}"][data-field="question_text"]`);
-          const ansInput = document.querySelector(`input[data-qnum="${qnum}"][data-field="correct_answer"]`);
-          const queryInput = document.getElementById(`img-query-input-${qnum}`);
-          const urlInput = document.getElementById(`img-url-input-${qnum}`);
-          const useImgCheckbox = document.querySelector(`input[data-qnum="${qnum}"][data-field="use_image"]`);
-
-          if (textInput) q.question_text = textInput.value.trim();
-          if (ansInput) q.correct_answer = ansInput.value.trim();
-
-          const useImg = useImgCheckbox ? useImgCheckbox.checked : Boolean(q.image_url);
-          const urlVal = urlInput ? urlInput.value.trim() : (q.image_url || '');
-          const queryVal = queryInput ? queryInput.value.trim() : (q.image_query || '');
-
-          if (useImg && urlVal) {
-            q.image_url = urlVal;
-            q.image_query = queryVal || q.correct_answer;
-            q.has_visual_clue = true;
-          } else if (useImg && queryVal) {
-            q.image_url = null;
-            q.image_query = queryVal;
-            q.has_visual_clue = true;
-          } else {
-            q.image_url = null;
-            q.image_query = null;
-            q.has_visual_clue = false;
-          }
-        });
-      });
+      syncChallengeFromInputs();
 
       // Hide preview card and launch rendering pipeline
       document.getElementById('questions-preview-card').classList.add('hidden');

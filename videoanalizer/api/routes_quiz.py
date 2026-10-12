@@ -54,6 +54,30 @@ class QuizQuestionsPreviewRequest(BaseModel):
     )
 
 
+class QuizRegenerateSelectedRequest(BaseModel):
+    """Payload to selectively regenerate specified questions in an existing challenge."""
+
+    challenge: QuizChallenge = Field(
+        ..., description="Current 9-question challenge structure with any user edits."
+    )
+    question_numbers: list[int] = Field(
+        ...,
+        min_length=1,
+        max_length=9,
+        description="List of question numbers (1 to 9) to regenerate.",
+    )
+    temperature: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature for creative generation (0.2-1.2, default 0.95).",
+    )
+    fact_check: bool | None = Field(
+        default=None,
+        description="Enable strict secondary fact-checking pass.",
+    )
+
+
 class QuizGenerateRequest(BaseModel):
     """Payload to trigger asynchronous quiz video generation."""
 
@@ -275,6 +299,31 @@ async def preview_questions(request: QuizQuestionsPreviewRequest) -> QuizChallen
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка генерации вопросов нейросетью: {exc}",
+        ) from exc
+
+
+@router.post("/regenerate-questions", response_model=QuizChallenge)
+async def regenerate_questions(request: QuizRegenerateSelectedRequest) -> QuizChallenge:
+    """Regenerate specific questions within an existing challenge while preserving others."""
+    orchestrator = QuizOrchestrator()
+    try:
+        updated = await orchestrator.script_service.regenerate_selected_questions(
+            challenge=request.challenge,
+            question_numbers=request.question_numbers,
+            creative_temperature=request.temperature,
+            fact_check=request.fact_check,
+        )
+        return updated
+    except Exception as exc:
+        logger.error(
+            "Failed to regenerate questions %s: %s",
+            request.question_numbers,
+            exc,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка перегенерации вопросов: {exc}",
         ) from exc
 
 

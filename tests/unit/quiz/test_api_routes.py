@@ -268,3 +268,31 @@ def test_generate_quiz_with_render_profiles() -> None:
         req_arg = mock_job.call_args[0][1]
         assert req_arg.render_profile == RenderProfile.CPU_SAFE
 
+
+def test_regenerate_questions_endpoint() -> None:
+    """POST /api/v1/quiz/regenerate-questions invokes script_service."""
+    from tests.unit.quiz.test_script_service import make_mock_challenge
+
+    mock_ch = make_mock_challenge()
+    updated_ch = make_mock_challenge()
+    updated_ch.tiers[0].questions[1].question_text = "Updated Question 2?"
+
+    with patch(
+        "videoanalizer.quiz.script_service.ScriptService.regenerate_selected_questions",
+        new_callable=AsyncMock,
+        return_value=updated_ch,
+    ) as mock_regen:
+        payload = {
+            "challenge": mock_ch.model_dump(),
+            "question_numbers": [2],
+            "temperature": 0.85,
+            "fact_check": True,
+        }
+        res = client.post("/api/v1/quiz/regenerate-questions", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        assert data["topic"] == mock_ch.topic
+        assert data["tiers"][0]["questions"][1]["question_text"] == "Updated Question 2?"
+        mock_regen.assert_called_once()
+
+

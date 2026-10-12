@@ -204,3 +204,94 @@ async def test_fact_checking_bypassed_when_disabled() -> None:
         mock_creative.assert_called_once()
         mock_verifier.assert_not_called()
         assert result == mock_challenge
+
+
+@pytest.mark.asyncio
+async def test_regenerate_selected_questions() -> None:
+    """Verify regenerate_selected_questions updates selected questions and preserves edits."""
+    service = ScriptService()
+    challenge = make_mock_challenge()
+
+    # User edited question 1
+    challenge.tiers[0].questions[0].question_text = "Custom User Question 1?"
+    challenge.tiers[0].questions[0].correct_answer = "Custom Answer 1"
+
+    # User wants to regenerate question 2 (tier easy) and question 5 (tier medium)
+    replacement_q2 = QuizItem(
+        question_number=2,
+        difficulty=DifficultyTier.EASY,
+        tier_index=1,
+        question_text="Brand New Question 2?",
+        correct_answer="New Answer 2",
+        fun_fact="New Fact 2",
+        image_query="Eiffel Tower Paris",
+    )
+    replacement_q5 = QuizItem(
+        question_number=5,
+        difficulty=DifficultyTier.MEDIUM,
+        tier_index=2,
+        question_text="Brand New Question 5?",
+        correct_answer="New Answer 5",
+        fun_fact="New Fact 5",
+        image_query=None,
+    )
+
+    fake_preview_results = [
+        {"image": "https://example.com/eiffel.jpg", "thumbnail": "https://example.com/eiffel_thumb.jpg"}
+    ]
+
+    with (
+        patch.object(
+            service,
+            "_call_gemini_regenerate",
+            new=AsyncMock(return_value=[replacement_q2, replacement_q5]),
+        ) as mock_gemini_regen,
+        patch.object(
+            service.image_service,
+            "_search_image_urls",
+            new=AsyncMock(return_value=fake_preview_results),
+        ),
+    ):
+        updated = await service.regenerate_selected_questions(
+            challenge=challenge,
+            question_numbers=[2, 5],
+            creative_temperature=0.8,
+        )
+
+        mock_gemini_regen.assert_called_once_with(
+            challenge=challenge,
+            question_numbers=[2, 5],
+            temperature=0.8,
+        )
+
+        all_q = updated.all_questions()
+        # Q1 should remain custom user edit!
+        assert all_q[0].question_text == "Custom User Question 1?"
+        assert all_q[0].correct_answer == "Custom Answer 1"
+
+        # Q2 should be replaced with new data and resolved image
+        assert all_q[1].question_text == "Brand New Question 2?"
+        assert all_q[1].correct_answer == "New Answer 2"
+        assert all_q[1].image_url == "https://example.com/eiffel.jpg"
+
+        # Q3, Q4 should remain original
+        assert all_q[2].question_number == 3
+        assert all_q[3].question_number == 4
+
+        # Q5 should be replaced
+        assert all_q[4].question_text == "Brand New Question 5?"
+        assert all_q[4].correct_answer == "New Answer 5"
+
+        # Q6-Q9 should remain original
+        assert all_q[8].question_number == 9
+
+
+def test_regenerate_system_prompt_constraints() -> None:
+    """Verify REGENERATE_QUESTIONS_SYSTEM_PROMPT enforces character limits and anti-duplication."""
+    from videoanalizer.quiz.script_service import REGENERATE_QUESTIONS_SYSTEM_PROMPT
+
+    assert "65 characters" in REGENERATE_QUESTIONS_SYSTEM_PROMPT
+    assert "25 characters" in REGENERATE_QUESTIONS_SYSTEM_PROMPT
+    assert "Anti-Duplication" in REGENERATE_QUESTIONS_SYSTEM_PROMPT
+    assert "KEPT" in REGENERATE_QUESTIONS_SYSTEM_PROMPT
+
