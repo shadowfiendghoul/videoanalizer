@@ -21,10 +21,12 @@ from videoanalizer.quiz.models import (
     QuizChallenge,
     QuizRetentionConfig,
     RemotionRenderProps,
+    RenderProfile,
     SfxPaths,
 )
 from videoanalizer.quiz.script_service import ScriptService
 from videoanalizer.quiz.workspace import QuizWorkspace
+from videoanalizer.utils.hardware import get_hardware_capabilities
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +129,7 @@ class QuizOrchestrator:
         props_path: Path,
         public_dir: Path,
         output_path: Path,
+        profile: RenderProfile | None = None,
     ) -> list[str]:
         """Construct the Remotion CLI rendering command."""
         node_bin = self._resolve_node_binary()
@@ -139,9 +142,14 @@ class QuizOrchestrator:
         abs_props = props_path.resolve()
         abs_public = public_dir.resolve()
 
-        # Dynamic concurrency based on available CPU cores
+        effective_profile = profile or self.config.render_profile
+
+        # Dynamic concurrency: in GPU_FAST mode, GPU rasterization offloads CPU
         cpu_count = os.cpu_count() or 4
-        concurrency = min(6, max(2, cpu_count // 2 if cpu_count >= 6 else cpu_count - 1))
+        if effective_profile == RenderProfile.GPU_FAST:
+            concurrency = min(8, max(4, cpu_count))
+        else:
+            concurrency = min(6, max(2, cpu_count // 2 if cpu_count >= 6 else cpu_count - 1))
 
         args = [
             "render",
@@ -159,6 +167,14 @@ class QuizOrchestrator:
             "--overwrite",
         ]
 
+        # In GPU_FAST profile, enable Chromium GPU ANGLE rasterization & bundle caching
+        if effective_profile == RenderProfile.GPU_FAST:
+            args.append(f"--gl={self.config.gl_backend}")
+            if self.config.enable_bundle_cache:
+                args.append("--bundle-cache")
+        elif self.config.enable_bundle_cache:
+            args.append("--bundle-cache")
+
         if remotion_cli.exists():
             return [node_bin, str(remotion_cli)] + args
         return ["npx", "remotion"] + args
@@ -169,20 +185,38 @@ class QuizOrchestrator:
         public_dir: Path,
         output_path: Path,
         progress_callback: Callable[[int, str], None] | None = None,
+        profile: RenderProfile | None = None,
     ) -> None:
         """Execute Remotion CLI subprocess to render MP4 with real-time streaming."""
         ensure_system_paths()
+        effective_profile = profile or self.config.render_profile
         cmd = self._build_remotion_command(
             props_path=props_path,
             public_dir=public_dir,
             output_path=output_path,
+            profile=effective_profile,
         )
 
+        caps = get_hardware_capabilities()
+        env = os.environ.copy()
+        if effective_profile == RenderProfile.GPU_FAST and caps.active_hw_encoder:
+            env["VIDEOANALIZER_RENDER_PROFILE"] = "gpu_fast"
+            env["VIDEOANALIZER_HW_ENCODER"] = caps.active_hw_encoder
+        else:
+            env["VIDEOANALIZER_RENDER_PROFILE"] = "cpu_safe"
+            env.pop("VIDEOANALIZER_HW_ENCODER", None)
+
         async with get_render_semaphore():
-            logger.info("Executing Remotion render: %s", " ".join(cmd))
+            logger.info(
+                "Executing Remotion render (profile=%s, hw_encoder=%s): %s",
+                effective_profile,
+                env.get("VIDEOANALIZER_HW_ENCODER", "libx264"),
+                " ".join(cmd),
+            )
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 cwd=str(self.config.remotion_dir.resolve()),
+                env=env,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -268,6 +302,22 @@ class QuizOrchestrator:
             logger.error(
                 "Remotion render failed with exit code %s: %s", process.returncode, err_msg
             )
+            # Automatic fail-safe fallback to CPU Safe if GPU_FAST failed (Clarification 1)
+            if effective_profile == RenderProfile.GPU_FAST:
+                logger.warning(
+                    "GPU Fast Remotion render failed (code %s). "
+                    "Automatically falling back to CPU Safe profile...",
+                    process.returncode,
+                )
+                if progress_callback:
+                    progress_callback(42, "Откат на CPU Safe рендеринг...")
+                return await self._render_remotion(
+                    props_path=props_path,
+                    public_dir=public_dir,
+                    output_path=output_path,
+                    progress_callback=progress_callback,
+                    profile=RenderProfile.CPU_SAFE,
+                )
             raise RuntimeError(
                 f"Remotion render failed (code {process.returncode}):\n{err_msg}\n{out_msg}"
             )
@@ -290,6 +340,7 @@ class QuizOrchestrator:
         background_music: Path | str | None = None,
         background_music_volume: float = 0.18,
         uniquifier: VideoUniquifierConfig | None = None,
+        render_profile: RenderProfile | None = None,
         progress_callback: Callable[[int, str], None] | None = None,
     ) -> Path:
         """Run the full end-to-end quiz short generation pipeline."""
@@ -611,19 +662,13 @@ class QuizOrchestrator:
             if progress_callback:
                 progress_callback(40, "Запуск рендеринга Remotion...")
             logger.info("Rendering final vertical video to %s", final_output_path)
-            if progress_callback is not None:
-                await self._render_remotion(
-                    props_path=props_file,
-                    public_dir=public_dir,
-                    output_path=final_output_path,
-                    progress_callback=progress_callback,
-                )
-            else:
-                await self._render_remotion(
-                    props_path=props_file,
-                    public_dir=public_dir,
-                    output_path=final_output_path,
-                )
+            await self._render_remotion(
+                props_path=props_file,
+                public_dir=public_dir,
+                output_path=final_output_path,
+                progress_callback=progress_callback,
+                profile=render_profile,
+            )
 
         if not final_output_path.exists() or final_output_path.stat().st_size == 0:
             raise RuntimeError(
@@ -641,6 +686,7 @@ class QuizOrchestrator:
                 config=uniquifier,
                 width=self.config.width,
                 height=self.config.height,
+                render_profile=render_profile or self.config.render_profile,
             )
 
         if progress_callback:

@@ -213,3 +213,58 @@ def test_search_image_endpoint() -> None:
         assert len(data["images"]) == 2
         assert data["images"][0]["image"] == "https://example.com/img1.jpg"
         assert data["images"][0]["thumbnail"] == "https://example.com/thumb1.jpg"
+
+
+def test_hardware_status_endpoint() -> None:
+    """GET /api/v1/hardware/status should return hardware acceleration capabilities."""
+    res = client.get("/api/v1/hardware/status")
+    assert res.status_code == 200
+    data = res.json()
+    assert "gpu_available" in data
+    assert "gpu_vendor" in data
+    assert "active_encoder" in data
+    assert "supported_encoders" in data
+    assert "bundle_cache_enabled" in data
+    assert isinstance(data["gpu_available"], bool)
+    assert isinstance(data["supported_encoders"], list)
+
+
+def test_quiz_hardware_status_endpoint() -> None:
+    """GET /api/v1/quiz/hardware/status should also resolve and return hardware info."""
+    res = client.get("/api/v1/quiz/hardware/status")
+    assert res.status_code == 200
+    data = res.json()
+    assert "gpu_available" in data
+    assert "active_encoder" in data
+
+
+def test_generate_quiz_with_render_profiles() -> None:
+    """POST /api/v1/quiz/generate should accept render_profile 'gpu_fast' and 'cpu_safe'."""
+    from videoanalizer.quiz.models import RenderProfile
+
+    # Case 1: gpu_fast
+    with patch("videoanalizer.api.routes_quiz._run_quiz_job", new_callable=AsyncMock) as mock_job:
+        payload = {
+            "topic": "Игры 2026",
+            "language": "ru",
+            "render_profile": "gpu_fast",
+        }
+        res = client.post("/api/v1/quiz/generate", json=payload)
+        assert res.status_code == 202
+        mock_job.assert_called_once()
+        req_arg = mock_job.call_args[0][1]
+        assert req_arg.render_profile == RenderProfile.GPU_FAST
+
+    # Case 2: cpu_safe
+    with patch("videoanalizer.api.routes_quiz._run_quiz_job", new_callable=AsyncMock) as mock_job:
+        payload = {
+            "topic": "Игры 2026",
+            "language": "ru",
+            "render_profile": "cpu_safe",
+        }
+        res = client.post("/api/v1/quiz/generate", json=payload)
+        assert res.status_code == 202
+        mock_job.assert_called_once()
+        req_arg = mock_job.call_args[0][1]
+        assert req_arg.render_profile == RenderProfile.CPU_SAFE
+

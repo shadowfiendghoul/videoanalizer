@@ -149,3 +149,43 @@ def test_apply_video_uniquifier_success_invocation(
     assert "-map_metadata" in cmd
     assert "-pix_fmt" in cmd
     assert "yuv420p" in cmd
+
+
+@patch("subprocess.run")
+def test_apply_video_uniquifier_gpu_fallback_on_failure(
+    mock_subproc: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """When GPU Fast hardware encoding fails, automatically fallback to CPU libx264."""
+    from videoanalizer.quiz.models import RenderProfile
+
+    in_file = tmp_path / "in_gpu.mp4"
+    in_file.write_bytes(b"gpu_input_bytes")
+    out_file = tmp_path / "out_gpu.mp4"
+
+    call_count = 0
+
+    def fake_run(cmd: list[str], **kwargs: object) -> MagicMock:
+        nonlocal call_count
+        call_count += 1
+        mock_res = MagicMock()
+        if call_count == 1:
+            # First attempt (GPU Fast) fails
+            mock_res.returncode = 1
+            mock_res.stderr = "CUDA/AMF driver hardware failure"
+            return mock_res
+        # Second attempt (CPU Safe fallback) succeeds
+        out_target = Path(cmd[-1])
+        out_target.write_bytes(b"fallback_bytes")
+        mock_res.returncode = 0
+        return mock_res
+
+    mock_subproc.side_effect = fake_run
+
+    cfg = VideoUniquifierConfig(enabled=True, render_profile=RenderProfile.GPU_FAST)
+    result = apply_video_uniquifier(in_file, out_file, cfg)
+
+    assert result == out_file
+    assert out_file.exists()
+    assert call_count == 2
+

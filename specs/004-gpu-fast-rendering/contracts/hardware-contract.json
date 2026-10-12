@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HardwareCapabilitiesResponse",
+  "type": "object",
+  "required": [
+    "gpu_available",
+    "gpu_name",
+    "gpu_vendor",
+    "recommended_profile"
+  ],
+  "properties": {
+    "gpu_available": {
+      "type": "boolean",
+      "description": "True if an accelerated graphics controller is detected."
+    },
+    "gpu_name": {
+      "type": "string",
+      "description": "Human-readable GPU name."
+    },
+    "gpu_vendor": {
+      "type": "string",
+      "enum": ["amd", "nvidia", "intel", "apple", "windows_mf", "unknown"]
+    },
+    "active_hw_encoder": {
+      "type": ["string", "null"],
+      "description": "Validated hardware video encoder (e.g., h264_amf, h264_nvenc, h264_mf)."
+    },
+    "supported_encoders": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "gl_backend": {
+      "type": "string",
+      "description": "Remotion Chromium OpenGL backend."
+    },
+    "recommended_profile": {
+      "type": "string",
+      "enum": ["gpu_fast", "cpu_safe"]
+    }
+  }
+}

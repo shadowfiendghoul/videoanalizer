@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 
 class DifficultyTier(StrEnum):
@@ -11,6 +11,76 @@ class DifficultyTier(StrEnum):
     EASY = "easy"
     MEDIUM = "medium"
     HARD = "hard"
+
+
+class RenderProfile(StrEnum):
+    """Rendering execution profile."""
+
+    GPU_FAST = "gpu_fast"  # Hardware GPU encoding (AMF/NVENC/QSV/MF) + ANGLE + Webpack Cache
+    CPU_SAFE = "cpu_safe"  # Software CPU encoding (libx264) + Standard rasterization
+
+
+class GpuVendor(StrEnum):
+    """Detected graphics processor vendor category."""
+
+    AMD = "amd"
+    NVIDIA = "nvidia"
+    INTEL = "intel"
+    APPLE = "apple"
+    GENERIC_WINDOWS = "windows_mf"
+    UNKNOWN = "unknown"
+
+
+class HardwareCapabilities(BaseModel):
+    """Detected host system graphics capabilities and active video encoders."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    gpu_available: bool = Field(
+        ...,
+        description="Whether an accelerated GPU was detected on host.",
+    )
+    gpu_name: str = Field(
+        default="Unknown GPU",
+        description="Human-readable graphics card name.",
+    )
+    gpu_vendor: GpuVendor = Field(
+        default=GpuVendor.UNKNOWN,
+        description="Detected GPU vendor category.",
+    )
+    active_hw_encoder: str | None = Field(
+        default=None,
+        description="Primary validated hardware encoder ('h264_amf', 'h264_nvenc', 'h264_mf').",
+    )
+    supported_encoders: list[str] = Field(
+        default_factory=list,
+        description="List of operational FFmpeg video encoders discovered on host.",
+    )
+    gl_backend: str = Field(
+        default="angle",
+        description="Chromium OpenGL/DirectX rasterization backend ('angle', 'egl', etc.).",
+    )
+    recommended_profile: RenderProfile = Field(
+        default=RenderProfile.GPU_FAST,
+        description="Recommended rendering profile based on host hardware.",
+    )
+    bundle_cache_enabled: bool = Field(
+        default=True,
+        description="Whether persistent Remotion Webpack bundle caching is active.",
+    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def gpu_device_name(self) -> str:
+        """Alias for gpu_name for API compatibility."""
+        return self.gpu_name
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def active_encoder(self) -> str | None:
+        """Alias for active_hw_encoder for API compatibility."""
+        return self.active_hw_encoder
+
 
 
 class QuizItem(BaseModel):

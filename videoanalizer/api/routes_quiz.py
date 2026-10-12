@@ -16,14 +16,25 @@ from videoanalizer.quiz.audio_service import probe_audio_duration_ms
 from videoanalizer.quiz.models import (
     ComboStreakConfig,
     CommentTrapConfig,
+    HardwareCapabilities,
     QuizChallenge,
     QuizRetentionConfig,
+    RenderProfile,
 )
 from videoanalizer.quiz.orchestrator import QuizOrchestrator
+from videoanalizer.utils.hardware import get_hardware_capabilities
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/quiz", tags=["Quiz Shorts Generator"])
+hardware_router = APIRouter(prefix="/api/v1/hardware", tags=["Hardware Acceleration"])
+
+
+@hardware_router.get("/status", response_model=HardwareCapabilities)
+@router.get("/hardware/status", response_model=HardwareCapabilities)
+async def get_hardware_status() -> HardwareCapabilities:
+    """Detect and return GPU hardware acceleration capabilities and encoders."""
+    return get_hardware_capabilities()
 
 
 class QuizQuestionsPreviewRequest(BaseModel):
@@ -100,6 +111,10 @@ class QuizGenerateRequest(BaseModel):
     uniquifier: VideoUniquifierConfig | None = Field(
         default=None,
         description="Optional video uniquifier and anti-fingerprint configuration.",
+    )
+    render_profile: RenderProfile = Field(
+        default=RenderProfile.GPU_FAST,
+        description="Rendering acceleration profile ('gpu_fast' or 'cpu_safe').",
     )
 
 
@@ -221,6 +236,7 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
             background_music=request.background_music,
             background_music_volume=request.background_music_volume,
             uniquifier=request.uniquifier,
+            render_profile=request.render_profile,
             progress_callback=on_progress,
         )
 

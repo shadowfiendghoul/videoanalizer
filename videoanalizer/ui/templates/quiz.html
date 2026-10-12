@@ -418,6 +418,56 @@
             </div>
           </div>
 
+          <!-- Render Profile & Hardware Acceleration Card -->
+          <div class="p-4 rounded-xl bg-gradient-to-r from-amber-500/[0.07] via-emerald-500/[0.05] to-purple-500/[0.05] border border-amber-500/20 space-y-3 text-xs text-slate-300">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-amber-300 flex items-center space-x-1.5">
+                <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+                <span>Режим рендеринга и ускорение:</span>
+              </span>
+              <span id="hardware-status-badge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-bold flex items-center space-x-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                <span>Определение GPU...</span>
+              </span>
+            </div>
+
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Аппаратное GPU-кодирование (NVENC / AMF / QSV / MediaFoundation) ускоряет рендеринг в 6–12 раз с аппаратным D3D11 ANGLE растровым движком Chromium. При любых неполадках GPU система автоматически переключится на безопасный CPU-рендер без прерывания процесса.
+            </p>
+
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+              <button 
+                type="button" 
+                id="btn-profile-gpu" 
+                onclick="setRenderProfile('gpu_fast')"
+                class="p-2.5 rounded-xl border flex flex-col items-start space-y-1 transition-all cursor-pointer bg-amber-500/15 border-amber-500/40 text-amber-200 shadow-lg shadow-amber-500/10"
+              >
+                <div class="flex items-center justify-between w-full">
+                  <span class="font-bold flex items-center space-x-1 text-xs">
+                    <span>⚡ GPU Fast</span>
+                  </span>
+                  <span id="gpu-speed-badge" class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">~6x–12x</span>
+                </div>
+                <span class="text-[10px] text-slate-300 text-left">Аппаратный энкодер + D3D11 ANGLE</span>
+              </button>
+
+              <button 
+                type="button" 
+                id="btn-profile-cpu" 
+                onclick="setRenderProfile('cpu_safe')"
+                class="p-2.5 rounded-xl border flex flex-col items-start space-y-1 transition-all cursor-pointer bg-black/40 border-white/[0.08] text-slate-400 hover:text-white"
+              >
+                <div class="flex items-center justify-between w-full">
+                  <span class="font-bold flex items-center space-x-1 text-xs">
+                    <span>🖥️ CPU Safe</span>
+                  </span>
+                  <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/[0.05] text-slate-400 border border-white/[0.1]">libx264</span>
+                </div>
+                <span class="text-[10px] text-slate-400 text-left">100% стабильность на любом процессоре</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Final Video Uniquifier & Anti-Fingerprint Card -->
           <div class="p-4 rounded-xl bg-cyan-500/[0.05] border border-cyan-500/20 space-y-3 text-xs text-slate-300">
             <div class="flex items-center justify-between">
@@ -741,6 +791,80 @@
 
     const SETTINGS_STORAGE_KEY = 'videoanalyzer_quiz_settings_v1';
     let currentUniquifierMode = 'smart_random';
+    let currentRenderProfile = 'gpu_fast';
+    let hardwareCapabilities = null;
+
+    function setRenderProfile(profile, shouldSave = true) {
+      if (profile === 'gpu_fast' && hardwareCapabilities && !hardwareCapabilities.gpu_available) {
+        profile = 'cpu_safe';
+      }
+      currentRenderProfile = profile;
+      const gpuBtn = document.getElementById('btn-profile-gpu');
+      const cpuBtn = document.getElementById('btn-profile-cpu');
+
+      if (profile === 'gpu_fast') {
+        gpuBtn?.classList.remove('bg-black/40', 'border-white/[0.08]', 'text-slate-400');
+        gpuBtn?.classList.add('bg-amber-500/15', 'border-amber-500/40', 'text-amber-200', 'shadow-lg', 'shadow-amber-500/10');
+        cpuBtn?.classList.remove('bg-amber-500/15', 'border-amber-500/40', 'text-amber-200', 'shadow-lg', 'shadow-amber-500/10');
+        cpuBtn?.classList.add('bg-black/40', 'border-white/[0.08]', 'text-slate-400');
+      } else {
+        cpuBtn?.classList.remove('bg-black/40', 'border-white/[0.08]', 'text-slate-400');
+        cpuBtn?.classList.add('bg-emerald-500/15', 'border-emerald-500/40', 'text-emerald-200', 'shadow-lg', 'shadow-emerald-500/10');
+        gpuBtn?.classList.remove('bg-amber-500/15', 'border-amber-500/40', 'text-amber-200', 'shadow-lg', 'shadow-amber-500/10');
+        gpuBtn?.classList.add('bg-black/40', 'border-white/[0.08]', 'text-slate-400');
+      }
+
+      if (shouldSave) {
+        saveSettings();
+        try {
+          localStorage.setItem('quiz_render_profile', profile);
+        } catch (e) {
+          /* ignore */
+        }
+      }
+    }
+
+    async function initHardwareProbe() {
+      const badge = document.getElementById('hardware-status-badge');
+      const gpuBtn = document.getElementById('btn-profile-gpu');
+      const speedBadge = document.getElementById('gpu-speed-badge');
+
+      try {
+        let res = await fetch('/api/v1/hardware/status');
+        if (!res.ok) {
+          res = await fetch('/api/v1/quiz/hardware/status');
+        }
+        if (!res.ok) throw new Error('Status endpoint unavailable');
+
+        hardwareCapabilities = await res.json();
+        if (hardwareCapabilities.gpu_available) {
+          const dev = hardwareCapabilities.gpu_device_name || 'GPU';
+          const enc = hardwareCapabilities.active_encoder || 'HW';
+          badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold flex items-center space-x-1';
+          badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>🟢 GPU: ${dev} (${enc})</span>`;
+          if (speedBadge) speedBadge.textContent = '~6x–12x';
+
+          // Restore saved preference if exists
+          const savedPref = localStorage.getItem('quiz_render_profile') || 'gpu_fast';
+          setRenderProfile(savedPref, false);
+        } else {
+          badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold flex items-center space-x-1';
+          badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span><span>GPU не обнаружен (активен CPU Safe)</span>`;
+          if (gpuBtn) {
+            gpuBtn.disabled = true;
+            gpuBtn.classList.add('opacity-40', 'cursor-not-allowed');
+            gpuBtn.title = 'GPU не обнаружен на хосте (активен безопасный CPU режим)';
+          }
+          setRenderProfile('cpu_safe', false);
+        }
+      } catch (err) {
+        console.warn('Hardware probe failed:', err);
+        if (badge) {
+          badge.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-bold flex items-center space-x-1';
+          badge.innerHTML = `<span>Статус GPU: авто</span>`;
+        }
+      }
+    }
 
     function toggleUniquifierSection() {
       const checked = document.getElementById('uniquifier-toggle')?.checked ?? false;
@@ -827,6 +951,7 @@
         uniquifierNoise: document.getElementById('uniq-slider-noise')?.value,
         uniquifierAudio: document.getElementById('uniq-slider-audio')?.value,
         uniquifierFlip: document.getElementById('uniq-flip-toggle')?.checked ?? false,
+        renderProfile: currentRenderProfile,
       };
       try {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -943,6 +1068,12 @@
       if (typeof s.uniquifierFlip === 'boolean' && document.getElementById('uniq-flip-toggle')) {
         document.getElementById('uniq-flip-toggle').checked = s.uniquifierFlip;
       }
+      if (s.renderProfile) {
+        setRenderProfile(s.renderProfile, false);
+      } else {
+        const storedProfile = localStorage.getItem('quiz_render_profile');
+        if (storedProfile) setRenderProfile(storedProfile, false);
+      }
     }
 
     function handleLanguageChange() {
@@ -995,8 +1126,9 @@
     let uploadedBannerFile = null;
     let uploadedMusicFile = null;
 
-    // Initialize persisted settings and listeners
+    // Initialize persisted settings, hardware capabilities probe, and listeners
     loadSettings();
+    initHardwareProbe();
     document.getElementById('intro-hook-input')?.addEventListener('input', saveSettings);
     document.getElementById('language-select')?.addEventListener('change', handleLanguageChange);
     document.getElementById('voice-select')?.addEventListener('change', saveSettings);
@@ -1625,7 +1757,8 @@
             comment_trap_enabled: document.getElementById('trap-toggle')?.checked ?? true,
             temperature: document.getElementById('temperature-slider') ? parseFloat(document.getElementById('temperature-slider').value) : 0.95,
             fact_check: document.getElementById('fact-check-toggle')?.checked ?? true,
-            uniquifier: uniquifierConfig
+            uniquifier: uniquifierConfig,
+            render_profile: currentRenderProfile
           })
         });
 

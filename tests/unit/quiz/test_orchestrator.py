@@ -401,7 +401,9 @@ async def test_orchestrator_generate_with_progress_callback(tmp_path: Path) -> N
         props_path: Path,
         public_dir: Path,
         output_path: Path,
+        profile: object = None,
         progress_callback: object = None,
+        **kwargs: object,
     ) -> None:
         if progress_callback:
             progress_callback(50, "Рендеринг видео: 50%")

@@ -11,6 +11,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from videoanalizer.exceptions import MediaProcessingError
+from videoanalizer.quiz.models import RenderProfile
+from videoanalizer.utils.hardware import get_active_encoder_args, get_hardware_capabilities
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +88,10 @@ class VideoUniquifierConfig(BaseModel):
     strip_metadata: bool = Field(
         default=True,
         description="Strip original metadata and container tags.",
+    )
+    render_profile: RenderProfile = Field(
+        default=RenderProfile.GPU_FAST,
+        description="Encoder profile used during re-encoding ('gpu_fast' or 'cpu_safe').",
     )
 
 
@@ -188,6 +194,7 @@ def apply_video_uniquifier(
     config: VideoUniquifierConfig | None = None,
     width: int = 1080,
     height: int = 1920,
+    render_profile: RenderProfile | None = None,
 ) -> Path:
     """Process a rendered video through the anti-fingerprint uniquifier filterchain.
 
@@ -197,6 +204,7 @@ def apply_video_uniquifier(
         config: VideoUniquifierConfig or None.
         width: Canvas width (default 1080).
         height: Canvas height (default 1920).
+        render_profile: Rendering execution profile ('gpu_fast' or 'cpu_safe').
 
     Returns:
         Path to processed unique video.
@@ -210,6 +218,15 @@ def apply_video_uniquifier(
         if input_path.resolve() != output_path.resolve():
             shutil.copy2(input_path, output_path)
         return output_path
+
+    effective_profile = (
+        render_profile or (config.render_profile if config else RenderProfile.GPU_FAST)
+    )
+    caps = get_hardware_capabilities()
+    active_encoder = (
+        caps.active_hw_encoder if effective_profile == RenderProfile.GPU_FAST else None
+    )
+    encoder_args = get_active_encoder_args(active_encoder, effective_profile)
 
     params = generate_uniquifier_parameters(config)
     vf, af, meta_args = build_uniquifier_filterchains(params, width=width, height=height)
@@ -232,12 +249,7 @@ def apply_video_uniquifier(
         "-af",
         af,
         *meta_args,
-        "-c:v",
-        "libx264",
-        "-preset",
-        "fast",
-        "-crf",
-        "18",
+        *encoder_args,
         "-c:a",
         "aac",
         "-b:a",
@@ -249,10 +261,33 @@ def apply_video_uniquifier(
         str(temp_target),
     ]
 
-    logger.info("Applying Video Uniquifier: %s -> %s", input_path.name, output_path.name)
+    logger.info(
+        "Applying Video Uniquifier (profile=%s, encoder=%s): %s -> %s",
+        effective_profile,
+        active_encoder or "libx264",
+        input_path.name,
+        output_path.name,
+    )
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
 
     if proc.returncode != 0 or not temp_target.exists() or temp_target.stat().st_size == 0:
+        # Automatic fallback to CPU Safe if GPU encoding failed
+        if effective_profile == RenderProfile.GPU_FAST:
+            logger.warning(
+                "Uniquifier hardware encoding failed (%s). Falling back to CPU Safe...",
+                proc.returncode,
+            )
+            if temp_target.exists() and temp_target != output_path:
+                temp_target.unlink(missing_ok=True)
+            return apply_video_uniquifier(
+                input_path=input_path,
+                output_path=output_path,
+                config=config,
+                width=width,
+                height=height,
+                render_profile=RenderProfile.CPU_SAFE,
+            )
+
         if temp_target.exists() and temp_target != output_path:
             temp_target.unlink(missing_ok=True)
         raise MediaProcessingError(

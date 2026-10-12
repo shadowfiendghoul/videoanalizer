@@ -8,6 +8,8 @@ from pathlib import Path
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from videoanalizer.quiz.models import RenderProfile
+
 
 def ensure_system_paths() -> None:
     """Ensure system paths for FFmpeg and Node.js are available in os.environ['PATH']."""
@@ -168,6 +170,18 @@ class QuizConfig(BaseSettings):
         ge=50,
         le=100,
         description="Puppeteer frame screenshot JPEG quality (default 95).",
+    )
+    render_profile: RenderProfile = Field(
+        default=RenderProfile.GPU_FAST,
+        description="Rendering execution profile ('gpu_fast' or 'cpu_safe').",
+    )
+    enable_bundle_cache: bool = Field(
+        default=True,
+        description="Enable Webpack compilation bundle caching across renders.",
+    )
+    gl_backend: str = Field(
+        default="angle",
+        description="Chromium OpenGL/DirectX rasterization backend for Remotion ('angle', 'egl').",
     )
 
     @property
