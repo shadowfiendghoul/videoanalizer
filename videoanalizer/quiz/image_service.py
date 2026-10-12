@@ -9,15 +9,27 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
-# Suppress transitional package rename warnings from legacy duckduckgo_search
-warnings.filterwarnings("ignore", message=".*duckduckgo_search.*")
-warnings.filterwarnings("ignore", message=".*renamed to.*")
-
 try:
     from ddgs import DDGS
 except ImportError:
     try:
-        from duckduckgo_search import DDGS
+        from duckduckgo_search import DDGS  # type: ignore[no-redef]
+
+        # Neutralize forced warnings.simplefilter("always") inside legacy duckduckgo_search.__init__
+        _orig_ddgs_init = getattr(DDGS, "__init__", None)
+        if _orig_ddgs_init is not None:
+
+            def _silent_ddgs_init(
+                self: object, *args: object, **kwargs: object
+            ) -> None:
+                orig_warn = warnings.warn
+                warnings.warn = lambda *a, **k: None  # type: ignore[assignment]
+                try:
+                    _orig_ddgs_init(self, *args, **kwargs)
+                finally:
+                    warnings.warn = orig_warn
+
+            DDGS.__init__ = _silent_ddgs_init  # type: ignore[method-assign]
     except ImportError:
         DDGS = None  # type: ignore[assignment]
 
