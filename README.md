@@ -114,7 +114,17 @@ GOOGLE_API_KEY=your_gemini_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-### 5. Запуск
+### 5. Загрузка нейросетевых моделей голоса (Опционально / Автоматически)
+Для клонирования авторских голосов (Меллстрой и др.) и нейросетевой экспрессивной озвучки (Qwen3-TTS, RVC, Piper):
+```bash
+python scripts/download_voice_models.py
+```
+* Скачает веса **Qwen3-TTS Base** (`assets/models/qwen3_tts/`).
+* Кэширует модель фонетических признаков **ContentVec / HuBERT**.
+* Скачает русские голоса **Piper TTS** (Денис, Дмитрий в `assets/models/piper/`).
+* Пользовательские модели RVC (`.pth` и `.index`) помещаются в папку `assets/models/rvc/`.
+
+### 6. Запуск
 ```bash
 python -m videoanalizer
 ```

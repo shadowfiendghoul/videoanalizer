@@ -3,6 +3,7 @@
 param(
     [switch]$SkipNpm,
     [switch]$SkipVenv,
+    [switch]$SkipVoiceModels,
     [string]$ApiKey
 )
 
@@ -31,7 +32,7 @@ if (Test-Path "$env:ProgramFiles\nodejs") {
 }
 
 # 1. Check Python
-Write-Host "[1/6] Checking Python installation..." -ForegroundColor Yellow
+Write-Host "[1/7] Checking Python installation..." -ForegroundColor Yellow
 $pythonCmd = $null
 if (Get-Command python -ErrorAction SilentlyContinue) {
     $pythonCmd = "python"
@@ -58,7 +59,7 @@ Write-Host "[OK] Found $pyVer" -ForegroundColor Green
 
 # 2. Check Node.js
 Write-Host ""
-Write-Host "[2/6] Checking Node.js & npm (Remotion engine)..." -ForegroundColor Yellow
+Write-Host "[2/7] Checking Node.js & npm (Remotion engine)..." -ForegroundColor Yellow
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
     Write-Host "[WARN] Node.js not detected." -ForegroundColor Yellow
     if (Get-Command winget -ErrorAction SilentlyContinue) {
@@ -81,7 +82,7 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
 
 # 3. Check FFmpeg
 Write-Host ""
-Write-Host "[3/6] Checking FFmpeg media engine..." -ForegroundColor Yellow
+Write-Host "[3/7] Checking FFmpeg media engine..." -ForegroundColor Yellow
 if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
     Write-Host "[WARN] FFmpeg not found." -ForegroundColor Yellow
     if (Get-Command winget -ErrorAction SilentlyContinue) {
@@ -100,7 +101,7 @@ if (Get-Command ffmpeg -ErrorAction SilentlyContinue) {
 
 # 4. Setup .venv
 Write-Host ""
-Write-Host "[4/6] Setting up Python virtual environment (.venv)..." -ForegroundColor Yellow
+Write-Host "[4/7] Setting up Python virtual environment (.venv)..." -ForegroundColor Yellow
 $venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 
 if (-not $SkipVenv) {
@@ -114,9 +115,27 @@ if (-not $SkipVenv) {
     Write-Host "[OK] Python dependencies installed." -ForegroundColor Green
 }
 
-# 5. Setup Remotion NPM
+# 5. Setup Custom AI Voices & Neural Models (Qwen3-TTS, ContentVec, Piper)
 Write-Host ""
-Write-Host "[5/6] Setting up Remotion template dependencies..." -ForegroundColor Yellow
+Write-Host "[5/7] Setting up Custom AI Voices & Neural Models (Qwen3-TTS, RVC, Piper)..." -ForegroundColor Yellow
+@("outputs", "assets\backgrounds", "assets\sfx", "assets\models\rvc", "assets\models\qwen3_tts", "assets\models\piper", "assets\voices", "temp") | ForEach-Object {
+    if (-not (Test-Path $_)) { New-Item -ItemType Directory -Path $_ -Force | Out-Null }
+}
+
+if (-not $SkipVoiceModels) {
+    Write-Host "[INFO] Checking and downloading AI voice models (Qwen3-TTS, ContentVec, Piper)..." -ForegroundColor Cyan
+    try {
+        & $venvPython scripts\download_voice_models.py
+        Write-Host "[OK] Custom AI voice models verified." -ForegroundColor Green
+    } catch {
+        Write-Host "[WARN] Voice model setup encountered an issue: $_" -ForegroundColor Yellow
+        Write-Host "[INFO] You can download them anytime later via: .venv\Scripts\python.exe scripts\download_voice_models.py" -ForegroundColor Cyan
+    }
+}
+
+# 6. Setup Remotion NPM
+Write-Host ""
+Write-Host "[6/7] Setting up Remotion template dependencies..." -ForegroundColor Yellow
 if (-not $SkipNpm -and (Test-Path "templates\quiz-remotion\package.json")) {
     Push-Location "templates\quiz-remotion"
     try {
@@ -131,14 +150,9 @@ if (-not $SkipNpm -and (Test-Path "templates\quiz-remotion\package.json")) {
     }
 }
 
-# Ensure asset directories
-@("outputs", "assets\backgrounds", "assets\sfx", "temp") | ForEach-Object {
-    if (-not (Test-Path $_)) { New-Item -ItemType Directory -Path $_ -Force | Out-Null }
-}
-
-# 6. Configure .env
+# 7. Configure .env
 Write-Host ""
-Write-Host "[6/6] Configuring .env..." -ForegroundColor Yellow
+Write-Host "[7/7] Configuring .env..." -ForegroundColor Yellow
 $envPath = Join-Path $PSScriptRoot ".env"
 $envExPath = Join-Path $PSScriptRoot ".env.example"
 

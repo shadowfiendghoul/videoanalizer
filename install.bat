@@ -28,7 +28,7 @@ if exist "%LOCALAPPDATA%\Programs\nodejs" (
 :: -----------------------------------------------------------------------
 :: Step 1: Check Python
 :: -----------------------------------------------------------------------
-echo [1/6] Checking Python installation...
+echo [1/7] Checking Python installation...
 set "PY_CMD="
 
 python --version >nul 2>&1
@@ -72,7 +72,7 @@ for /f "tokens=*" %%V in ('!PY_CMD! --version 2^>^&1') do echo [OK] Found %%V
 :: Step 2: Check Node.js & npm (Required for Remotion video rendering)
 :: -----------------------------------------------------------------------
 echo.
-echo [2/6] Checking Node.js and npm (Remotion engine)...
+echo [2/7] Checking Node.js and npm (Remotion engine)...
 node -v >nul 2>&1
 if !errorlevel! neq 0 (
     echo [WARN] Node.js is not found on PATH.
@@ -100,7 +100,7 @@ if !errorlevel! neq 0 (
 :: Step 3: Check FFmpeg
 :: -----------------------------------------------------------------------
 echo.
-echo [3/6] Checking FFmpeg media engine...
+echo [3/7] Checking FFmpeg media engine...
 ffmpeg -version >nul 2>&1
 if !errorlevel! neq 0 (
     echo [WARN] FFmpeg not found on PATH.
@@ -128,7 +128,7 @@ if !errorlevel! equ 0 (
 :: Step 4: Setup Python Virtual Environment (.venv) & Dependencies
 :: -----------------------------------------------------------------------
 echo.
-echo [4/6] Setting up Python virtual environment (.venv)...
+echo [4/7] Setting up Python virtual environment (.venv)...
 if not exist ".venv\Scripts\python.exe" (
     echo [INFO] Creating .venv...
     !PY_CMD! -m venv .venv
@@ -150,10 +150,29 @@ if !errorlevel! neq 0 (
 echo [OK] Python dependencies installed successfully.
 
 :: -----------------------------------------------------------------------
-:: Step 5: Install Remotion NPM Dependencies
+:: Step 5: Setup Custom AI Voices & Neural Models (Qwen3-TTS, RVC, Piper)
 :: -----------------------------------------------------------------------
 echo.
-echo [5/6] Installing Remotion template dependencies (templates\quiz-remotion)...
+echo [5/7] Setting up Custom AI Voices & Neural Models...
+if not exist "assets\models\rvc" mkdir assets\models\rvc
+if not exist "assets\models\qwen3_tts" mkdir assets\models\qwen3_tts
+if not exist "assets\models\piper" mkdir assets\models\piper
+if not exist "assets\voices" mkdir assets\voices
+
+echo [INFO] Checking and downloading AI voice models (Qwen3-TTS, ContentVec, Piper voices)...
+.venv\Scripts\python.exe scripts\download_voice_models.py
+if !errorlevel! neq 0 (
+    echo [WARN] Some voice models could not be downloaded automatically.
+    echo [INFO] You can download them later by running: .venv\Scripts\python.exe scripts\download_voice_models.py
+) else (
+    echo [OK] Custom AI Voice models are verified and ready.
+)
+
+:: -----------------------------------------------------------------------
+:: Step 6: Install Remotion NPM Dependencies
+:: -----------------------------------------------------------------------
+echo.
+echo [6/7] Installing Remotion template dependencies (templates\quiz-remotion)...
 if exist "templates\quiz-remotion\package.json" (
     pushd templates\quiz-remotion
     call npm install --no-audit --no-fund
@@ -175,10 +194,10 @@ if not exist "assets\sfx" mkdir assets\sfx
 if not exist "temp" mkdir temp
 
 :: -----------------------------------------------------------------------
-:: Step 6: Configure Environment (.env) & API Key
+:: Step 7: Configure Environment (.env) & API Key
 :: -----------------------------------------------------------------------
 echo.
-echo [6/6] Configuring environment settings (.env)...
+echo [7/7] Configuring environment settings (.env)...
 if not exist ".env" (
     if exist ".env.example" (
         copy /y ".env.example" ".env" >nul
