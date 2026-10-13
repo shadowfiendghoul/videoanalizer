@@ -55,9 +55,9 @@ class QuizQuestionsPreviewRequest(BaseModel):
     temperature: float | None = Field(
         default=None,
         ge=0.0,
-        le=3.0,
+        le=2.0,
         description=(
-            "Sampling temperature for creative generation (0.2-3.0, default 0.95, clamped to 2.0)."
+            "Sampling temperature for creative generation (0.2-2.0, default 0.95)."
         ),
     )
     fact_check: bool | None = Field(
@@ -81,9 +81,9 @@ class QuizRegenerateSelectedRequest(BaseModel):
     temperature: float | None = Field(
         default=None,
         ge=0.0,
-        le=3.0,
+        le=2.0,
         description=(
-            "Sampling temperature for creative generation (0.2-3.0, default 0.95, clamped to 2.0)."
+            "Sampling temperature for creative generation (0.2-2.0, default 0.95)."
         ),
     )
     fact_check: bool | None = Field(
@@ -100,9 +100,9 @@ class QuizGenerateRequest(BaseModel):
     temperature: float | None = Field(
         default=None,
         ge=0.0,
-        le=3.0,
+        le=2.0,
         description=(
-            "Sampling temperature for creative generation (0.2-3.0, default 0.95, clamped to 2.0)."
+            "Sampling temperature for creative generation (0.2-2.0, default 0.95)."
         ),
     )
     fact_check: bool | None = Field(
@@ -665,7 +665,7 @@ class BatchInitRequest(BaseModel):
 
     topics: list[str] = Field(..., min_length=1, max_length=20, description="List of topics")
     language: Literal["ru", "en"] = Field(default="ru")
-    temperature: float | None = Field(default=None, ge=0.0, le=3.0)
+    temperature: float | None = Field(default=None, ge=0.0, le=2.0)
     fact_check: bool | None = Field(default=None)
 
 

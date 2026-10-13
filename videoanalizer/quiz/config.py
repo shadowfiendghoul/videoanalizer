@@ -74,9 +74,9 @@ class QuizConfig(BaseSettings):
     creative_temperature: float = Field(
         default=0.95,
         ge=0.0,
-        le=3.0,
+        le=2.0,
         validation_alias="QUIZ_CREATIVE_TEMPERATURE",
-        description="Sampling temperature for creative initial quiz generation (0.2-3.0).",
+        description="Sampling temperature for creative initial quiz generation (0.2-2.0).",
     )
     verifier_temperature: float = Field(
         default=0.1,
