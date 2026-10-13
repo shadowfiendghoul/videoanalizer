@@ -620,6 +620,15 @@ async def get_quiz_job(job_id: str) -> QuizJobStatusResponse:
 async def download_quiz_video(job_id: str) -> FileResponse:
     """Download the completed 1080x1920 60fps MP4 video."""
     if job_id not in quiz_jobs:
+        manager = get_batch_queue_manager()
+        for it in manager.get_history():
+            if (
+                it.job_id == job_id
+                or it.history_id == job_id
+                or job_id in it.video_path
+            ) and Path(it.video_path).exists():
+                p = Path(it.video_path)
+                return FileResponse(path=str(p), media_type="video/mp4", filename=p.name)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Quiz job '{job_id}' not found.",
@@ -750,7 +759,11 @@ async def download_batch_item_video(item_id: str) -> FileResponse:
 
     if not found_item:
         for it in manager.get_history():
-            if it.job_id == item_id and Path(it.video_path).exists():
+            if (
+                it.job_id == item_id
+                or it.history_id == item_id
+                or Path(it.video_path).stem == item_id
+            ) and Path(it.video_path).exists():
                 p = Path(it.video_path)
                 return FileResponse(path=str(p), media_type="video/mp4", filename=p.name)
 
@@ -778,3 +791,32 @@ async def get_generation_history() -> list[GenerationHistoryItem]:
     """Retrieve persistent history of all completed quiz video generations."""
     manager = get_batch_queue_manager()
     return manager.get_history()
+
+
+@router.get("/history/download/{item_id}")
+async def download_history_video(item_id: str) -> FileResponse:
+    """Download or stream completed video from generation history."""
+    manager = get_batch_queue_manager()
+    for it in manager.get_history():
+        if (
+            it.history_id == item_id
+            or it.job_id == item_id
+            or Path(it.video_path).stem == item_id
+            or Path(it.video_path).name == item_id
+        ) and Path(it.video_path).exists():
+            p = Path(it.video_path)
+            return FileResponse(path=str(p), media_type="video/mp4", filename=p.name)
+
+    # Direct fallback on candidate folders
+    for d in [manager.config.output_dir, Path("output"), Path("outputs")]:
+        cand = d / item_id
+        if cand.exists() and cand.is_file():
+            return FileResponse(path=str(cand), media_type="video/mp4", filename=cand.name)
+        cand_mp4 = d / f"{item_id}.mp4"
+        if cand_mp4.exists() and cand_mp4.is_file():
+            return FileResponse(path=str(cand_mp4), media_type="video/mp4", filename=cand_mp4.name)
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Видео '{item_id}' не найдено в истории генераций.",
+    )

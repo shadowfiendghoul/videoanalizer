@@ -62,7 +62,18 @@
         </div>
       </div>
 
-      <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-3">
+        <button 
+          type="button" 
+          id="header-history-btn" 
+          onclick="switchMainView('history')" 
+          class="text-xs px-3.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 transition-all flex items-center space-x-2 border border-amber-500/25 cursor-pointer font-medium"
+          title="Открыть архив и историю генераций"
+        >
+          <i data-lucide="film" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span>История</span>
+          <span id="header-history-badge" class="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold">0</span>
+        </button>
         <a href="/" class="text-xs px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 transition-all flex items-center space-x-1.5 border border-white/[0.08]">
           <i data-lucide="video" class="w-3.5 h-3.5"></i>
           <span>Нарезка видео в Shorts</span>
@@ -77,7 +88,47 @@
 
   <!-- Main Container -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+    <!-- TOP NAVIGATION TABS: Studio vs History -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-white/[0.08]">
+      <div class="flex items-center space-x-2 p-1.5 rounded-2xl bg-black/60 border border-white/[0.08] backdrop-blur-xl">
+        <button 
+          type="button" 
+          id="tab-view-studio" 
+          onclick="switchMainView('studio')" 
+          class="py-2.5 px-5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2.5 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/30 shadow-lg shadow-emerald-500/10 cursor-pointer"
+        >
+          <i data-lucide="sparkles" class="w-4 h-4 text-emerald-400"></i>
+          <span>Студия создания</span>
+        </button>
+        <button 
+          type="button" 
+          id="tab-view-history" 
+          onclick="switchMainView('history')" 
+          class="py-2.5 px-5 rounded-xl text-xs font-semibold transition-all flex items-center space-x-2 text-slate-400 hover:text-white border border-transparent cursor-pointer"
+        >
+          <i data-lucide="film" class="w-4 h-4 text-amber-400"></i>
+          <span>История и видеотека</span>
+          <span id="tab-history-badge" class="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/25 font-mono text-[11px] font-bold">0</span>
+        </button>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <button 
+          type="button" 
+          id="quick-history-btn" 
+          onclick="switchMainView('history')" 
+          class="text-xs px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 transition-all flex items-center space-x-2 cursor-pointer font-medium"
+        >
+          <i data-lucide="history" class="w-4 h-4"></i>
+          <span>Открыть историю (<span id="quick-history-counter">0</span> видео)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SECTION VIEW: Studio (Controls, Live Remotion Preview, Batch Queue) -->
+    <div id="view-studio" class="space-y-8">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
       <!-- LEFT: Controls & Parameters (7 cols) -->
       <section class="lg:col-span-7 space-y-6">
@@ -1039,47 +1090,87 @@
         </div>
       </div>
     </section>
+  </div>
 
-    <!-- SECTION: Generation History -->
-    <section id="generation-history-section" class="mt-8 space-y-4">
-      <div class="glass-panel p-6 space-y-5 border border-white/[0.08]">
-        <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
-          <div class="flex items-center space-x-3">
-            <div class="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
-              <i data-lucide="history" class="w-5 h-5"></i>
-            </div>
-            <div>
-              <h3 class="text-base font-bold text-white flex items-center space-x-2">
-                <span>История генераций</span>
-                <span id="history-count-badge" class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">0</span>
-              </h3>
-              <p class="text-xs text-slate-400">Все ранее созданные ролики с темами, плеером и скачиванием</p>
-            </div>
+  <!-- SECTION VIEW: Dedicated Generation History & Video Archive -->
+  <div id="view-history" class="space-y-6 hidden">
+    <div class="glass-panel p-6 space-y-6 border border-white/[0.08]">
+      <!-- History Header & Filter Bar -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center border border-amber-500/20 shadow-lg shadow-amber-500/10 shrink-0">
+            <i data-lucide="film" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center space-x-2.5">
+              <span>История и видеотека генераций</span>
+              <span id="history-count-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono font-bold">0 видео</span>
+            </h2>
+            <p class="text-xs text-slate-400">Все готовые вертикальные ролики с подписанными темами, встроенным плеером и скачиванием</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5">
+          <!-- Search / Filter by topic -->
+          <div class="relative min-w-[240px]">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input 
+              type="text" 
+              id="history-search-input" 
+              placeholder="Поиск по теме викторины..." 
+              oninput="filterHistoryCards(this.value)"
+              class="w-full bg-black/40 border border-white/[0.1] rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-all"
+            />
           </div>
 
+          <!-- Refresh Button -->
           <button 
             type="button" 
             onclick="loadGenerationHistory()" 
-            class="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 border border-white/[0.1] text-xs font-medium transition-all flex items-center space-x-1.5 cursor-pointer"
-            title="Обновить историю генераций"
+            class="px-3.5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 border border-white/[0.1] text-xs font-semibold transition-all flex items-center space-x-1.5 cursor-pointer"
+            title="Обновить список видео"
           >
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-slate-400"></i>
             <span>Обновить</span>
           </button>
-        </div>
 
-        <!-- History Items Grid -->
-        <div id="history-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <!-- History cards rendered here -->
-        </div>
-
-        <!-- Empty State -->
-        <div id="history-empty" class="py-8 text-center text-slate-500 text-xs hidden">
-          <i data-lucide="film" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
-          <p>Пока нет завершенных генераций. Создайте первое видео, и оно появится в истории!</p>
+          <!-- New Quiz Studio Switcher Button -->
+          <button 
+            type="button" 
+            onclick="switchMainView('studio')" 
+            class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center space-x-1.5 cursor-pointer"
+          >
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>+ Создать викторину</span>
+          </button>
         </div>
       </div>
-    </section>
+
+      <!-- History Cards Grid -->
+      <div id="history-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <!-- History cards rendered here -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="history-empty" class="py-16 text-center text-slate-500 space-y-3 hidden">
+        <div class="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mx-auto text-slate-600">
+          <i data-lucide="film" class="w-8 h-8"></i>
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-slate-300">В архиве пока нет готовых видео</h4>
+          <p class="text-xs text-slate-500 mt-1">Создайте первое видео в студии генерации, и оно автоматически появится здесь с плеером и темой.</p>
+        </div>
+        <button 
+          type="button" 
+          onclick="switchMainView('studio')" 
+          class="mt-2 inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer"
+        >
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>Перейти в студию создания</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   </main>
 
@@ -2462,6 +2553,9 @@
             const dlLink = document.getElementById('download-link');
             dlLink.href = videoUrl;
             document.getElementById('download-box').classList.remove('hidden');
+
+            // Refresh generation history library
+            loadGenerationHistory();
           } else if (job.status === 'failed') {
             clearInterval(pollInterval);
             document.getElementById('spinner').classList.add('hidden');
@@ -3666,67 +3760,144 @@
       window.location.href = '/api/v1/quiz/batch/queue/download-all';
     }
 
-    async function loadGenerationHistory() {
+    let allHistoryItems = [];
+
+    function switchMainView(viewName) {
+      const studioView = document.getElementById('view-studio');
+      const historyView = document.getElementById('view-history');
+      const tabStudio = document.getElementById('tab-view-studio');
+      const tabHistory = document.getElementById('tab-view-history');
+
+      const activeClass = ['bg-gradient-to-r', 'from-emerald-500/20', 'to-teal-500/20', 'text-emerald-300', 'border-emerald-500/30', 'shadow-lg', 'shadow-emerald-500/10'];
+      const activeHistoryClass = ['bg-gradient-to-r', 'from-amber-500/20', 'to-orange-500/20', 'text-amber-300', 'border-amber-500/30', 'shadow-lg', 'shadow-amber-500/10'];
+      const inactiveClass = ['text-slate-400', 'hover:text-white', 'border-transparent'];
+
+      if (viewName === 'history') {
+        studioView?.classList.add('hidden');
+        historyView?.classList.remove('hidden');
+
+        tabStudio?.classList.remove(...activeClass);
+        tabStudio?.classList.add(...inactiveClass);
+
+        tabHistory?.classList.remove(...inactiveClass);
+        tabHistory?.classList.add(...activeHistoryClass);
+
+        window.location.hash = 'history';
+        loadGenerationHistory();
+      } else {
+        historyView?.classList.add('hidden');
+        studioView?.classList.remove('hidden');
+
+        tabHistory?.classList.remove(...activeHistoryClass);
+        tabHistory?.classList.add(...inactiveClass);
+
+        tabStudio?.classList.remove(...inactiveClass);
+        tabStudio?.classList.add(...activeClass);
+
+        if (window.location.hash === '#history') {
+          history.replaceState(null, '', window.location.pathname);
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function filterHistoryCards(query) {
+      const q = (query || '').toLowerCase().trim();
+      const filtered = q 
+        ? allHistoryItems.filter(it => (it.topic || '').toLowerCase().includes(q))
+        : allHistoryItems;
+      renderHistoryGrid(filtered);
+    }
+
+    function renderHistoryGrid(items) {
       const grid = document.getElementById('history-grid');
       const empty = document.getElementById('history-empty');
-      const badge = document.getElementById('history-count-badge');
       if (!grid) return;
+
+      if (!items || items.length === 0) {
+        grid.innerHTML = '';
+        empty?.classList.remove('hidden');
+        return;
+      }
+
+      empty?.classList.add('hidden');
+      grid.innerHTML = '';
+
+      items.forEach((it) => {
+        const card = document.createElement('div');
+        card.className = 'glass-panel p-4 flex flex-col justify-between space-y-3.5 border border-white/[0.08] hover:border-amber-500/40 transition-all bg-black/40 hover:bg-black/60 shadow-xl group';
+
+        const dateStr = it.created_at ? new Date(it.created_at).toLocaleString('ru-RU', {
+          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+        }) : '';
+
+        const safeTopic = (it.topic || 'Без названия').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const safeTopicAttr = safeTopic.replace(/"/g, '&quot;');
+        const safeDownloadName = (it.topic || 'quiz_video').replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_');
+
+        card.innerHTML = `
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-mono text-slate-400 flex items-center space-x-1">
+                <i data-lucide="calendar" class="w-3 h-3 text-slate-500"></i>
+                <span>${dateStr}</span>
+              </span>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">1080x1920</span>
+            </div>
+            <div class="pt-1">
+              <div class="text-[10px] uppercase tracking-wider text-amber-400/80 font-bold flex items-center space-x-1">
+                <i data-lucide="tag" class="w-3 h-3 text-amber-400"></i>
+                <span>Тема ролика:</span>
+              </div>
+              <h4 class="text-sm font-bold text-white line-clamp-2 leading-snug group-hover:text-amber-300 transition-colors" title="${safeTopicAttr}">${safeTopic}</h4>
+            </div>
+          </div>
+
+          <div class="w-full aspect-[9/16] max-h-[340px] bg-black/80 rounded-xl overflow-hidden border border-white/[0.08] relative flex items-center justify-center shadow-inner">
+            <video 
+              src="${it.download_url}" 
+              controls 
+              preload="metadata" 
+              playsinline 
+              class="w-full h-full object-cover"
+            ></video>
+          </div>
+
+          <div class="space-y-2 pt-1">
+            <a 
+              href="${it.download_url}" 
+              download="${safeDownloadName}.mp4" 
+              class="w-full py-2.5 px-3 rounded-xl bg-white/[0.06] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-200 text-xs font-semibold border border-white/[0.1] hover:border-emerald-500/30 transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
+            >
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Скачать MP4 видео</span>
+            </a>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    async function loadGenerationHistory() {
+      const badge = document.getElementById('history-count-badge');
+      const tabBadge = document.getElementById('tab-history-badge');
+      const headerBadge = document.getElementById('header-history-badge');
+      const quickCounter = document.getElementById('quick-history-counter');
 
       try {
         const res = await fetch('/api/v1/quiz/history');
         if (!res.ok) return;
-        const historyItems = await res.json();
+        allHistoryItems = await res.json();
+        const count = allHistoryItems ? allHistoryItems.length : 0;
 
-        if (badge) badge.textContent = historyItems.length;
+        if (badge) badge.textContent = `${count} видео`;
+        if (tabBadge) tabBadge.textContent = count;
+        if (headerBadge) headerBadge.textContent = count;
+        if (quickCounter) quickCounter.textContent = count;
 
-        if (!historyItems || historyItems.length === 0) {
-          grid.innerHTML = '';
-          empty?.classList.remove('hidden');
-          return;
-        }
-
-        empty?.classList.add('hidden');
-        grid.innerHTML = '';
-
-        historyItems.forEach((it) => {
-          const card = document.createElement('div');
-          card.className = 'glass-panel p-4 flex flex-col justify-between space-y-3 border border-white/[0.06] hover:border-amber-500/30 transition-all bg-black/40';
-
-          const dateStr = it.created_at ? new Date(it.created_at).toLocaleString('ru-RU', {
-            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
-          }) : '';
-
-          card.innerHTML = `
-            <div class="space-y-1">
-              <div class="flex items-center justify-between">
-                <span class="text-[10px] font-mono text-slate-400">${dateStr}</span>
-                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">1080x1920</span>
-              </div>
-              <h4 class="text-xs font-bold text-white line-clamp-2" title="${it.topic.replace(/"/g, '&quot;')}">${it.topic}</h4>
-            </div>
-
-            <div class="w-full aspect-[9/16] max-h-[320px] bg-black/60 rounded-xl overflow-hidden border border-white/[0.08] relative flex items-center justify-center">
-              <video 
-                src="${it.download_url}" 
-                controls 
-                preload="metadata" 
-                playsinline 
-                class="w-full h-full object-cover"
-              ></video>
-            </div>
-
-            <a 
-              href="${it.download_url}" 
-              download 
-              class="w-full py-2 px-3 rounded-lg bg-white/[0.06] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-200 text-xs font-semibold border border-white/[0.1] hover:border-emerald-500/30 transition-all flex items-center justify-center space-x-1.5"
-            >
-              <i data-lucide="download" class="w-3.5 h-3.5"></i>
-              <span>Скачать MP4</span>
-            </a>
-          `;
-          grid.appendChild(card);
-        });
-        lucide.createIcons();
+        const searchInput = document.getElementById('history-search-input');
+        filterHistoryCards(searchInput ? searchInput.value : '');
       } catch (err) {
         console.warn('Failed to load history:', err);
       }
@@ -3735,6 +3906,9 @@
     // Auto-load history and restore queue state on start
     window.addEventListener('DOMContentLoaded', () => {
       loadGenerationHistory();
+      if (window.location.hash === '#history') {
+        switchMainView('history');
+      }
       fetch('/api/v1/quiz/batch/queue/status')
         .then(r => r.json())
         .then(st => {

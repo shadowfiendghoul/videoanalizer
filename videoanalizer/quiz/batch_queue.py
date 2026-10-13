@@ -4,6 +4,7 @@ import asyncio
 import io
 import json
 import logging
+import re
 import uuid
 import zipfile
 from datetime import UTC, datetime
@@ -42,17 +43,80 @@ class BatchQueueManager:
         self._history_file = self.config.output_dir / "generation_history.json"
         self._lock = asyncio.Lock()
 
+    @staticmethod
+    def _clean_topic_from_stem(stem: str) -> str:
+        """Derive human-readable topic title from MP4 filename stem."""
+        clean = re.sub(r"_\d{6,}$", "", stem)
+        clean = clean.replace("_", " ").strip()
+        return clean or stem
+
     def get_history(self) -> list[GenerationHistoryItem]:
-        """Load and return all recorded video creations from persistent history file."""
-        if not self._history_file.exists():
-            return []
-        try:
-            raw = self._history_file.read_text(encoding="utf-8")
-            data = json.loads(raw)
-            return [GenerationHistoryItem.model_validate(it) for it in data]
-        except Exception as exc:
-            logger.warning("Failed to load generation history: %s", exc)
-            return []
+        """Load recorded video creations from history file and disk."""
+        items_by_path: dict[str, GenerationHistoryItem] = {}
+
+        # 1. Load recorded entries from history file if exists
+        if self._history_file.exists():
+            try:
+                raw = self._history_file.read_text(encoding="utf-8")
+                data = json.loads(raw)
+                for entry in data:
+                    item = GenerationHistoryItem.model_validate(entry)
+                    if Path(item.video_path).exists():
+                        norm_p = str(Path(item.video_path).resolve())
+                        if norm_p not in items_by_path:
+                            items_by_path[norm_p] = item
+            except Exception as exc:
+                logger.warning("Failed to load generation history: %s", exc)
+
+        # 2. Auto-discover MP4 videos in output directory that may not be indexed yet
+        candidate_dirs = [self.config.output_dir]
+        if self._history_file == self.config.output_dir / "generation_history.json":
+            for fallback in (Path("output"), Path("outputs")):
+                if fallback.resolve() != self.config.output_dir.resolve():
+                    candidate_dirs.append(fallback)
+
+        seen_dirs: set[Path] = set()
+        for d in candidate_dirs:
+            p_dir = Path(d).resolve()
+            if p_dir in seen_dirs or not p_dir.exists():
+                continue
+            seen_dirs.add(p_dir)
+            for mp4 in p_dir.glob("*.mp4"):
+                norm_p = str(mp4.resolve())
+                if norm_p not in items_by_path:
+                    try:
+                        mtime = mp4.stat().st_mtime
+                        created_dt = datetime.fromtimestamp(mtime, tz=UTC)
+                    except OSError:
+                        created_dt = datetime.now(UTC)
+                    topic = self._clean_topic_from_stem(mp4.stem)
+                    gh_item = GenerationHistoryItem(
+                        history_id=f"gh_{mp4.stem}",
+                        job_id=mp4.stem,
+                        topic=topic,
+                        created_at=created_dt,
+                        video_path=norm_p,
+                        download_url=f"/api/v1/quiz/history/download/{mp4.stem}",
+                        duration_seconds=60.0,
+                    )
+                    items_by_path[norm_p] = gh_item
+
+        result = list(items_by_path.values())
+        result.sort(key=lambda x: x.created_at, reverse=True)
+        result = result[:100]
+
+        # 3. Cache auto-discovered items if history file does not exist yet
+        if result and not self._history_file.exists():
+            try:
+                self._history_file.parent.mkdir(parents=True, exist_ok=True)
+                serialized = [it.model_dump(mode="json") for it in result]
+                self._history_file.write_text(
+                    json.dumps(serialized, ensure_ascii=False, indent=2), encoding="utf-8"
+                )
+            except Exception as exc:
+                logger.debug("Failed to cache initial history: %s", exc)
+
+        return result
 
     def record_history(self, item: BatchQueueItem) -> None:
         """Append a completed video to persistent generation history."""
@@ -66,9 +130,15 @@ class BatchQueueManager:
             topic=item.topic,
             created_at=datetime.now(UTC),
             video_path=item.video_path,
-            download_url=item.download_url or f"/api/v1/quiz/batch/download/{item.item_id}",
+            download_url=item.download_url or f"/api/v1/quiz/history/download/{item.item_id}",
             duration_seconds=60.0,
         )
+
+        norm_target = str(Path(item.video_path).resolve())
+        history_list = [
+            it for it in history_list
+            if str(Path(it.video_path).resolve()) != norm_target
+        ]
         history_list.insert(0, gh_item)
 
         # Keep last 50 entries
