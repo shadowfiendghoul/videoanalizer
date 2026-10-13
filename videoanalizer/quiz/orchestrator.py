@@ -85,12 +85,12 @@ class QuizOrchestrator:
             f"Please place a 9:16 background video in {bg_dir}."
         )
 
-    def _probe_video_duration_frames(self, video_path: Path, fps: int = 60) -> int:
-        """Probe video duration and calculate duration in frames."""
+    def _probe_video_duration_sec(self, video_path: Path) -> float:
+        """Probe video duration in seconds using ffprobe."""
         ensure_system_paths()
         ffprobe_bin = shutil.which("ffprobe")
         if not ffprobe_bin:
-            return fps * 5
+            return 0.0
         try:
             cmd = [
                 ffprobe_bin,
@@ -104,20 +104,37 @@ class QuizOrchestrator:
             ]
             res = subprocess.run(cmd, capture_output=True, text=True, check=True)  # noqa: S603
             data = json.loads(res.stdout)
-            dur_sec = float(data["format"]["duration"])
-            return max(1, int(dur_sec * fps))
+            return float(data["format"]["duration"])
         except Exception as exc:
-            logger.warning("Could not probe video duration for %s: %s", video_path, exc)
+            logger.debug("Could not probe video duration for %s: %s", video_path, exc)
+            return 0.0
+
+    def _probe_video_duration_frames(self, video_path: Path, fps: int = 60) -> int:
+        """Probe video duration and calculate duration in frames."""
+        dur_sec = self._probe_video_duration_sec(video_path)
+        if dur_sec <= 0.0:
             return fps * 5
+        return max(1, int(dur_sec * fps))
 
     def _prepare_background(
         self, bg_source: Path, target_bg: Path, duration_sec: float = 120.0
     ) -> str:
-        """Stage background video into public dir with continuous stream loop."""
+        """Stage background video into public dir.
+
+        If the initial background video is shorter than duration_sec, picks additional
+        random background videos from backgrounds_dir so that when one ends, another
+        random video takes over instead of repeating the same clip.
+        """
         ensure_system_paths()
         ffmpeg_bin = shutil.which("ffmpeg")
-        looped = False
-        if ffmpeg_bin:
+        if not ffmpeg_bin:
+            shutil.copy2(bg_source, target_bg)
+            return target_bg.name
+
+        dur_initial = self._probe_video_duration_sec(bg_source)
+
+        # If duration cannot be probed or initial video is already long enough:
+        if dur_initial >= duration_sec or dur_initial <= 0.0:
             try:
                 cmd_loop = [
                     ffmpeg_bin,
@@ -133,13 +150,167 @@ class QuizOrchestrator:
                     str(target_bg),
                 ]
                 subprocess.run(cmd_loop, capture_output=True, check=True)  # noqa: S603
-                looped = True
+                return target_bg.name
             except Exception as loop_err:
+                logger.warning("Single background stream loop failed (%s), copying", loop_err)
+                shutil.copy2(bg_source, target_bg)
+                return target_bg.name
+
+        # Initial background video is shorter than duration_sec: chain multiple random clips
+        bg_dir = self.config.backgrounds_dir
+        all_candidates = (
+            [
+                p for p in bg_dir.glob("*.mp4")
+                if not p.name.startswith(".") and p.is_file()
+            ]
+            if bg_dir.exists()
+            else []
+        )
+        if not all_candidates:
+            all_candidates = [bg_source]
+
+        playlist: list[Path] = [bg_source]
+        accumulated_sec = dur_initial
+        last_picked = bg_source
+
+        while accumulated_sec < duration_sec and len(playlist) < 60:
+            other_candidates = [p for p in all_candidates if p != last_picked]
+            next_bg = (
+                secrets.choice(other_candidates)
+                if other_candidates
+                else secrets.choice(all_candidates)
+            )
+            dur_next = self._probe_video_duration_sec(next_bg)
+            if dur_next <= 0.0:
+                dur_next = max(10.0, dur_initial)
+            playlist.append(next_bg)
+            accumulated_sec += dur_next
+            last_picked = next_bg
+
+        # If playlist ended up with only 1 clip, simple loop
+        if len(playlist) <= 1:
+            try:
+                cmd_loop = [
+                    ffmpeg_bin,
+                    "-y",
+                    "-stream_loop",
+                    "-1",
+                    "-i",
+                    str(bg_source),
+                    "-t",
+                    f"{duration_sec:.1f}",
+                    "-c",
+                    "copy",
+                    str(target_bg),
+                ]
+                subprocess.run(cmd_loop, capture_output=True, check=True)  # noqa: S603
+                return target_bg.name
+            except Exception:
+                shutil.copy2(bg_source, target_bg)
+                return target_bg.name
+
+        logger.info(
+            "Background video '%s' duration (%.1fs) < %.1fs. Chaining %d clips from %s.",
+            bg_source.name,
+            dur_initial,
+            duration_sec,
+            len(playlist),
+            bg_dir,
+        )
+
+        staged_ok = False
+        concat_file = target_bg.parent / f"_concat_{target_bg.stem}.txt"
+        try:
+            # 1. Try fast concat demuxer with stream copy
+            lines = [f"file '{p.resolve().as_posix()}'" for p in playlist]
+            concat_file.write_text("\n".join(lines), encoding="utf-8")
+
+            cmd_concat = [
+                ffmpeg_bin,
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(concat_file),
+                "-t",
+                f"{duration_sec:.1f}",
+                "-c",
+                "copy",
+                str(target_bg),
+            ]
+            subprocess.run(cmd_concat, capture_output=True, check=True)  # noqa: S603
+            staged_ok = target_bg.exists() and target_bg.stat().st_size > 0
+        except Exception as demux_err:
+            logger.debug(
+                "Concat demuxer copy failed (%s), normalizing with filter_complex",
+                demux_err,
+            )
+        finally:
+            concat_file.unlink(missing_ok=True)
+
+        # 2. If concat demuxer failed (different codecs/resolutions), re-encode with filter_complex
+        if not staged_ok:
+            try:
+                inputs: list[str] = []
+                filters: list[str] = []
+                for idx, p in enumerate(playlist):
+                    inputs.extend(["-i", str(p)])
+                    filters.append(
+                        f"[{idx}:v]scale=1080:1920:force_original_aspect_ratio=increase,"
+                        f"crop=1080:1920,setsar=1,fps={self.config.fps}[v{idx}];"
+                    )
+                v_tags = "".join(f"[v{i}]" for i in range(len(playlist)))
+                filters.append(f"{v_tags}concat=n={len(playlist)}:v=1:a=0[outv]")
+                filter_complex_str = " ".join(filters)
+
+                cmd_fc = [
+                    ffmpeg_bin,
+                    "-y",
+                    *inputs,
+                    "-filter_complex",
+                    filter_complex_str,
+                    "-map",
+                    "[outv]",
+                    "-t",
+                    f"{duration_sec:.1f}",
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "ultrafast",
+                    "-crf",
+                    "22",
+                    str(target_bg),
+                ]
+                subprocess.run(cmd_fc, capture_output=True, check=True)  # noqa: S603
+                staged_ok = target_bg.exists() and target_bg.stat().st_size > 0
+            except Exception as fc_err:
                 logger.warning(
-                    "FFmpeg stream loop failed (%s), falling back to copy", loop_err
+                    "filter_complex concat failed (%s), falling back to loop copy",
+                    fc_err,
                 )
-        if not looped:
-            shutil.copy2(bg_source, target_bg)
+
+        # 3. Ultimate fallback: single stream loop or copy
+        if not staged_ok:
+            try:
+                cmd_fallback = [
+                    ffmpeg_bin,
+                    "-y",
+                    "-stream_loop",
+                    "-1",
+                    "-i",
+                    str(bg_source),
+                    "-t",
+                    f"{duration_sec:.1f}",
+                    "-c",
+                    "copy",
+                    str(target_bg),
+                ]
+                subprocess.run(cmd_fallback, capture_output=True, check=True)  # noqa: S603
+            except Exception:
+                shutil.copy2(bg_source, target_bg)
+
         return target_bg.name
 
     def _prepare_banner(

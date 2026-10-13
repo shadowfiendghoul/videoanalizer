@@ -569,5 +569,54 @@ async def test_orchestrator_concurrent_pipeline_execution(tmp_path: Path) -> Non
         assert len(rendered_props_data["challenge"]["tiers"]) == 3
 
 
+def test_orchestrator_chains_random_backgrounds_when_short(tmp_path: Path) -> None:
+    """Verify that when a background video is short, multiple random clips are chained."""
+    config = QuizConfig(
+        output_dir=tmp_path / "outputs",
+        temp_dir=tmp_path / "temp",
+        backgrounds_dir=tmp_path / "backgrounds",
+    )
+    config.backgrounds_dir.mkdir(parents=True, exist_ok=True)
+    bg1 = config.backgrounds_dir / "short_clip1.mp4"
+    bg2 = config.backgrounds_dir / "short_clip2.mp4"
+    bg3 = config.backgrounds_dir / "short_clip3.mp4"
+    for b in (bg1, bg2, bg3):
+        b.write_bytes(b"dummy mp4")
+
+    orchestrator = QuizOrchestrator(config=config)
+    durations = {
+        str(bg1): 20.0,
+        str(bg2): 25.0,
+        str(bg3): 30.0,
+    }
+
+    def fake_probe(p: Path) -> float:
+        return durations.get(str(p), 20.0)
+
+    target_bg = tmp_path / "public" / "background.mp4"
+    target_bg.parent.mkdir(parents=True, exist_ok=True)
+
+    captured_cmds: list[list[str]] = []
+
+    def fake_subprocess_run(cmd: list[str], **kwargs: object) -> MagicMock:
+        captured_cmds.append(cmd)
+        # Create output file so it looks like ffmpeg succeeded
+        target_bg.write_bytes(b"stitched video")
+        return MagicMock(returncode=0)
+
+    with (
+        patch.object(orchestrator, "_probe_video_duration_sec", side_effect=fake_probe),
+        patch("subprocess.run", side_effect=fake_subprocess_run),
+    ):
+        name = orchestrator._prepare_background(bg1, target_bg, duration_sec=60.0)
+        assert name == "background.mp4"
+        assert target_bg.exists()
+        # Verify ffmpeg was invoked with concat
+        assert len(captured_cmds) > 0
+        first_cmd = captured_cmds[0]
+        # Should have called ffmpeg with concat
+        assert any("concat" in str(arg) for arg in first_cmd)
+
+
 
 
