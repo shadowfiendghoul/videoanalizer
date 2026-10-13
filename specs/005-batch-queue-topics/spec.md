@@ -16,6 +16,9 @@
 
 - Q: Какие квоты и ограничения накладывает модель Gemini? → A: Модель ограничена лимитом 15 RPM (запросов в минуту) и 250K TPM. Пакетная генерация должна строго соблюдать pacing (интервал >= 4.5-5.0 сек между вызовами API), объединять генерацию всех тем в 1 запрос и реализовывать автоматический retry с backoff на случай HTTP 429 (Resource Exhausted).
 - Q: Как генерировать вопросы для пачки видео с учетом лимита 15 RPM? → A: Прогрессивная фоновая генерация (Paced Background Pipeline): вопросы для видео 1 готовы сразу для начала проверки, а вопросы для последующих видео генерируются в фоновом потоке с интервалом 5 секунд, пока пользователь изучает и одобряет первое видео. Это гарантирует нулевое ожидание при переключении и 100% соблюдение лимита 15 RPM.
+- Q: Запускать ли рендеринг только после того, как проверены и одобрены все видео в пачке? → A: Очередь рендеринга запускается строго после завершения проверки всех N видео (или явного исключения ненужных) единой кнопкой «Запустить очередь рендеринга», не создавая фоновой нагрузки на GPU/CPU в процессе чтения и редактирования вопросов.
+- Q: Как настраивать голос диктора и фоновую музыку для пачки видео? → A: Настройки голоса озвучки, фоновой музыки, громкости и профиля рендера задаются один раз на панели управления перед генерацией и единообразно применяются ко всем роликам пачки. Визард проверки сфокусирован исключительно на проверке вопросов, ответов и иллюстраций.
+- Q: Что должно происходить с готовыми видео при запуске новой пачки? → A: Завершенные видео сохраняются в очереди до ручной очистки. Дополнительно в интерфейс добавляется постоянный раздел «История генераций», где сохраняются все созданные видео с подписанными темами, датой создания, встроенным плеером и кнопками скачивания MP4.
 
 ---
 
@@ -123,9 +126,11 @@ As a content creator who has approved a batch of videos, I want the system to re
 - **FR-017**: System MUST provide a "Скачать все готовые видео" action when multiple batch jobs are completed.
 - **FR-018**: System MUST isolate failures such that a failure in video k does not halt the rendering of remaining videos in the queue.
 - **FR-019**: System MUST allow users to cancel or clear remaining items in the queue at any time.
-- **FR-020**: System MUST preserve batch settings (voice, music, uniquifier, render profile) uniformly across all items in the batch unless individually overridden.
+- **FR-020**: System MUST apply batch settings (voice, background music track, music volume, uniquifier, and render profile) uniformly across all items in the batch as selected on the main dashboard before batch initiation.
 - **FR-021**: System MUST implement strict rate-limiting / request pacing (<= 12 RPM, minimum 4.5-5.0 seconds delay between API calls) when generating batch questions to prevent exceeding the provider's 15 RPM quota.
 - **FR-022**: System MUST implement exponential backoff retry on HTTP 429 (Resource Exhausted) errors, gracefully holding the queue without crashing or discarding batch state.
+- **FR-023**: System MUST provide a dedicated "История генераций" section in the UI that displays all rendered videos with their quiz topics, creation dates/times, video players, and individual "Скачать MP4" download buttons, preserving records across browser sessions.
+- **FR-024**: System MUST allow users to play, preview, or download any previously generated video directly from the "История генераций" section without clearing the active queue.
 
 ---
 
@@ -145,6 +150,14 @@ As a content creator who has approved a batch of videos, I want the system to re
   - `download_url`: API URL for downloading the MP4.
   - `error_message`: Optional error details if failed.
 - **BatchQueue**: The orchestrator queue manager maintaining the list of `BatchQueueItem` records, active rendering lock, rate-limiting queue, and execution state.
+- **GenerationHistoryItem**: Persistent record of a rendered quiz video:
+  - `history_id`: Unique identifier.
+  - `job_id`: Original generation job/item ID.
+  - `topic`: Quiz topic title.
+  - `created_at`: Creation timestamp.
+  - `video_path`: Path to local MP4.
+  - `download_url`: Direct download URL.
+  - `duration_seconds`: Video duration.
 
 ---
 

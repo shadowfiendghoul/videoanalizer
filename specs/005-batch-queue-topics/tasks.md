@@ -22,7 +22,7 @@
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
 - [ ] T002 [P] Define `TopicSuggestion` (`topic: str (3..70 chars)`, `category: str (2..40 chars)`, `curiosity_hook: str (5..120 chars)`) and `BatchTopicList` schemas in `videoanalizer/quiz/models.py`
-- [ ] T003 [P] Define `BatchQueueItemStatus`, `BatchQueueItem`, `BatchQueueState`, and `BatchRenderStartRequest` schemas in `videoanalizer/quiz/models.py`
+- [ ] T003 [P] Define `BatchQueueItemStatus`, `BatchQueueItem`, `BatchQueueState`, `BatchRenderStartRequest`, and `GenerationHistoryItem` schemas in `videoanalizer/quiz/models.py`
 - [ ] T004 Implement `PacedLimiter` async rate limiter enforcing $\ge 5.0$ seconds delay between requests ($\le 12$ RPM) with exponential backoff on HTTP 429 in `videoanalizer/quiz/rate_limiter.py`
 - [ ] T005 [P] Implement unit tests for `PacedLimiter` rate pacing and backoff behavior in `tests/unit/test_rate_limiter.py`
 
@@ -78,15 +78,15 @@
 
 ## Phase 6: User Story 4 - Background Sequential Render Queue & Monitoring (Priority: P1)
 
-**Goal**: Execute video rendering strictly sequentially (`concurrency = 1` via `asyncio.Semaphore(1)`) to safeguard GPU/CPU hardware, providing live progress, fault isolation, and individual/bulk download buttons.
+**Goal**: Execute video rendering strictly sequentially (`concurrency = 1` via `asyncio.Semaphore(1)`) to safeguard GPU/CPU hardware, providing live progress, fault isolation, individual/bulk download buttons, and a persistent generation history panel.
 
-**Independent Test**: Enqueue 3 approved jobs; verify Video 1 renders while Videos 2 and 3 wait in queue. When Video 1 completes, verify Video 2 begins rendering and Video 1 displays a preview and "Скачать MP4" button.
+**Independent Test**: Enqueue 3 approved jobs; verify Video 1 renders while Videos 2 and 3 wait in queue. When Video 1 completes, verify Video 2 begins rendering and Video 1 displays a preview and "Скачать MP4" button, and appears in "История генераций".
 
 - [ ] T019 [US4] Implement `BatchQueueManager` with `asyncio.Semaphore(1)` FIFO render worker and failure isolation in `videoanalizer/quiz/batch_queue.py`
 - [ ] T020 [US4] Implement `POST /api/v1/quiz/batch/queue/start`, `GET /api/v1/quiz/batch/queue/status`, `POST /api/v1/quiz/batch/queue/cancel/{item_id}`, and `POST /api/v1/quiz/batch/queue/clear` endpoints in `videoanalizer/api/routes_quiz.py`
-- [ ] T021 [US4] Implement `GET /api/v1/quiz/batch/queue/download-all` (streaming ZIP archive generator) endpoint in `videoanalizer/api/routes_quiz.py`
-- [ ] T022 [P] [US4] Add unit tests for `BatchQueueManager` sequential execution lock, failure isolation, and ZIP creation in `tests/unit/test_batch_queue.py`
-- [ ] T023 [US4] Implement Queue Monitoring panel in `videoanalizer/ui/templates/quiz.html` with real-time status badges, live progress bars, video preview players, and "Скачать MP4" / "Скачать все (ZIP)" buttons
+- [ ] T021 [US4] Implement `GET /api/v1/quiz/batch/queue/download-all` (streaming ZIP archive generator) and `GET /api/v1/quiz/history` (load persistent video generation history) endpoints in `videoanalizer/api/routes_quiz.py`
+- [ ] T022 [P] [US4] Add unit tests for `BatchQueueManager` sequential execution lock, failure isolation, history logging, and ZIP creation in `tests/unit/test_batch_queue.py`
+- [ ] T023 [US4] Implement Queue Monitoring and dedicated "История генераций" section in `videoanalizer/ui/templates/quiz.html` with real-time status badges, live progress bars, topic titles, video preview players, and "Скачать MP4" / "Скачать все (ZIP)" buttons
 
 **Checkpoint**: Complete batch workflow renders videos sequentially and stably without system crashes.
 

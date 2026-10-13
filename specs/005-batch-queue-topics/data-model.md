@@ -109,6 +109,42 @@ class BatchRenderStartRequest(BaseModel):
     render_profile: RenderProfile = Field(default=RenderProfile.BALANCED)
 ```
 
+### 2.4 GenerationHistoryItem
+Persistent record of a rendered quiz video stored in server manifests and displayed in the "История генераций" UI.
+
+| Field | Type | Required | Constraints | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `history_id` | `str` | Yes | Starts with `gh_` | Unique history record ID. |
+| `job_id` | `str` | Yes | Job or batch item ID | Original generation identifier. |
+| `topic` | `str` | Yes | `min_length=3` | Topic title for easy identification. |
+| `created_at` | `datetime` | Yes | UTC timestamp | Timestamp of completion. |
+| `video_path` | `str` | Yes | Valid file path | Local filesystem path to MP4. |
+| `download_url` | `str` | Yes | API download URL | Endpoint to stream/download MP4. |
+| `duration_seconds` | `float` | Yes | `ge=5.0` | Total video duration in seconds. |
+
+---
+
+## 3. Batch Render Start Request Contract
+
+```python
+class BatchRenderStartRequest(BaseModel):
+    """Payload to launch sequential Remotion rendering for approved items."""
+    batch_id: str = Field(..., description="Batch identifier")
+    items: list[BatchQueueItem] = Field(..., min_length=1, description="List of approved items with QuizChallenge")
+    voice: str | None = Field(default=None, description="Voice override for speech synthesis")
+    background_video: str | None = Field(default="random", description="Background video or 'random'")
+    banner_video: str | None = Field(default=None, description="Optional banner video")
+    background_music: str | None = Field(default=None, description="Background music track")
+    background_music_volume: float = Field(default=0.18, ge=0.0, le=1.0)
+    retention_enabled: bool = Field(default=True)
+    rank_bar_enabled: bool = Field(default=True)
+    stress_timer_enabled: bool = Field(default=True)
+    streak_fire_enabled: bool = Field(default=True)
+    comment_trap_enabled: bool = Field(default=True)
+    uniquifier: VideoUniquifierConfig | None = Field(default=None)
+    render_profile: RenderProfile = Field(default=RenderProfile.BALANCED)
+```
+
 ---
 
 ## 4. State Transitions
@@ -134,6 +170,8 @@ class BatchRenderStartRequest(BaseModel):
                                                           (Success)  /             \ (Error)
                                                                     ▼               ▼
                                                               [COMPLETED]       [FAILED]
+                                                                    │               │
+                                                       (Recorded to History)        │
                                                                     │               │
                                                               (Worker advances to next item)
 ```
