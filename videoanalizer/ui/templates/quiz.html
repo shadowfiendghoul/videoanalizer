@@ -2636,11 +2636,16 @@
       const origText = btnText ? btnText.textContent : '🎲 Придумать тему';
       if (btnText) btnText.textContent = 'ИИ придумывает...';
 
+      const prevTopic = (topicInput && topicInput.value) ? topicInput.value.trim() : null;
       try {
         const res = await fetch('/api/v1/quiz/topics/suggest-single', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ language, temperature: topicTemperature })
+          body: JSON.stringify({ 
+            language, 
+            temperature: topicTemperature,
+            previous_topic: prevTopic 
+          })
         });
         if (!res.ok) {
           const err = await res.json();
@@ -2773,11 +2778,16 @@
       const language = langSelect ? langSelect.value : 'ru';
       const topicTempSlider = document.getElementById('topic-temperature-slider');
       const topicTemperature = topicTempSlider ? parseFloat(topicTempSlider.value) : 1.05;
+      const prevTopic = batchTopicsList[index] ? batchTopicsList[index].topic : null;
       try {
         const res = await fetch('/api/v1/quiz/topics/suggest-single', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ language, temperature: topicTemperature })
+          body: JSON.stringify({ 
+            language, 
+            temperature: topicTemperature,
+            previous_topic: prevTopic 
+          })
         });
         if (!res.ok) throw new Error('Ошибка обновления темы');
         const data = await res.json();

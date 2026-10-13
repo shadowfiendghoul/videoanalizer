@@ -530,6 +530,9 @@ class SingleTopicSuggestRequest(BaseModel):
     temperature: float | None = Field(
         default=None, ge=0.0, le=2.0, description="Sampling temperature (0.0-2.0, default 1.05)"
     )
+    previous_topic: str | None = Field(
+        default=None, max_length=120, description="Optional previous topic to avoid repeating"
+    )
 
 
 class BatchTopicSuggestRequest(BaseModel):

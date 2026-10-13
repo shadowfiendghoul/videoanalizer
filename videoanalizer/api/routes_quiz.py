@@ -367,6 +367,7 @@ async def suggest_single_topic(request: SingleTopicSuggestRequest) -> TopicSugge
             category_hint=request.category_hint,
             language=request.language,
             temperature=request.temperature,
+            previous_topic=request.previous_topic,
         )
         return suggestion
     except Exception as exc:
