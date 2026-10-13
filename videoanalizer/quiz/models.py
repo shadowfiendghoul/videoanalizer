@@ -522,7 +522,7 @@ class SingleTopicSuggestRequest(BaseModel):
     """Payload to request a single viral topic suggestion."""
 
     category_hint: str | None = Field(
-        default=None, max_length=60, description="Optional theme or category guidance"
+        default=None, max_length=300, description="Optional theme or category guidance"
     )
     language: Literal["ru", "en"] = Field(
         default="ru", description="Output language (ru or en)"
@@ -531,7 +531,7 @@ class SingleTopicSuggestRequest(BaseModel):
         default=None, ge=0.0, le=2.0, description="Sampling temperature (0.0-2.0, default 1.05)"
     )
     previous_topic: str | None = Field(
-        default=None, max_length=120, description="Optional previous topic to avoid repeating"
+        default=None, max_length=300, description="Optional previous topic to avoid repeating"
     )
 
 
@@ -540,7 +540,7 @@ class BatchTopicSuggestRequest(BaseModel):
 
     count: int = Field(default=10, ge=2, le=20, description="Number of topics to generate (2-20)")
     category_hint: str | None = Field(
-        default=None, max_length=60, description="Optional theme or category guidance"
+        default=None, max_length=300, description="Optional theme or category guidance"
     )
     language: Literal["ru", "en"] = Field(
         default="ru", description="Output language (ru or en)"
