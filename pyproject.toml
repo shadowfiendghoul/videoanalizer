@@ -27,6 +27,8 @@ dependencies = [
     "edge-tts>=6.1.9",
     "pyttsx3>=2.90",
     "ddgs>=8.0.0",
+    "numpy>=1.24.0",
+    "soundfile>=0.12.0",
 ]
 
 [project.optional-dependencies]
@@ -53,6 +55,7 @@ python_functions = ["test_*"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+extend-exclude = ["videoanalizer/quiz/infer_pack"]
 
 [tool.ruff.lint]
 select = [

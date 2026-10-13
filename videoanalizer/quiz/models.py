@@ -1,5 +1,7 @@
 """Pydantic v2 data contracts and domain entities for Quiz Shorts Generator."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal
@@ -624,6 +626,9 @@ class BatchRenderStartRequest(BaseModel):
         ..., min_length=1, description="List of approved items with QuizChallenge structures"
     )
     voice: str | None = Field(default=None, description="Voice override for speech synthesis")
+    voice_config: VoiceConfig | None = Field(
+        default=None, description="Optional voice pipeline and cloning config"
+    )
     background_video: str | None = Field(
         default="random", description="Background video filename, path, or 'random'"
     )
@@ -635,6 +640,13 @@ class BatchRenderStartRequest(BaseModel):
     stress_timer_enabled: bool = Field(default=True)
     streak_fire_enabled: bool = Field(default=True)
     comment_trap_enabled: bool = Field(default=True)
+    intro_hook: str | None = Field(
+        default=None,
+        description=(
+            "Optional custom greeting/hook phrase spoken at start. "
+            "If omitted or None, video starts directly with Question 1."
+        ),
+    )
     uniquifier: Any | None = Field(default=None, description="Optional uniquifier config")
     render_profile: RenderProfile = Field(default=RenderProfile.GPU_FAST)
 
@@ -653,5 +665,158 @@ class GenerationHistoryItem(BaseModel):
     video_path: str = Field(..., description="Local path to MP4")
     download_url: str = Field(..., description="API download URL")
     duration_seconds: float = Field(default=60.0, ge=5.0, description="Video duration in seconds")
+
+
+class VoiceMode(StrEnum):
+    """Execution mode of the speech synthesis and cloning pipeline."""
+
+    EDGE_TTS = "edge_tts"
+    CUSTOM_RVC = "custom_rvc"
+    QWEN3_RVC = "qwen3_rvc"
+    OFFLINE_FALLBACK = "offline_fallback"
+
+
+class RvcPitchMethod(StrEnum):
+    """F0 pitch extraction method for RVC voice conversion."""
+
+    RMVPE = "rmvpe"
+    PM = "pm"
+    HARVEST = "harvest"
+
+
+class VoiceConfig(BaseModel):
+    """Configuration for speech synthesis and RVC voice cloning."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    voice_mode: VoiceMode = Field(
+        default=VoiceMode.EDGE_TTS,
+        description="Active synthesis mode: edge_tts, custom_rvc, qwen3_rvc, or offline_fallback",
+    )
+    base_voice: str = Field(
+        default="ru-RU-DmitryNeural",
+        description="Base neural speaker for pristine diction and word timings",
+    )
+    rvc_model_path: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Relative or absolute path to target .pth checkpoint",
+    )
+    rvc_index_path: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Optional feature index file .index for RVC retrieval",
+    )
+    pitch_shift: int = Field(
+        default=0,
+        ge=-12,
+        le=12,
+        description="Pitch transposition in semitones (-12..+12). 0 = preserve",
+    )
+    speech_rate: float = Field(
+        default=1.15,
+        ge=0.8,
+        le=1.5,
+        description="Speech rate multiplier (1.0 = normal, 1.15 = +15% for Shorts)",
+    )
+    pitch_method: RvcPitchMethod = Field(
+        default=RvcPitchMethod.RMVPE,
+        description="Pitch extraction algorithm for F0",
+    )
+    device: Literal["auto", "cuda", "cpu"] = Field(
+        default="auto",
+        description="Inference execution device target",
+    )
+    qwen3_model_path: str = Field(
+        default="assets/models/qwen3_tts",
+        description="Path to local Qwen3-TTS checkpoint directory",
+    )
+    qwen3_ref_audio: str = Field(
+        default="assets/voices/mellstroy_ref.wav",
+        description="Reference audio path for speaker cloning in Qwen3-TTS",
+    )
+    tighten_pauses: bool = Field(
+        default=True,
+        description="Whether to detect and compress long silences between words",
+    )
+    max_pause_sec: float = Field(
+        default=0.13,
+        ge=0.04,
+        le=0.5,
+        description="Target maximum silence duration between words in seconds",
+    )
+
+
+class RvcModelInfo(BaseModel):
+    """Metadata describing a discovered local RVC voice model."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    model_id: str = Field(..., description="Unique model identifier (stem name)")
+    name: str = Field(..., description="Human-readable model name")
+    file_path: str = Field(..., description="Relative or absolute path to .pth")
+    index_path: str | None = Field(default=None, description="Path to .index file if present")
+    file_size_bytes: int = Field(..., ge=0, description="Model file size in bytes")
+    is_valid: bool = Field(default=True, description="Whether checkpoint is valid")
+
+
+class RvcModelListResponse(BaseModel):
+    """Response containing discovered RVC voice models."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    models: list[RvcModelInfo] = Field(default_factory=list)
+    active_model_id: str | None = Field(default=None)
+    total_count: int = Field(default=0)
+
+
+class WordTiming(BaseModel):
+    """Word-level timing marker for karaoke subtitle alignment."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    word: str = Field(..., description="Spoken word text")
+    start_ms: int = Field(..., ge=0, description="Start offset in milliseconds")
+    end_ms: int = Field(..., ge=0, description="End offset in milliseconds")
+
+    @property
+    def duration_ms(self) -> int:
+        return max(0, self.end_ms - self.start_ms)
+
+
+class SynthesizedSpeechResult(BaseModel):
+    """Synthesized speech output with audio path, duration, and word markers."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    audio_path: str = Field(..., description="Path to output WAV/MP3 file")
+    duration_ms: int = Field(..., ge=0, description="Total audio duration in milliseconds")
+    words: list[WordTiming] = Field(default_factory=list, description="Word boundaries")
+    voice_mode_used: VoiceMode = Field(..., description="Actual mode used for synthesis")
+    model_name: str | None = Field(default=None, description="RVC model name if converted")
+
+
+class VoicePreviewRequest(BaseModel):
+    """Payload to synthesize a short audio preview."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    text: str = Field(
+        default="Привет! Это проверка моего нового кастомного голоса для викторин.",
+        max_length=200,
+        description="Sample phrase for preview synthesis",
+    )
+    config: VoiceConfig = Field(..., description="Voice configuration to test")
+
+
+class VoicePreviewResponse(BaseModel):
+    """Response containing URL and metadata for voice preview audio."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    audio_url: str = Field(..., description="Streaming/download URL of preview audio")
+    duration_ms: int = Field(..., ge=0, description="Sample duration in milliseconds")
+    voice_mode_used: VoiceMode = Field(..., description="Mode applied during preview")
+
 
 

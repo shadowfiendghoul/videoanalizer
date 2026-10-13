@@ -394,6 +394,8 @@ class BatchQueueManager:
                         uniquifier=request.uniquifier,
                         render_profile=request.render_profile,
                         progress_callback=on_progress,
+                        voice_config=request.voice_config,
+                        intro_hook=request.intro_hook,
                     )
 
                     next_item.status = BatchQueueItemStatus.COMPLETED

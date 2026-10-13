@@ -18,6 +18,7 @@ from videoanalizer.quiz.models import (
     QuizChallenge,
     QuizRetentionConfig,
     SfxPaths,
+    VoiceConfig,
     WordCue,
 )
 from videoanalizer.quiz.workspace import QuizWorkspace
@@ -299,12 +300,24 @@ class AudioService:
         text: str,
         voice: str,
         output_path: Path,
+        voice_config: VoiceConfig | None = None,
     ) -> tuple[int, list[WordCue]]:
-        """Synthesize text via edge-tts, capturing audio and word-level timestamps.
+        """Synthesize text via edge-tts or VoiceService, capturing audio and word-level timestamps.
 
         Includes multiple fallback voices, exponential retry backoff, and an offline TTS fallback.
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if voice_config is not None:
+            from videoanalizer.quiz.voice_service import VoiceService
+
+            if not hasattr(self, "_voice_service") or self._voice_service is None:
+                self._voice_service = VoiceService(config=voice_config)
+            res = await self._voice_service.synthesize(text, output_path, voice_config)
+            cues = [
+                WordCue(word=w.word, start_ms=w.start_ms, end_ms=w.end_ms) for w in res.words
+            ]
+            return res.duration_ms, cues
 
         if "sapi" in voice.lower() or "irina" in voice.lower():
             self._synthesize_offline_fallback(text, output_path, voice=voice)
@@ -490,6 +503,7 @@ class AudioService:
         voice: str | None = None,
         retention_config: QuizRetentionConfig | None = None,
         intro_hook: str | None = None,
+        voice_config: VoiceConfig | None = None,
     ) -> AudioCueSheet:
         """Synthesize all 9 questions and assemble the master AudioCueSheet."""
         ensure_default_sfx(self.config.sfx_dir)
@@ -521,6 +535,7 @@ class AudioService:
                 intro_text,
                 selected_voice,
                 intro_audio_path,
+                voice_config=voice_config,
             )
             # Add a 6-frame pacing buffer between intro hook and question 1
             intro_frames = max(1, int(intro_dur_ms * fps / 1000)) + 6
@@ -607,6 +622,7 @@ class AudioService:
                 q_speech,
                 selected_voice,
                 q_audio_path,
+                voice_config=voice_config,
             )
 
             # Synthesize answer text (punchy answer on reveal ding)
@@ -614,6 +630,7 @@ class AudioService:
                 a_speech,
                 selected_voice,
                 ans_audio_path,
+                voice_config=voice_config,
             )
 
             start_frame = current_frame

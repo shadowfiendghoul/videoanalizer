@@ -28,16 +28,22 @@ from videoanalizer.quiz.models import (
     QuizChallenge,
     QuizRetentionConfig,
     RenderProfile,
+    RvcModelListResponse,
     SingleTopicSuggestRequest,
     TopicSuggestion,
+    VoiceConfig,
+    VoicePreviewRequest,
+    VoicePreviewResponse,
 )
 from videoanalizer.quiz.orchestrator import QuizOrchestrator
+from videoanalizer.quiz.voice_service import RvcModelRegistry, VoiceService
 from videoanalizer.utils.hardware import get_hardware_capabilities
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/quiz", tags=["Quiz Shorts Generator"])
 hardware_router = APIRouter(prefix="/api/v1/hardware", tags=["Hardware Acceleration"])
+voice_router = APIRouter(prefix="/api/v1/voice", tags=["Voice Pipeline & Cloning"])
 
 
 @hardware_router.get("/status", response_model=HardwareCapabilities)
@@ -113,6 +119,9 @@ class QuizGenerateRequest(BaseModel):
         default=None, description="Optional custom background video filename or path, or 'random'."
     )
     voice: str | None = Field(default=None, description="Optional edge-tts voice override.")
+    voice_config: VoiceConfig | None = Field(
+        default=None, description="Optional voice pipeline and cloning configuration."
+    )
     banner_video: str | None = Field(
         default=None, description="Optional custom promo banner video filename or path."
     )
@@ -135,8 +144,11 @@ class QuizGenerateRequest(BaseModel):
         default=True, description="Enable controversy outro comment callout."
     )
     intro_hook: str | None = Field(
-        default="Ты гений, если ответишь на все вопросы!",
-        description="Optional custom greeting/hook phrase spoken at start.",
+        default=None,
+        description=(
+            "Optional custom greeting/hook phrase spoken at start. "
+            "If omitted or None, video starts directly with Question 1."
+        ),
     )
     background_music: str | None = Field(
         default=None,
@@ -277,6 +289,7 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
             uniquifier=request.uniquifier,
             render_profile=request.render_profile,
             progress_callback=on_progress,
+            voice_config=request.voice_config,
         )
 
         job["status"] = "completed"
@@ -821,3 +834,72 @@ async def download_history_video(item_id: str) -> FileResponse:
         status_code=status.HTTP_404_NOT_FOUND,
         detail=f"Видео '{item_id}' не найдено в истории генераций.",
     )
+
+
+# ==============================================================================
+# Voice Pipeline & RVC Voice Cloning Endpoints
+# ==============================================================================
+
+
+@voice_router.get("/models", response_model=RvcModelListResponse)
+@router.get("/voice/models", response_model=RvcModelListResponse)
+async def list_rvc_models() -> RvcModelListResponse:
+    """Discover available local RVC voice models (*.pth) in assets/models/rvc/."""
+    registry = RvcModelRegistry()
+    models = registry.discover_models()
+    return RvcModelListResponse(
+        models=models,
+        active_model_id=models[0].model_id if models else None,
+        total_count=len(models),
+    )
+
+
+@voice_router.post("/preview", response_model=VoicePreviewResponse)
+@router.post("/voice/preview", response_model=VoicePreviewResponse)
+async def create_voice_preview(request: VoicePreviewRequest) -> VoicePreviewResponse:
+    """Synthesize a short audio preview clip using the requested voice config."""
+    preview_id = f"prev_{uuid.uuid4().hex[:12]}"
+    preview_dir = Path("data/previews")
+    preview_dir.mkdir(parents=True, exist_ok=True)
+    out_audio = preview_dir / f"{preview_id}.wav"
+
+    svc = VoiceService(config=request.config)
+    try:
+        result = await svc.synthesize(
+            text=request.text, output_path=out_audio, config=request.config
+        )
+    except Exception as exc:
+        logger.error("Failed to generate voice preview: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to generate voice preview: {exc}",
+        ) from exc
+
+    return VoicePreviewResponse(
+        audio_url=f"/api/v1/voice/preview/audio/{preview_id}",
+        duration_ms=result.duration_ms,
+        voice_mode_used=result.voice_mode_used,
+    )
+
+
+@voice_router.get("/preview/audio/{preview_id}")
+@router.get("/voice/preview/audio/{preview_id}")
+async def get_preview_audio(preview_id: str) -> FileResponse:
+    """Stream synthesized voice preview audio file."""
+    preview_dir = Path("data/previews")
+    candidate_wav = preview_dir / f"{preview_id}.wav"
+    candidate_mp3 = preview_dir / f"{preview_id}.mp3"
+
+    if candidate_wav.exists():
+        target = candidate_wav
+    elif candidate_mp3.exists():
+        target = candidate_mp3
+    else:
+        target = None
+
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Preview file not found")
+
+    media_type = "audio/wav" if target.suffix.lower() == ".wav" else "audio/mpeg"
+    return FileResponse(target, media_type=media_type)
+

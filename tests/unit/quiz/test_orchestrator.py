@@ -15,6 +15,8 @@ from videoanalizer.quiz.models import (
     QuizItem,
     QuizTier,
     SfxPaths,
+    VoiceConfig,
+    VoiceMode,
     WordCue,
 )
 from videoanalizer.quiz.orchestrator import QuizOrchestrator
@@ -632,6 +634,64 @@ def test_orchestrator_chains_random_backgrounds_when_short(tmp_path: Path) -> No
         first_cmd = captured_cmds[0]
         # Should have called ffmpeg with concat
         assert any("concat" in str(arg) for arg in first_cmd)
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_generate_with_custom_rvc_voice(tmp_path: Path) -> None:
+    """Verify QuizOrchestrator.generate() propagates voice_config with custom_rvc mode."""
+    config = QuizConfig(
+        output_dir=tmp_path / "outputs",
+        temp_dir=tmp_path / "temp",
+        backgrounds_dir=tmp_path / "backgrounds",
+    )
+    config.backgrounds_dir.mkdir(parents=True, exist_ok=True)
+    dummy_bg = config.backgrounds_dir / "default_bg.mp4"
+    dummy_bg.write_bytes(b"dummy mp4")
+
+    dummy_model = tmp_path / "test_streamer.pth"
+    dummy_model.write_bytes(b"dummy model weights")
+
+    voice_cfg = VoiceConfig(
+        voice_mode=VoiceMode.CUSTOM_RVC,
+        rvc_model_path=str(dummy_model),
+        pitch_shift=2,
+    )
+
+    orchestrator = QuizOrchestrator(config=config)
+    challenge = make_sample_challenge()
+    sample_cue_sheet = make_sample_cue_sheet()
+
+    async def fake_render(
+        props_path: Path, public_dir: Path, output_path: Path, **kwargs: object
+    ) -> None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"dummy_rendered_video")
+
+    with (
+        patch.object(
+            orchestrator.audio_service,
+            "synthesize_cue_sheet",
+            new_callable=AsyncMock,
+            return_value=sample_cue_sheet,
+        ) as mock_audio,
+        patch.object(orchestrator, "_render_remotion", side_effect=fake_render),
+        patch.object(orchestrator, "_prepare_background", return_value="background.mp4"),
+        patch.object(orchestrator, "_prepare_banner", return_value=(None, 0)),
+        patch.object(orchestrator, "_prepare_music", return_value=None),
+        patch.object(orchestrator, "_prepare_challenge_images", new_callable=AsyncMock),
+    ):
+        output_file = await orchestrator.generate(
+            topic="Test Topic",
+            challenge=challenge,
+            background_video=dummy_bg,
+            voice_config=voice_cfg,
+        )
+
+        assert output_file.exists() or output_file.suffix == ".mp4"
+        mock_audio.assert_called_once()
+        _, kwargs = mock_audio.call_args
+        assert kwargs.get("voice_config") == voice_cfg
+
 
 
 

@@ -22,6 +22,7 @@ from videoanalizer.quiz.models import (
     RemotionRenderProps,
     RenderProfile,
     SfxPaths,
+    VoiceConfig,
 )
 from videoanalizer.quiz.script_service import ScriptService
 from videoanalizer.quiz.workspace import QuizWorkspace
@@ -705,12 +706,13 @@ class QuizOrchestrator:
         retention_config: QuizRetentionConfig | None = None,
         creative_temperature: float | None = None,
         fact_check: bool | None = None,
-        intro_hook: str | None = "Ты гений, если ответишь на все вопросы!",
+        intro_hook: str | None = None,
         background_music: Path | str | None = None,
         background_music_volume: float = 0.18,
         uniquifier: VideoUniquifierConfig | None = None,
         render_profile: RenderProfile | None = None,
         progress_callback: Callable[[int, str], None] | None = None,
+        voice_config: VoiceConfig | None = None,
     ) -> Path:
         """Run the full end-to-end quiz short generation pipeline."""
         if progress_callback:
@@ -824,6 +826,7 @@ class QuizOrchestrator:
                 voice=voice,
                 retention_config=retention_config,
                 intro_hook=intro_hook,
+                voice_config=voice_config,
             )
             task_images = self._prepare_challenge_images(
                 challenge=challenge,

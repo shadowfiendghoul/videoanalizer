@@ -296,7 +296,7 @@
           <!-- Parameters Grid -->
           <div class="grid grid-cols-2 gap-4 pt-2">
             <!-- Language -->
-            <div class="space-y-1.5">
+            <div class="col-span-2 sm:col-span-1 space-y-1.5">
               <label class="block text-xs font-medium text-slate-300">Язык озвучки и текста</label>
               <select id="language-select" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all">
                 <option value="ru" selected>Русский (ru)</option>
@@ -304,23 +304,102 @@
               </select>
             </div>
 
-            <!-- Voice Selection -->
-            <div class="space-y-1.5">
-              <label class="block text-xs font-medium text-slate-300">Нейросетевой голос</label>
-              <select id="voice-select" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all">
-                <option value="ru-RU-SvetlanaNeural" selected>🇷🇺 Светлана (Классический женский, Edge-TTS)</option>
-                <option value="ru-RU-SvetlanaEnergetic">🇷🇺 Светлана Энерджи (Бодрый темп +15%, для Shorts)</option>
-                <option value="ru-RU-MaleBaritone">🇷🇺 Максим / Баритон (Глубокий мужской голос)</option>
-                <option value="ru-RU-EpicAnnouncer">🇷🇺 Эпичный диктор (Трейлерный бас с эхом)</option>
-                <option value="ru-RU-ChibiCartoon">🇷🇺 Мультяшный / Чиби (Задорный мультяшный)</option>
-                <option value="uk-UA-OstapNeural">🇺🇦 Остап (Естественный мужской, Edge-TTS)</option>
-                <option value="uk-UA-PolinaNeural">🇺🇦 Полина (Мягкий женский, Edge-TTS)</option>
-                <option value="ru-RU-IrinaSAPI">🇷🇺 Ирина (Windows SAPI5, локальный офлайн)</option>
-                <option value="en-US-GuyNeural">🇺🇸 Guy (Английский мужской, энергичный)</option>
-                <option value="en-US-JennyNeural">🇺🇸 Jenny (Английский женский)</option>
-                <option value="en-US-ChristopherNeural">🇺🇸 Christopher (Английский глубокий диктор)</option>
-                <option value="en-GB-RyanNeural">🇬🇧 Ryan (Британский джентльмен)</option>
-              </select>
+            <!-- Voice Pipeline & Cloning Configuration Panel -->
+            <div class="col-span-2 space-y-3 p-3.5 rounded-xl bg-purple-500/[0.04] border border-purple-500/20">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-xs text-purple-300 flex items-center space-x-1.5">
+                  <i data-lucide="mic" class="w-4 h-4 text-purple-400"></i>
+                  <span>Голосовой конвейер и клонирование (Voice Pipeline)</span>
+                </span>
+                <span id="voice-mode-badge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  Режим: Edge-TTS
+                </span>
+              </div>
+
+              <!-- Voice Pipeline Mode Selector -->
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" id="btn-mode-edge" onclick="setVoiceMode('edge_tts')" class="py-1.5 px-2 rounded-lg text-xs font-medium border border-purple-500 bg-purple-500/20 text-purple-200 transition-all text-center">
+                  ⚡ Edge-TTS
+                </button>
+                <button type="button" id="btn-mode-rvc" onclick="setVoiceMode('custom_rvc')" class="py-1.5 px-2 rounded-lg text-xs font-medium border border-white/10 bg-black/40 text-slate-400 hover:text-white transition-all text-center">
+                  🎭 RVC Клонирование
+                </button>
+                <button type="button" id="btn-mode-offline" onclick="setVoiceMode('offline_fallback')" class="py-1.5 px-2 rounded-lg text-xs font-medium border border-white/10 bg-black/40 text-slate-400 hover:text-white transition-all text-center">
+                  🛡️ Офлайн резерв
+                </button>
+              </div>
+
+              <!-- Base Voice & Speech Rate -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="base-voice-container">
+                <div class="space-y-1">
+                  <label class="block text-xs text-slate-300 font-medium">Базовый диктор (дикция и тайминги)</label>
+                  <select id="voice-select" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-all">
+                    <option value="ru-RU-DmitryNeural" selected>🇷🇺 Дмитрий (Эталонная дикция, ru-RU-Dmitry)</option>
+                    <option value="ru-RU-SvetlanaNeural">🇷🇺 Светлана (Классический женский, Edge-TTS)</option>
+                    <option value="ru-RU-SvetlanaEnergetic">🇷🇺 Светлана Энерджи (Бодрый темп +15%, для Shorts)</option>
+                    <option value="ru-RU-MaleBaritone">🇷🇺 Максим / Баритон (Глубокий мужской голос)</option>
+                    <option value="ru-RU-EpicAnnouncer">🇷🇺 Эпичный диктор (Трейлерный бас с эхом)</option>
+                    <option value="ru-RU-ChibiCartoon">🇷🇺 Мультяшный / Чиби (Задорный мультяшный)</option>
+                    <option value="en-US-GuyNeural">🇺🇸 Guy (Английский мужской, энергичный)</option>
+                    <option value="en-US-JennyNeural">🇺🇸 Jenny (Английский женский)</option>
+                    <option value="en-US-ChristopherNeural">🇺🇸 Christopher (Английский глубокий диктор)</option>
+                  </select>
+                </div>
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <label class="block text-xs text-slate-300 font-medium">Темп речи (Shorts)</label>
+                    <span id="speech-rate-display" class="font-mono text-[11px] text-purple-300 font-bold">1.15x (+15%)</span>
+                  </div>
+                  <input type="range" id="speech-rate-slider" min="0.8" max="1.5" step="0.05" value="1.15" oninput="updateSpeechRateDisplay(this.value); saveSettings();" class="w-full accent-purple-500 h-1.5 bg-black/50 rounded appearance-none cursor-pointer mt-1" />
+                  <div class="flex justify-between text-[9px] text-slate-500 font-mono">
+                    <span>0.8x</span>
+                    <span>1.0x Норма</span>
+                    <span class="text-purple-400 font-bold">1.15x Shorts</span>
+                    <span>1.5x</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RVC Custom Model Controls (Visible in custom_rvc mode) -->
+              <div id="rvc-controls-panel" class="hidden space-y-3 pt-2 border-t border-purple-500/20">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between">
+                      <label class="block text-xs text-slate-300 font-medium">Модель RVC (.pth)</label>
+                      <button type="button" onclick="loadRvcModels()" class="text-[10px] text-purple-400 hover:text-purple-300 flex items-center space-x-1">
+                        <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                        <span>Обновить</span>
+                      </button>
+                    </div>
+                    <select id="rvc-model-select" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 transition-all">
+                      <option value="">Поиск моделей в assets/models/rvc/...</option>
+                    </select>
+                  </div>
+
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between">
+                      <label class="block text-xs text-slate-300 font-medium">Сдвиг высоты тона (Pitch)</label>
+                      <span id="pitch-shift-display" class="font-mono text-[11px] text-purple-300 font-bold">0 полутонов</span>
+                    </div>
+                    <input type="range" id="pitch-shift-slider" min="-12" max="12" step="1" value="0" oninput="updatePitchShiftDisplay(this.value); saveSettings();" class="w-full accent-purple-500 h-1.5 bg-black/50 rounded appearance-none cursor-pointer mt-1" />
+                    <div class="flex justify-between text-[9px] text-slate-500 font-mono">
+                      <span>-12 (Бас)</span>
+                      <span>0 (Без сдвига)</span>
+                      <span>+12 (Высокий)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Audio Preview Row -->
+              <div class="flex items-center justify-between pt-1">
+                <button type="button" id="btn-preview-voice" onclick="previewVoice()" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-purple-500/20 text-slate-300 hover:text-purple-300 border border-white/[0.1] text-xs transition-all">
+                  <i data-lucide="volume-2" class="w-3.5 h-3.5 text-purple-400" id="preview-voice-icon"></i>
+                  <span id="preview-voice-btn-text">🎧 Прослушать голос</span>
+                </button>
+                <audio id="voice-preview-audio" class="hidden" controls></audio>
+                <span id="voice-preview-status" class="text-[11px] text-slate-400 font-mono"></span>
+              </div>
             </div>
           </div>
 
@@ -407,36 +486,49 @@
             </div>
           </div>
 
-          <!-- Intro Hook Greeting Phrase -->
-          <div class="space-y-1.5 pt-2 border-t border-white/[0.06]">
+          <!-- Intro Hook Greeting Phrase (Optional) -->
+          <div class="space-y-2 pt-2 border-t border-white/[0.06]">
             <div class="flex items-center justify-between">
-              <label class="block text-xs font-medium text-slate-300 flex items-center space-x-1.5">
-                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
-                <span>Интро-хук / Фраза приветствия</span>
+              <label class="flex items-center space-x-2.5 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  id="intro-hook-toggle" 
+                  checked
+                  class="w-4 h-4 rounded text-emerald-500 bg-black/40 border-white/[0.2] focus:ring-emerald-500 focus:ring-offset-0 transition-all cursor-pointer"
+                  onchange="toggleIntroHookSection(); saveSettings();"
+                />
+                <span class="text-xs font-medium text-slate-200 flex items-center space-x-1.5">
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+                  <span>Интро-хук / Фраза приветствия</span>
+                </span>
               </label>
-              <span class="text-[10px] text-slate-400 font-mono">Вирусный старт (0–2 сек)</span>
+              <span class="text-[10px] text-slate-400 font-mono">Опционально (0–2 сек)</span>
             </div>
-            <div class="relative">
-              <input 
-                type="text" 
-                id="intro-hook-input" 
-                value="Ты гений, если ответишь на все вопросы!" 
-                placeholder="Например: Ты гений, если ответишь на все вопросы!" 
-                oninput="saveSettings()"
-                class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all pr-20"
-              />
-              <button 
-                type="button" 
-                onclick="document.getElementById('intro-hook-input').value = 'Ты гений, если ответишь на все вопросы!'; saveSettings();"
-                class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-2 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white transition-all cursor-pointer font-mono"
-                title="Сбросить на стандартную фразу"
-              >
-                Дефолт
-              </button>
+
+            <!-- Expandable Intro Hook Container -->
+            <div id="intro-hook-container" class="space-y-1.5 pl-4 border-l-2 border-amber-500/30">
+              <div class="relative">
+                <input 
+                  type="text" 
+                  id="intro-hook-input" 
+                  value="Ты гений, если ответишь на все вопросы!" 
+                  placeholder="Например: Ты гений, если ответишь на все вопросы!" 
+                  oninput="saveSettings()"
+                  class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all pr-20"
+                />
+                <button 
+                  type="button" 
+                  onclick="document.getElementById('intro-hook-input').value = 'Ты гений, если ответишь на все вопросы!'; saveSettings();"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-2 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-white transition-all cursor-pointer font-mono"
+                  title="Сбросить на стандартную фразу"
+                >
+                  Дефолт
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-400">
+                Озвучивается в самом начале видео и отображается на анимированной карточке. Отключите чекбокс или оставьте поле пустым, чтобы сразу начать с вопроса 1.
+              </p>
             </div>
-            <p class="text-[10px] text-slate-400">
-              Озвучивается в самом начале видео и отображается на анимированной карточке. Оставьте пустым, чтобы сразу начать с вопроса 1.
-            </p>
           </div>
 
           <!-- Background Video Selector -->
@@ -1476,11 +1568,152 @@
       badge.textContent = `${num.toFixed(2)} (${label})`;
     }
 
+    let currentVoiceMode = 'edge_tts';
+
+    function updateSpeechRateDisplay(val) {
+      const display = document.getElementById('speech-rate-display');
+      if (!display) return;
+      const rate = parseFloat(val);
+      const pct = Math.round((rate - 1.0) * 100);
+      const sign = pct >= 0 ? '+' : '';
+      display.textContent = `${rate.toFixed(2)}x (${sign}${pct}%)`;
+    }
+
+    function updatePitchShiftDisplay(val) {
+      const display = document.getElementById('pitch-shift-display');
+      if (!display) return;
+      const shift = parseInt(val, 10);
+      const sign = shift > 0 ? '+' : '';
+      const text = shift === 0 ? '0 (Без сдвига)' : `${sign}${shift} полутонов`;
+      display.textContent = text;
+    }
+
+    function setVoiceMode(mode) {
+      currentVoiceMode = mode;
+      const badge = document.getElementById('voice-mode-badge');
+      const rvcPanel = document.getElementById('rvc-controls-panel');
+
+      const btnEdge = document.getElementById('btn-mode-edge');
+      const btnRvc = document.getElementById('btn-mode-rvc');
+      const btnOff = document.getElementById('btn-mode-offline');
+
+      [btnEdge, btnRvc, btnOff].forEach(b => {
+        if (b) {
+          b.className = 'py-1.5 px-2 rounded-lg text-xs font-medium border border-white/10 bg-black/40 text-slate-400 hover:text-white transition-all text-center';
+        }
+      });
+
+      if (mode === 'custom_rvc') {
+        if (badge) badge.textContent = 'Режим: RVC Клонирование';
+        if (btnRvc) btnRvc.className = 'py-1.5 px-2 rounded-lg text-xs font-medium border border-purple-500 bg-purple-500/20 text-purple-200 transition-all text-center';
+        if (rvcPanel) rvcPanel.classList.remove('hidden');
+        loadRvcModels();
+      } else if (mode === 'offline_fallback') {
+        if (badge) badge.textContent = 'Режим: Офлайн резерв';
+        if (btnOff) btnOff.className = 'py-1.5 px-2 rounded-lg text-xs font-medium border border-purple-500 bg-purple-500/20 text-purple-200 transition-all text-center';
+        if (rvcPanel) rvcPanel.classList.add('hidden');
+      } else {
+        if (badge) badge.textContent = 'Режим: Edge-TTS';
+        if (btnEdge) btnEdge.className = 'py-1.5 px-2 rounded-lg text-xs font-medium border border-purple-500 bg-purple-500/20 text-purple-200 transition-all text-center';
+        if (rvcPanel) rvcPanel.classList.add('hidden');
+      }
+      saveSettings();
+    }
+
+    async function loadRvcModels() {
+      const select = document.getElementById('rvc-model-select');
+      if (!select) return;
+      try {
+        const res = await fetch('/api/v1/voice/models');
+        if (!res.ok) return;
+        const data = await res.json();
+        select.innerHTML = '';
+        if (!data.models || data.models.length === 0) {
+          select.innerHTML = '<option value="">Нет моделей в assets/models/rvc/ (поместите .pth)</option>';
+          return;
+        }
+        data.models.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.file_path;
+          opt.textContent = `🎭 ${m.name} (${(m.file_size_bytes / 1024 / 1024).toFixed(1)} MB)`;
+          select.appendChild(opt);
+        });
+        const saved = getStoredSettings();
+        if (saved && saved.rvcModel) {
+          select.value = saved.rvcModel;
+        }
+      } catch (err) {
+        console.warn('Failed to load RVC models:', err);
+      }
+    }
+
+    function getVoiceConfig() {
+      const mode = currentVoiceMode || 'edge_tts';
+      const baseVoice = document.getElementById('voice-select')?.value || 'ru-RU-DmitryNeural';
+      const rvcModel = document.getElementById('rvc-model-select')?.value || null;
+      const pitchShift = parseInt(document.getElementById('pitch-shift-slider')?.value || '0', 10);
+      const speechRate = parseFloat(document.getElementById('speech-rate-slider')?.value || '1.15');
+
+      return {
+        voice_mode: mode,
+        base_voice: baseVoice,
+        rvc_model_path: mode === 'custom_rvc' ? rvcModel : null,
+        pitch_shift: pitchShift,
+        speech_rate: speechRate,
+        pitch_method: 'rmvpe',
+        device: 'auto'
+      };
+    }
+
+    async function previewVoice() {
+      const btn = document.getElementById('btn-preview-voice');
+      const btnText = document.getElementById('preview-voice-btn-text');
+      const statusEl = document.getElementById('voice-preview-status');
+      const audioEl = document.getElementById('voice-preview-audio');
+
+      if (btn) btn.disabled = true;
+      if (btnText) btnText.textContent = '⏳ Синтез...';
+      if (statusEl) statusEl.textContent = 'Генерация...';
+
+      try {
+        const config = getVoiceConfig();
+        const res = await fetch('/api/v1/voice/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: 'Привет! Это проверка моего нового кастомного голоса для викторин.',
+            config: config
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Preview error');
+        }
+        const data = await res.json();
+        if (audioEl) {
+          audioEl.src = data.audio_url;
+          audioEl.play();
+        }
+        if (statusEl) statusEl.textContent = `✓ Готово (${data.duration_ms} мс)`;
+      } catch (err) {
+        console.error('Preview error:', err);
+        if (statusEl) statusEl.textContent = `Ошибка: ${err.message}`;
+      } finally {
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.textContent = '🎧 Прослушать голос';
+      }
+    }
+
     function saveSettings() {
       const settings = {
+        introHookEnabled: document.getElementById('intro-hook-toggle')?.checked ?? true,
         introHook: document.getElementById('intro-hook-input')?.value,
         language: document.getElementById('language-select')?.value,
         voice: document.getElementById('voice-select')?.value,
+        voiceMode: currentVoiceMode,
+        speechRate: document.getElementById('speech-rate-slider')?.value,
+        rvcModel: document.getElementById('rvc-model-select')?.value,
+        pitchShift: document.getElementById('pitch-shift-slider')?.value,
         background: document.getElementById('background-select')?.value,
         bannerEnabled: document.getElementById('banner-toggle')?.checked ?? false,
         bannerFile: uploadedBannerFile,
@@ -1520,6 +1753,10 @@
       const s = getStoredSettings();
       if (!s) return;
 
+      if (typeof s.introHookEnabled === 'boolean' && document.getElementById('intro-hook-toggle')) {
+        document.getElementById('intro-hook-toggle').checked = s.introHookEnabled;
+        toggleIntroHookSection();
+      }
       if (typeof s.introHook === 'string' && document.getElementById('intro-hook-input')) {
         document.getElementById('intro-hook-input').value = s.introHook;
       }
@@ -1528,6 +1765,17 @@
       }
       if (s.voice && document.getElementById('voice-select')) {
         document.getElementById('voice-select').value = s.voice;
+      }
+      if (s.voiceMode) {
+        setVoiceMode(s.voiceMode);
+      }
+      if (s.speechRate && document.getElementById('speech-rate-slider')) {
+        document.getElementById('speech-rate-slider').value = s.speechRate;
+        updateSpeechRateDisplay(s.speechRate);
+      }
+      if (s.pitchShift && document.getElementById('pitch-shift-slider')) {
+        document.getElementById('pitch-shift-slider').value = s.pitchShift;
+        updatePitchShiftDisplay(s.pitchShift);
       }
       if (s.background && document.getElementById('background-select')) {
         document.getElementById('background-select').value = s.background;
@@ -1682,6 +1930,7 @@
       }
     }
     loadBackgrounds();
+    loadRvcModels();
 
     let activeJobId = null;
     let pollInterval = null;
@@ -1691,6 +1940,7 @@
     // Initialize persisted settings, hardware capabilities probe, and listeners
     loadSettings();
     initHardwareProbe();
+    document.getElementById('intro-hook-toggle')?.addEventListener('change', () => { toggleIntroHookSection(); saveSettings(); });
     document.getElementById('intro-hook-input')?.addEventListener('input', saveSettings);
     document.getElementById('language-select')?.addEventListener('change', handleLanguageChange);
     document.getElementById('voice-select')?.addEventListener('change', saveSettings);
@@ -1703,6 +1953,17 @@
     document.getElementById('streak-toggle')?.addEventListener('change', saveSettings);
     document.getElementById('trap-toggle')?.addEventListener('change', saveSettings);
     document.getElementById('uniquifier-toggle')?.addEventListener('change', () => { toggleUniquifierSection(); saveSettings(); });
+
+    function toggleIntroHookSection() {
+      const checked = document.getElementById('intro-hook-toggle')?.checked ?? false;
+      const section = document.getElementById('intro-hook-container');
+      if (!section) return;
+      if (checked) {
+        section.classList.remove('hidden');
+      } else {
+        section.classList.add('hidden');
+      }
+    }
 
     function toggleBannerSection() {
       const checked = document.getElementById('banner-toggle').checked;
@@ -2406,8 +2667,10 @@
       const bannerEnabled = bannerToggle ? bannerToggle.checked : false;
       const musicToggle = document.getElementById('music-toggle');
       const musicEnabled = musicToggle ? musicToggle.checked : false;
+      const introHookToggle = document.getElementById('intro-hook-toggle');
+      const introHookEnabled = introHookToggle ? introHookToggle.checked : false;
       const introHookInput = document.getElementById('intro-hook-input');
-      const introHookVal = introHookInput ? (introHookInput.value.trim() || null) : null;
+      const introHookVal = (introHookEnabled && introHookInput && introHookInput.value.trim()) ? introHookInput.value.trim() : null;
       const musicVolumeSlider = document.getElementById('music-volume-slider');
       const musicVolume = musicVolumeSlider ? parseFloat(musicVolumeSlider.value) : 0.18;
       const previewBtn = document.getElementById('preview-btn');
@@ -2470,6 +2733,7 @@
             topic: topic,
             language: language,
             voice: voice,
+            voice_config: getVoiceConfig(),
             background_video: background,
             banner_video: bannerEnabled ? uploadedBannerFile : null,
             challenge: approvedChallenge,
@@ -3571,6 +3835,7 @@
         batch_id: currentBatchState.batch_id,
         items: approvedItems,
         voice: voice,
+        voice_config: getVoiceConfig(),
         background_video: background,
         banner_video: bannerEnabled ? uploadedBannerFile : null,
         background_music: (musicEnabled && uploadedMusicFile) ? uploadedMusicFile : null,
@@ -3580,6 +3845,9 @@
         stress_timer_enabled: document.getElementById('timer-toggle')?.checked ?? true,
         streak_fire_enabled: document.getElementById('streak-toggle')?.checked ?? true,
         comment_trap_enabled: document.getElementById('trap-toggle')?.checked ?? true,
+        intro_hook: ((document.getElementById('intro-hook-toggle')?.checked ?? false) && document.getElementById('intro-hook-input'))
+          ? (document.getElementById('intro-hook-input').value.trim() || null)
+          : null,
         uniquifier: uniquifierConfig,
         render_profile: currentRenderProfile
       };

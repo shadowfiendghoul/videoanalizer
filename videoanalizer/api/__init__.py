@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from videoanalizer.api.routes_quiz import hardware_router
+from videoanalizer.api.routes_quiz import hardware_router, voice_router
 from videoanalizer.api.routes_quiz import router as quiz_router
 
 
@@ -19,6 +19,7 @@ def create_app() -> FastAPI:
 
     app.include_router(quiz_router)
     app.include_router(hardware_router)
+    app.include_router(voice_router)
 
     @app.get("/health")
     async def health_check() -> dict[str, str]:

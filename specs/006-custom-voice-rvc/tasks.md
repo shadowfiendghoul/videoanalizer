@@ -9,8 +9,8 @@
 
 **Purpose**: Подготовка файловой структуры и системных зависимостей
 
-- [ ] T001 Create RVC model directory structure in `assets/models/rvc/` and add `.gitkeep`
-- [ ] T002 Verify audio and speech processing dependencies (`edge-tts`, `soundfile`, `numpy`) in `pyproject.toml`
+- [x] T001 Create RVC model directory structure in `assets/models/rvc/` and add `.gitkeep`
+- [x] T002 Verify audio and speech processing dependencies (`edge-tts`, `soundfile`, `numpy`) in `pyproject.toml`
 
 ---
 
@@ -20,9 +20,9 @@
 
 **⚠️ CRITICAL**: Реализация пользовательских историй не может начаться до завершения этой фазы
 
-- [ ] T003 [P] Implement core voice schemas (`VoiceMode`, `VoiceConfig`, `RvcModelInfo`, `WordTiming`, `SynthesizedSpeechResult`, `VoicePreviewRequest`, `VoicePreviewResponse`) with Pydantic v2 validation in `videoanalizer/quiz/models.py`
-- [ ] T004 [P] Implement RVC model scanner utility (`RvcModelRegistry.discover_models()`) in `videoanalizer/quiz/voice_service.py` to scan `assets/models/rvc/` for `*.pth` and `*.index`
-- [ ] T005 Create base unit test fixtures and synthetic mocks for voice synthesis and RVC models in `tests/unit/quiz/test_voice_service.py`
+- [x] T003 [P] Implement core voice schemas (`VoiceMode`, `VoiceConfig`, `RvcModelInfo`, `WordTiming`, `SynthesizedSpeechResult`, `VoicePreviewRequest`, `VoicePreviewResponse`) with Pydantic v2 validation in `videoanalizer/quiz/models.py`
+- [x] T004 [P] Implement RVC model scanner utility (`RvcModelRegistry.discover_models()`) in `videoanalizer/quiz/voice_service.py` to scan `assets/models/rvc/` for `*.pth` and `*.index`
+- [x] T005 Create base unit test fixtures and synthetic mocks for voice synthesis and RVC models in `tests/unit/quiz/test_voice_service.py`
 
 **Checkpoint**: Базовые модели и утилиты готовы — начинается реализация пользовательских историй
 
@@ -36,10 +36,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T006 [P] [US1] Write unit tests for `VoiceService` in `edge_tts` mode with word timing extraction in `tests/unit/quiz/test_voice_service.py`
-- [ ] T007 [US1] Implement `VoiceService._synthesize_edge_tts()` with `WordBoundary` event capture, rate scaling (`speech_rate`), and format normalization in `videoanalizer/quiz/voice_service.py`
-- [ ] T008 [US1] Integrate `VoiceService` into `AudioService.synthesize_speech_with_cues()` in `videoanalizer/quiz/audio_service.py`
-- [ ] T009 [US1] Verify end-to-end question cue sheet and intro audio synthesis with `VoiceService` in `videoanalizer/quiz/audio_service.py`
+- [x] T006 [P] [US1] Write unit tests for `VoiceService` in `edge_tts` mode with word timing extraction in `tests/unit/quiz/test_voice_service.py`
+- [x] T007 [US1] Implement `VoiceService._synthesize_edge_tts()` with `WordBoundary` event capture, rate scaling (`speech_rate`), and format normalization in `videoanalizer/quiz/voice_service.py`
+- [x] T008 [US1] Integrate `VoiceService` into `AudioService.synthesize_speech_with_cues()` in `videoanalizer/quiz/audio_service.py`
+- [x] T009 [US1] Verify end-to-end question cue sheet and intro audio synthesis with `VoiceService` in `videoanalizer/quiz/audio_service.py`
 
 **Checkpoint**: User Story 1 (MVP) полностью работоспособна, протестирована и обеспечивает качественную озвучку с караоке-таймингами.
 
@@ -53,11 +53,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T010 [P] [US2] Write unit tests for `RvcInferenceEngine` (validating pitch_shift -12..+12, missing model fallback, audio normalization) in `tests/unit/quiz/test_rvc_engine.py`
-- [ ] T011 [US2] Implement `RvcInferenceEngine` in `videoanalizer/quiz/rvc_engine.py` supporting `RMVPE`/`PM` pitch extraction, CUDA/CPU device selection, and graceful fallback on missing `.pth`
-- [ ] T012 [US2] Implement `VoiceService._convert_rvc()` in `videoanalizer/quiz/voice_service.py` connecting Edge-TTS output to `RvcInferenceEngine` with timing alignment
-- [ ] T013 [US2] Integrate custom voice cloning into `QuizOrchestrator.generate()` in `videoanalizer/quiz/orchestrator.py`
-- [ ] T014 [US2] Add integration test for complete quiz generation with `custom_rvc` mode in `tests/unit/quiz/test_orchestrator.py`
+- [x] T010 [P] [US2] Write unit tests for `RvcInferenceEngine` (validating pitch_shift -12..+12, missing model fallback, audio normalization) in `tests/unit/quiz/test_rvc_engine.py`
+- [x] T011 [US2] Implement `RvcInferenceEngine` in `videoanalizer/quiz/rvc_engine.py` supporting `RMVPE`/`PM` pitch extraction, CUDA/CPU device selection, and graceful fallback on missing `.pth`
+- [x] T012 [US2] Implement `VoiceService._convert_rvc()` in `videoanalizer/quiz/voice_service.py` connecting Edge-TTS output to `RvcInferenceEngine` with timing alignment
+- [x] T013 [US2] Integrate custom voice cloning into `QuizOrchestrator.generate()` in `videoanalizer/quiz/orchestrator.py`
+- [x] T014 [US2] Add integration test for complete quiz generation with `custom_rvc` mode in `tests/unit/quiz/test_orchestrator.py`
 
 **Checkpoint**: User Story 1 и User Story 2 функционируют независимо и в связке.
 
@@ -71,9 +71,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T015 [P] [US3] Write unit tests for multi-tier offline fallback in `tests/unit/quiz/test_voice_service.py`
-- [ ] T016 [US3] Implement `VoiceService._synthesize_offline_fallback()` with Piper TTS / SAPI5 / synthetic wav fallback in `videoanalizer/quiz/voice_service.py`
-- [ ] T017 [US3] Implement automatic silent error-catching and degradation ladder (`custom_rvc` -> `edge_tts` -> `offline_fallback`) in `videoanalizer/quiz/voice_service.py`
+- [x] T015 [P] [US3] Write unit tests for multi-tier offline fallback in `tests/unit/quiz/test_voice_service.py`
+- [x] T016 [US3] Implement `VoiceService._synthesize_offline_fallback()` with Piper TTS / SAPI5 / synthetic wav fallback in `videoanalizer/quiz/voice_service.py`
+- [x] T017 [US3] Implement automatic silent error-catching and degradation ladder (`custom_rvc` -> `edge_tts` -> `offline_fallback`) in `videoanalizer/quiz/voice_service.py`
 
 **Checkpoint**: Система полностью отказоустойчива к сетевым сбоям и отсутствию моделей.
 
@@ -87,10 +87,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T018 [P] [US4] Implement REST API endpoints `GET /api/v1/voice/models`, `POST /api/v1/voice/preview`, and `GET /api/v1/voice/preview/audio/{preview_id}` in `videoanalizer/api/routes_quiz.py`
-- [ ] T019 [P] [US4] Write contract tests for voice endpoints in `tests/unit/quiz/test_api_routes.py`
-- [ ] T020 [US4] Add UI controls in `videoanalizer/ui/templates/quiz.html` for Voice Mode selection, RVC model dropdown, Pitch Shift slider (-12..+12), and audio preview button
-- [ ] T021 [US4] Connect UI voice settings to single generation and batch queue requests in `videoanalizer/ui/templates/quiz.html`
+- [x] T018 [P] [US4] Implement REST API endpoints `GET /api/v1/voice/models`, `POST /api/v1/voice/preview`, and `GET /api/v1/voice/preview/audio/{preview_id}` in `videoanalizer/api/routes_quiz.py`
+- [x] T019 [P] [US4] Write contract tests for voice endpoints in `tests/unit/quiz/test_api_routes.py`
+- [x] T020 [US4] Add UI controls in `videoanalizer/ui/templates/quiz.html` for Voice Mode selection, RVC model dropdown, Pitch Shift slider (-12..+12), and audio preview button
+- [x] T021 [US4] Connect UI voice settings to single generation and batch queue requests in `videoanalizer/ui/templates/quiz.html`
 
 **Checkpoint**: Все 4 пользовательские истории полностью интегрированы в GUI и API.
 
@@ -100,10 +100,10 @@
 
 **Purpose**: Финальная валидация, тестирование качества и документация
 
-- [ ] T022 [P] Validate entire test suite (`pytest tests/unit/ -v`) ensuring 100% test pass rate
-- [ ] T023 [P] Run Ruff linter and formatter on all modified files (`ruff check videoanalizer/ tests/`)
-- [ ] T024 Execute validation scenarios from `specs/006-custom-voice-rvc/quickstart.md`
-- [ ] T025 Update documentation and `walkthrough.md` with voice pipeline and cloning capabilities
+- [x] T022 [P] Validate entire test suite (`pytest tests/unit/ -v`) ensuring 100% test pass rate
+- [x] T023 [P] Run Ruff linter and formatter on all modified files (`ruff check videoanalizer/ tests/`)
+- [x] T024 Execute validation scenarios from `specs/006-custom-voice-rvc/quickstart.md`
+- [x] T025 Update documentation and `walkthrough.md` with voice pipeline and cloning capabilities
 
 ---
 

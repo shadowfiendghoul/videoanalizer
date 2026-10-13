@@ -296,3 +296,107 @@ def test_regenerate_questions_endpoint() -> None:
         mock_regen.assert_called_once()
 
 
+def test_get_voice_models_endpoint() -> None:
+    """GET /api/v1/voice/models should return RvcModelListResponse."""
+    from videoanalizer.quiz.models import RvcModelInfo
+
+    fake_models = [
+        RvcModelInfo(
+            model_id="test_streamer",
+            name="Test Streamer",
+            file_path="assets/models/rvc/test_streamer.pth",
+            index_path=None,
+            file_size_bytes=1048576,
+            is_valid=True,
+        )
+    ]
+    with patch(
+        "videoanalizer.quiz.voice_service.RvcModelRegistry.discover_models",
+        return_value=fake_models,
+    ):
+        res = client.get("/api/v1/voice/models")
+        assert res.status_code == 200
+        data = res.json()
+        assert "models" in data
+        assert len(data["models"]) == 1
+        assert data["models"][0]["model_id"] == "test_streamer"
+        assert data["total_count"] == 1
+
+
+def test_voice_preview_and_audio_endpoint(tmp_path: Path) -> None:
+    """POST /api/v1/voice/preview generates preview and GET audio serves it."""
+    from videoanalizer.quiz.models import SynthesizedSpeechResult, VoiceMode
+
+    dummy_audio = tmp_path / "preview.wav"
+    dummy_audio.write_bytes(b"RIFFdummypreviewaudio")
+
+    fake_result = SynthesizedSpeechResult(
+        audio_path=str(dummy_audio),
+        duration_ms=1800,
+        words=[],
+        voice_mode_used=VoiceMode.EDGE_TTS,
+    )
+
+    with patch(
+        "videoanalizer.quiz.voice_service.VoiceService.synthesize",
+        new_callable=AsyncMock,
+        return_value=fake_result,
+    ):
+        payload = {
+            "text": "Тест озвучки",
+            "config": {
+                "voice_mode": "edge_tts",
+                "base_voice": "ru-RU-DmitryNeural",
+                "pitch_shift": 0,
+                "speech_rate": 1.15,
+            },
+        }
+        res = client.post("/api/v1/voice/preview", json=payload)
+        assert res.status_code == 200
+        data = res.json()
+        assert "audio_url" in data
+        assert data["duration_ms"] == 1800
+        assert data["voice_mode_used"] == "edge_tts"
+
+        audio_url = data["audio_url"]
+        preview_id = audio_url.split("/")[-1]
+
+        # Put audio file into data/previews for get_preview_audio
+        preview_dir = Path("data/previews")
+        preview_dir.mkdir(parents=True, exist_ok=True)
+        cached_file = preview_dir / f"{preview_id}.wav"
+        cached_file.write_bytes(b"RIFFcachedaudio")
+
+        try:
+            audio_res = client.get(audio_url)
+            assert audio_res.status_code == 200
+            assert audio_res.headers["content-type"] in ("audio/wav", "audio/x-wav")
+        finally:
+            if cached_file.exists():
+                cached_file.unlink()
+
+        # Test 404 for unknown preview_id
+        not_found_res = client.get("/api/v1/voice/preview/audio/non_existent_id")
+        assert not_found_res.status_code == 404
+
+
+def test_generate_quiz_endpoint_with_voice_config() -> None:
+    """POST /api/v1/quiz/generate should accept voice_config parameter."""
+    with patch("videoanalizer.api.routes_quiz._run_quiz_job", new_callable=AsyncMock):
+        payload = {
+            "topic": "Игровая индустрия",
+            "language": "ru",
+            "voice_config": {
+                "voice_mode": "custom_rvc",
+                "rvc_model_path": "assets/models/rvc/streamer.pth",
+                "pitch_shift": 2,
+                "speech_rate": 1.15,
+            },
+        }
+        res = client.post("/api/v1/quiz/generate", json=payload)
+        assert res.status_code == 202
+        data = res.json()
+        assert data["status"] == "pending"
+
+
+

@@ -71,3 +71,14 @@ assets/music/
 *.webm
 *.avi
 
+# Large ML / Voice model checkpoints
+assets/models/
+data/
+
+# Temporary root audio test files
+/*.mp3
+/*.wav
+-encoders
+
+
+
