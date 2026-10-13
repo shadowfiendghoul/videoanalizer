@@ -92,27 +92,153 @@
             <span class="text-xs text-slate-400 font-mono">Формат: 9 вопросов (Лестница)</span>
           </div>
 
-          <!-- Topic Input -->
-          <div class="space-y-2">
-            <label class="block text-xs font-medium text-slate-300">Тема викторины</label>
-            <div class="relative">
-              <input 
-                type="text" 
-                id="topic-input" 
-                placeholder="Например: Школьные знания, Мировая география, Флаги стран..." 
-                class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all"
-                value="Школьные знания"
-              />
+          <!-- Mode Switcher Tabs -->
+          <div class="flex items-center space-x-2 p-1 rounded-xl bg-black/40 border border-white/[0.08]">
+            <button 
+              type="button" 
+              id="tab-mode-single" 
+              onclick="switchQuizMode('single')" 
+              class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center space-x-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm cursor-pointer"
+            >
+              <i data-lucide="video" class="w-3.5 h-3.5"></i>
+              <span>Одиночное видео</span>
+            </button>
+            <button 
+              type="button" 
+              id="tab-mode-batch" 
+              onclick="switchQuizMode('batch')" 
+              class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center space-x-2 text-slate-400 hover:text-white border border-transparent cursor-pointer"
+            >
+              <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+              <span>⚡ Пакетная очередь (до 20 видео)</span>
+            </button>
+          </div>
+
+          <!-- SECTION: Single Video Mode -->
+          <div id="single-mode-section" class="space-y-3">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="block text-xs font-medium text-slate-300">Тема викторины</label>
+                <span class="text-[11px] text-purple-400 font-mono">15 RPM Quota Safe</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <div class="relative flex-1">
+                  <input 
+                    type="text" 
+                    id="topic-input" 
+                    placeholder="Например: Анатомические парадоксы, Забытые законы, Игры..." 
+                    class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all"
+                    value="Школьные знания"
+                  />
+                </div>
+                <button 
+                  id="suggest-topic-btn" 
+                  onclick="generateSingleTopic()" 
+                  type="button" 
+                  class="shrink-0 flex items-center space-x-1.5 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 text-purple-300 border border-purple-500/30 hover:border-purple-500/60 transition-all text-xs font-semibold shadow-lg shadow-purple-500/10 cursor-pointer"
+                  title="Придумать вирусную тему с помощью нейросети"
+                >
+                  <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i>
+                  <span id="suggest-topic-btn-text">🎲 Придумать тему</span>
+                </button>
+              </div>
+              
+              <!-- Preset Chips -->
+              <div class="flex flex-wrap gap-2 pt-1">
+                <span class="text-xs text-slate-400 self-center mr-1">Быстрые темы:</span>
+                <button onclick="setTopic('Школьные знания')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">📚 Школьные знания</button>
+                <button onclick="setTopic('Анатомические парадоксы тела')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-purple-500/20 hover:text-purple-300 text-slate-300 border border-white/[0.06] transition-all">🧠 Анатомия</button>
+                <button onclick="setTopic('Забытые законы средневековья')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-amber-500/20 hover:text-amber-300 text-slate-300 border border-white/[0.06] transition-all">📜 Странные законы</button>
+                <button onclick="setTopic('Игры, изменившие законы физики')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🎮 Игры</button>
+                <button onclick="setTopic('Ошибки выжившего в истории')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-rose-500/20 hover:text-rose-300 text-slate-300 border border-white/[0.06] transition-all">🛡️ История</button>
+              </div>
             </div>
-            
-            <!-- Preset Chips -->
-            <div class="flex flex-wrap gap-2 pt-1">
-              <span class="text-xs text-slate-400 self-center mr-1">Быстрые темы:</span>
-              <button onclick="setTopic('Школьные знания')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">📚 Школьные знания</button>
-              <button onclick="setTopic('Мировая география')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">🌍 География</button>
-              <button onclick="setTopic('Флаги стран мира')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">🚩 Флаги</button>
-              <button onclick="setTopic('История человечества')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">🏛️ История</button>
-              <button onclick="setTopic('Автомобили и бренды')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Автомобили</button>
+          </div>
+
+          <!-- SECTION: Batch Mode -->
+          <div id="batch-mode-section" class="space-y-4 hidden">
+            <div class="p-4 rounded-xl bg-purple-500/[0.05] border border-purple-500/20 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-xs text-purple-300 flex items-center space-x-1.5">
+                  <i data-lucide="layers" class="w-4 h-4 text-purple-400"></i>
+                  <span>Настройки пакетной очереди</span>
+                </span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  1 запрос = вся пачка тем
+                </span>
+              </div>
+
+              <!-- Quantity Selector -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-slate-300">Количество роликов в пачке:</span>
+                  <span id="batch-count-display" class="font-mono text-purple-300 font-bold text-sm bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">5</span>
+                </div>
+                <input 
+                  type="range" 
+                  id="batch-count-slider" 
+                  min="2" 
+                  max="20" 
+                  step="1" 
+                  value="5" 
+                  oninput="document.getElementById('batch-count-display').textContent = this.value; saveSettings();"
+                  class="w-full accent-purple-500 h-1.5 bg-black/50 rounded appearance-none cursor-pointer"
+                />
+                <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+                  <span>2 видео</span>
+                  <span>5 видео</span>
+                  <span>10 видео</span>
+                  <span>20 видео</span>
+                </div>
+              </div>
+
+              <!-- Optional Niche Guidance -->
+              <div class="space-y-1">
+                <label class="block text-xs font-medium text-slate-300">Тематическое направление (опционально)</label>
+                <input 
+                  type="text" 
+                  id="batch-hint-input" 
+                  placeholder="Оставьте пустым для максимального разнообразия или впишите нишу (например: Наука, Игры)"
+                  class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all"
+                />
+              </div>
+
+              <!-- Generate Batch Topics Button -->
+              <button 
+                type="button" 
+                id="btn-generate-batch-topics" 
+                onclick="generateBatchTopics()"
+                class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-md shadow-purple-500/20 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <i data-lucide="sparkles" class="w-4 h-4 text-purple-200"></i>
+                <span id="btn-generate-batch-topics-text">✨ Сгенерировать темы для пачки (1 запрос ИИ)</span>
+              </button>
+            </div>
+
+            <!-- Batch Generated Topics List -->
+            <div id="batch-topics-container" class="space-y-2.5 hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
+                  <i data-lucide="check-square" class="w-4 h-4 text-emerald-400"></i>
+                  <span>Сгенерированные темы пачки:</span>
+                </span>
+                <span id="batch-topics-count-badge" class="text-[11px] font-mono text-purple-400">0 тем</span>
+              </div>
+
+              <div id="batch-topics-list" class="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                <!-- Topics will be dynamically rendered here -->
+              </div>
+
+              <!-- Start Wizard Button -->
+              <button 
+                type="button" 
+                id="btn-launch-batch-wizard" 
+                onclick="launchBatchApprovalWizard()"
+                class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <i data-lucide="play-circle" class="w-4 h-4"></i>
+                <span>🚀 Создать вопросы и открыть визард проверки</span>
+              </button>
             </div>
           </div>
 
@@ -813,7 +939,257 @@
       </section>
 
     </div>
+
+    <!-- SECTION: Batch Render Queue Monitor -->
+    <section id="batch-queue-section" class="mt-8 space-y-4 hidden">
+      <div class="glass-panel p-6 space-y-5 border border-purple-500/20">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/[0.08] pb-4 gap-3">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+              <i data-lucide="layers" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                <span>Очередь пакетного рендеринга</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  Последовательно (1 поток, Semaphore=1)
+                </span>
+              </h3>
+              <p class="text-xs text-slate-400">Рендеринг выполняется строго по одному ролику для защиты GPU/Remotion</p>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button 
+              type="button" 
+              id="batch-btn-download-zip" 
+              onclick="downloadAllBatchZip()" 
+              class="hidden px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-all flex items-center space-x-1.5 cursor-pointer"
+            >
+              <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+              <span>📥 Скачать все (ZIP)</span>
+            </button>
+            <button 
+              type="button" 
+              onclick="clearCompletedBatchQueue()" 
+              class="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 border border-white/[0.1] text-xs font-medium transition-all flex items-center space-x-1.5 cursor-pointer"
+              title="Очистить завершенные задачи из очереди"
+            >
+              <i data-lucide="trash-2" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>Очистить</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Overall Batch Progress Bar & Summary Stats -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center space-x-3">
+              <span class="text-slate-300 font-medium">Общий прогресс:</span>
+              <span id="batch-stat-completed" class="font-mono text-emerald-400">0 готово</span>
+              <span class="text-slate-600">/</span>
+              <span id="batch-stat-total" class="font-mono text-purple-300">0 видео</span>
+            </div>
+            <span id="batch-overall-pct" class="font-mono text-xs font-bold text-purple-300">0%</span>
+          </div>
+          <div class="w-full bg-white/[0.06] rounded-full h-2 overflow-hidden">
+            <div id="batch-overall-bar" class="bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 h-2 rounded-full transition-all duration-300 w-0"></div>
+          </div>
+        </div>
+
+        <!-- Batch Queue Items List -->
+        <div id="batch-queue-list" class="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+          <!-- Dynamic queue item cards injected here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: Generation History -->
+    <section id="generation-history-section" class="mt-8 space-y-4">
+      <div class="glass-panel p-6 space-y-5 border border-white/[0.08]">
+        <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center">
+              <i data-lucide="history" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                <span>История генераций</span>
+                <span id="history-count-badge" class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">0</span>
+              </h3>
+              <p class="text-xs text-slate-400">Все ранее созданные ролики с темами, плеером и скачиванием</p>
+            </div>
+          </div>
+
+          <button 
+            type="button" 
+            onclick="loadGenerationHistory()" 
+            class="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 border border-white/[0.1] text-xs font-medium transition-all flex items-center space-x-1.5 cursor-pointer"
+            title="Обновить историю генераций"
+          >
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>Обновить</span>
+          </button>
+        </div>
+
+        <!-- History Items Grid -->
+        <div id="history-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- History cards rendered here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="history-empty" class="py-8 text-center text-slate-500 text-xs hidden">
+          <i data-lucide="film" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
+          <p>Пока нет завершенных генераций. Создайте первое видео, и оно появится в истории!</p>
+        </div>
+      </div>
+    </section>
+
   </main>
+
+  <!-- MODAL: Batch Approval Wizard (Step-by-Step Question Review) -->
+  <div id="batch-wizard-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 hidden">
+    <div class="glass-panel max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-purple-500/40 shadow-2xl bg-[#0c0e14]">
+      <!-- Wizard Top Header -->
+      <div class="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-white/[0.02]">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
+            <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+              <span>Согласование пачки:</span>
+              <span id="wizard-step-label" class="text-purple-300 font-mono">Видео 1 из 5</span>
+              <span id="wizard-current-topic" class="text-xs px-2 py-0.5 rounded-full bg-white/[0.08] text-slate-300 font-mono truncate max-w-[240px]">Тема</span>
+            </h3>
+            <p class="text-[11px] text-slate-400">Проверьте вопросы каждого ролика перед стартом очереди рендеринга</p>
+          </div>
+        </div>
+
+        <button 
+          type="button" 
+          onclick="closeBatchWizard()" 
+          class="p-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
+          title="Закрыть окно (прогресс сохранится)"
+        >
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Step Indicator Bar (Scrollable Tabs) -->
+      <div id="wizard-step-tabs" class="flex gap-2 px-5 py-2.5 bg-black/50 border-b border-white/[0.06] overflow-x-auto shrink-0 select-none">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Wizard Main Content Area (Scrollable) -->
+      <div class="flex-1 overflow-y-auto p-5 space-y-4">
+        <!-- Loading State: Paced AI Generation in Progress -->
+        <div id="wizard-loading-view" class="py-16 text-center space-y-3 hidden">
+          <span class="w-8 h-8 border-3 border-purple-400 border-t-transparent rounded-full animate-spin inline-block"></span>
+          <h4 class="text-sm font-bold text-purple-200">ИИ генерирует 9 вопросов для этого видео...</h4>
+          <p class="text-xs text-slate-400 max-w-md mx-auto">
+            Соблюдается квота Gemini 15 RPM Safe (пауза между запросами). Вы можете пока проверить другие уже готовые видео в пачке!
+          </p>
+        </div>
+
+        <!-- Editor View: 9 Questions Review & Editing -->
+        <div id="wizard-editor-view" class="space-y-4 hidden">
+          <!-- Toolbar -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-white/[0.06] gap-2.5">
+            <div class="flex items-center space-x-2">
+              <button 
+                type="button" 
+                onclick="wizardSelectAllQuestions(true)" 
+                class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 border border-white/[0.08] transition-all cursor-pointer font-medium"
+              >
+                Выбрать все
+              </button>
+              <button 
+                type="button" 
+                onclick="wizardSelectAllQuestions(false)" 
+                class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-slate-200 border border-white/[0.08] transition-all cursor-pointer font-medium"
+              >
+                Снять выбор
+              </button>
+              <span id="wizard-selected-badge" class="hidden text-xs px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono font-medium">Выбрано: 0</span>
+            </div>
+
+            <div class="flex items-center space-x-2">
+              <button 
+                id="wizard-btn-regen-selected" 
+                type="button" 
+                onclick="wizardRegenerateSelected()" 
+                disabled 
+                class="px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-semibold border border-amber-500/30 transition-all flex items-center space-x-1.5 opacity-40 cursor-not-allowed"
+              >
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span id="wizard-btn-regen-selected-text">Перегенерировать выбранные (0)</span>
+              </button>
+              <button 
+                id="wizard-btn-regen-all" 
+                type="button" 
+                onclick="wizardRegenerateAll()" 
+                class="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 text-xs font-semibold border border-white/[0.1] transition-all flex items-center space-x-1.5 cursor-pointer"
+                title="Перегенерировать все 9 вопросов видео"
+              >
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-slate-400"></i>
+                <span>Все заново (9)</span>
+              </button>
+              <button 
+                type="button" 
+                onclick="wizardSkipCurrentVideo()" 
+                class="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-medium border border-rose-500/20 transition-all flex items-center space-x-1 cursor-pointer"
+                title="Исключить это видео из пачки"
+              >
+                <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-400"></i>
+                <span>Исключить</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Question Cards Container -->
+          <div id="wizard-questions-list" class="space-y-4">
+            <!-- Dynamic tiers & questions injected here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Navigation Bar -->
+      <div class="px-5 py-3.5 border-t border-white/[0.08] flex items-center justify-between shrink-0 bg-white/[0.02] gap-3">
+        <button 
+          id="wizard-prev-btn" 
+          type="button" 
+          onclick="wizardPrevStep()" 
+          class="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-xs font-semibold border border-white/[0.1] transition-all flex items-center space-x-1.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          <span>Предыдущее</span>
+        </button>
+
+        <div class="flex items-center space-x-3">
+          <button 
+            id="wizard-next-btn" 
+            type="button" 
+            onclick="wizardNextStep()" 
+            class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
+          >
+            <span>Одобрить и далее</span>
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
+
+          <button 
+            id="wizard-launch-render-btn" 
+            type="button" 
+            onclick="finishWizardAndStartBatchRender()" 
+            class="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center space-x-2 cursor-pointer"
+          >
+            <i data-lucide="play" class="w-4 h-4"></i>
+            <span>Запустить очередь (<span id="wizard-approved-stat">0/0</span>)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Frontend Logic -->
   <script>
@@ -2050,6 +2426,1266 @@
         }
       }, 2500);
     }
+
+    // =========================================================================
+    // BATCH QUEUE & TOPIC IDEATION LOGIC (005-batch-queue-topics)
+    // =========================================================================
+
+    let currentQuizMode = 'single';
+    let batchTopicsList = [];
+    let currentBatchState = null;
+    let wizardCurrentIndex = 0;
+    let wizardPollInterval = null;
+    let batchQueuePollInterval = null;
+
+    function switchQuizMode(mode) {
+      currentQuizMode = mode;
+      const singleTab = document.getElementById('tab-mode-single');
+      const batchTab = document.getElementById('tab-mode-batch');
+      const singleSection = document.getElementById('single-mode-section');
+      const batchSection = document.getElementById('batch-mode-section');
+      const previewBtn = document.getElementById('preview-btn');
+
+      const activeTabClass = ['bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/30', 'shadow-sm'];
+      const activeBatchTabClass = ['bg-purple-500/20', 'text-purple-300', 'border-purple-500/30', 'shadow-sm'];
+      const inactiveTabClass = ['text-slate-400', 'hover:text-white', 'border-transparent'];
+
+      if (mode === 'single') {
+        singleTab?.classList.remove(...inactiveTabClass);
+        singleTab?.classList.add(...activeTabClass);
+        batchTab?.classList.remove(...activeBatchTabClass);
+        batchTab?.classList.add(...inactiveTabClass);
+        singleSection?.classList.remove('hidden');
+        batchSection?.classList.add('hidden');
+        if (previewBtn) previewBtn.parentElement.classList.remove('hidden');
+      } else {
+        batchTab?.classList.remove(...inactiveTabClass);
+        batchTab?.classList.add(...activeBatchTabClass);
+        singleTab?.classList.remove(...activeTabClass);
+        singleTab?.classList.add(...inactiveTabClass);
+        batchSection?.classList.remove('hidden');
+        singleSection?.classList.add('hidden');
+        if (previewBtn) previewBtn.parentElement.classList.add('hidden');
+        document.getElementById('batch-queue-section')?.classList.remove('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    async function generateSingleTopic() {
+      const btn = document.getElementById('suggest-topic-btn');
+      const btnText = document.getElementById('suggest-topic-btn-text');
+      const topicInput = document.getElementById('topic-input');
+      const langSelect = document.getElementById('language-select');
+      const language = langSelect ? langSelect.value : 'ru';
+
+      if (!btn || !topicInput) return;
+
+      btn.disabled = true;
+      btn.classList.add('opacity-60', 'cursor-not-allowed');
+      const origText = btnText ? btnText.textContent : '🎲 Придумать тему';
+      if (btnText) btnText.textContent = 'ИИ придумывает...';
+
+      try {
+        const res = await fetch('/api/v1/quiz/topics/suggest-single', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Не удалось сгенерировать тему');
+        }
+        const data = await res.json();
+        if (data.topic) {
+          topicInput.value = data.topic;
+          topicInput.classList.add('border-purple-400', 'ring-2', 'ring-purple-400/30');
+          setTimeout(() => {
+            topicInput.classList.remove('border-purple-400', 'ring-2', 'ring-purple-400/30');
+          }, 1500);
+        }
+      } catch (err) {
+        alert('Ошибка генерации темы: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-60', 'cursor-not-allowed');
+        if (btnText) btnText.textContent = origText;
+        lucide.createIcons();
+      }
+    }
+
+    async function generateBatchTopics() {
+      const slider = document.getElementById('batch-count-slider');
+      const count = slider ? parseInt(slider.value, 10) : 5;
+      const hintInput = document.getElementById('batch-hint-input');
+      const hint = hintInput ? hintInput.value.trim() : '';
+      const langSelect = document.getElementById('language-select');
+      const language = langSelect ? langSelect.value : 'ru';
+
+      const btn = document.getElementById('btn-generate-batch-topics');
+      const btnText = document.getElementById('btn-generate-batch-topics-text');
+
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-60', 'cursor-not-allowed');
+      }
+      const origText = btnText ? btnText.textContent : '';
+      if (btnText) btnText.textContent = `Генерация ${count} тем (1 запрос Gemini)...`;
+
+      try {
+        const res = await fetch('/api/v1/quiz/topics/suggest-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            count: count,
+            category_hint: hint || null,
+            language: language
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Ошибка генерации списка тем');
+        }
+        const data = await res.json();
+        batchTopicsList = data.topics || [];
+        renderBatchTopicsList();
+      } catch (err) {
+        alert('Ошибка генерации тем пачки: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+        if (btnText) btnText.textContent = origText;
+        lucide.createIcons();
+      }
+    }
+
+    function renderBatchTopicsList() {
+      const container = document.getElementById('batch-topics-container');
+      const list = document.getElementById('batch-topics-list');
+      const countBadge = document.getElementById('batch-topics-count-badge');
+
+      if (!container || !list) return;
+
+      if (batchTopicsList.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      if (countBadge) countBadge.textContent = `${batchTopicsList.length} тем`;
+      list.innerHTML = '';
+
+      batchTopicsList.forEach((it, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center space-x-2 p-2 rounded-xl bg-black/40 border border-white/[0.08] hover:border-purple-500/40 transition-all';
+        row.innerHTML = `
+          <span class="w-6 h-6 rounded-md bg-purple-500/20 text-purple-300 font-mono text-xs flex items-center justify-center shrink-0 font-bold">
+            ${idx + 1}
+          </span>
+          <div class="flex-1 space-y-0.5 min-w-0">
+            <input 
+              type="text" 
+              value="${(it.topic || '').replace(/"/g, '&quot;')}" 
+              oninput="batchTopicsList[${idx}].topic = this.value"
+              class="w-full bg-black/50 border border-white/[0.1] rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-purple-500 transition-all"
+            />
+            ${it.curiosity_hook ? `<div class="text-[10px] text-slate-400 truncate pl-1 font-mono">🪝 ${it.curiosity_hook.replace(/</g, '&lt;')}</div>` : ''}
+          </div>
+          <button 
+            type="button" 
+            onclick="refreshSingleBatchTopic(${idx})" 
+            class="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] text-slate-400 hover:text-purple-300 transition-all shrink-0 cursor-pointer"
+            title="Сгенерировать другую тему"
+          >
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          </button>
+          <button 
+            type="button" 
+            onclick="removeBatchTopic(${idx})" 
+            class="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-all shrink-0 cursor-pointer"
+            title="Удалить из пачки"
+          >
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        `;
+        list.appendChild(row);
+      });
+      lucide.createIcons();
+    }
+
+    async function refreshSingleBatchTopic(index) {
+      const langSelect = document.getElementById('language-select');
+      const language = langSelect ? langSelect.value : 'ru';
+      try {
+        const res = await fetch('/api/v1/quiz/topics/suggest-single', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language })
+        });
+        if (!res.ok) throw new Error('Ошибка обновления темы');
+        const data = await res.json();
+        if (data.topic && batchTopicsList[index]) {
+          batchTopicsList[index].topic = data.topic;
+          batchTopicsList[index].category = data.category || 'Общее';
+          batchTopicsList[index].curiosity_hook = data.curiosity_hook || '';
+          renderBatchTopicsList();
+        }
+      } catch (err) {
+        alert('Не удалось обновить тему: ' + err.message);
+      }
+    }
+
+    function removeBatchTopic(index) {
+      batchTopicsList.splice(index, 1);
+      renderBatchTopicsList();
+      const slider = document.getElementById('batch-count-slider');
+      const display = document.getElementById('batch-count-display');
+      if (slider && display) {
+        slider.value = Math.max(2, batchTopicsList.length);
+        display.textContent = batchTopicsList.length;
+      }
+    }
+
+    async function launchBatchApprovalWizard() {
+      if (batchTopicsList.length === 0) {
+        alert('Сначала сгенерируйте темы для пачки!');
+        return;
+      }
+
+      const topics = batchTopicsList.map(t => t.topic.trim()).filter(Boolean);
+      if (topics.length === 0) {
+        alert('Пожалуйста, укажите хотя бы одну непустую тему!');
+        return;
+      }
+
+      const langSelect = document.getElementById('language-select');
+      const language = langSelect ? langSelect.value : 'ru';
+      const tempSlider = document.getElementById('temperature-slider');
+      const factCheckToggle = document.getElementById('fact-check-toggle');
+      const temperature = tempSlider ? parseFloat(tempSlider.value) : 0.95;
+      const factCheck = factCheckToggle ? factCheckToggle.checked : true;
+
+      const launchBtn = document.getElementById('btn-launch-batch-wizard');
+      if (launchBtn) {
+        launchBtn.disabled = true;
+        launchBtn.classList.add('opacity-60', 'cursor-not-allowed');
+      }
+
+      try {
+        const res = await fetch('/api/v1/quiz/batch/init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topics: topics,
+            language: language,
+            temperature: temperature,
+            fact_check: factCheck
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Не удалось инициализировать пачку');
+        }
+
+        currentBatchState = await res.json();
+        wizardCurrentIndex = 0;
+        openBatchWizardModal();
+        startWizardPolling();
+      } catch (err) {
+        alert('Ошибка запуска мастера проверки: ' + err.message);
+      } finally {
+        if (launchBtn) {
+          launchBtn.disabled = false;
+          launchBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+      }
+    }
+
+    function openBatchWizardModal() {
+      const modal = document.getElementById('batch-wizard-modal');
+      if (modal) modal.classList.remove('hidden');
+      renderWizardCurrentStep();
+    }
+
+    function closeBatchWizard() {
+      syncWizardChallengeFromInputs();
+      const modal = document.getElementById('batch-wizard-modal');
+      if (modal) modal.classList.add('hidden');
+      if (wizardPollInterval) {
+        clearInterval(wizardPollInterval);
+        wizardPollInterval = null;
+      }
+    }
+
+    function startWizardPolling() {
+      if (wizardPollInterval) clearInterval(wizardPollInterval);
+      wizardPollInterval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/v1/quiz/batch/queue/status');
+          if (!res.ok) return;
+          const state = await res.json();
+          if (!state || !state.items) return;
+
+          syncWizardChallengeFromInputs();
+          state.items.forEach((newItem) => {
+            const localItem = currentBatchState.items.find(it => it.item_id === newItem.item_id);
+            if (localItem) {
+              if (!localItem.challenge && newItem.challenge) {
+                localItem.challenge = newItem.challenge;
+                localItem.status = newItem.status;
+              }
+            }
+          });
+          renderWizardStepTabs();
+          updateWizardApprovedStat();
+
+          const curItem = currentBatchState.items[wizardCurrentIndex];
+          const loadingView = document.getElementById('wizard-loading-view');
+          if (curItem && curItem.challenge && loadingView && !loadingView.classList.contains('hidden')) {
+            renderWizardCurrentStep();
+          }
+        } catch (e) {
+          console.warn('Wizard poll error:', e);
+        }
+      }, 3000);
+    }
+
+    function renderWizardCurrentStep() {
+      if (!currentBatchState || !currentBatchState.items || currentBatchState.items.length === 0) return;
+      if (wizardCurrentIndex < 0) wizardCurrentIndex = 0;
+      if (wizardCurrentIndex >= currentBatchState.items.length) wizardCurrentIndex = currentBatchState.items.length - 1;
+
+      const item = currentBatchState.items[wizardCurrentIndex];
+      const total = currentBatchState.items.length;
+
+      const stepLabel = document.getElementById('wizard-step-label');
+      if (stepLabel) stepLabel.textContent = `Видео ${wizardCurrentIndex + 1} из ${total}`;
+
+      const topicTitle = document.getElementById('wizard-current-topic');
+      if (topicTitle) topicTitle.textContent = item.topic;
+
+      renderWizardStepTabs();
+
+      const loadingView = document.getElementById('wizard-loading-view');
+      const editorView = document.getElementById('wizard-editor-view');
+      const prevBtn = document.getElementById('wizard-prev-btn');
+      const nextBtn = document.getElementById('wizard-next-btn');
+
+      if (prevBtn) prevBtn.disabled = wizardCurrentIndex === 0;
+
+      if (nextBtn) {
+        if (wizardCurrentIndex === total - 1) {
+          nextBtn.innerHTML = '<span>✅ Одобрить это видео</span>';
+        } else {
+          nextBtn.innerHTML = '<span>Одобрить и далее</span> <i data-lucide="chevron-right" class="w-4 h-4"></i>';
+        }
+      }
+
+      if (!item.challenge) {
+        loadingView?.classList.remove('hidden');
+        editorView?.classList.add('hidden');
+      } else {
+        loadingView?.classList.add('hidden');
+        editorView?.classList.remove('hidden');
+        renderWizardQuestionsList(item.challenge);
+      }
+
+      updateWizardApprovedStat();
+      lucide.createIcons();
+    }
+
+    function renderWizardStepTabs() {
+      const tabsContainer = document.getElementById('wizard-step-tabs');
+      if (!tabsContainer || !currentBatchState) return;
+
+      tabsContainer.innerHTML = '';
+      currentBatchState.items.forEach((it, idx) => {
+        const isActive = idx === wizardCurrentIndex;
+        const isReady = Boolean(it.challenge);
+        const isApproved = Boolean(it.approved);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.onclick = () => wizardGoToStep(idx);
+        btn.className = `px-3 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-2 shrink-0 transition-all cursor-pointer border ${
+          isActive
+            ? 'bg-purple-500/25 text-purple-200 border-purple-500/50 shadow-sm'
+            : 'bg-white/[0.03] text-slate-400 border-white/[0.06] hover:bg-white/[0.08] hover:text-slate-200'
+        }`;
+
+        let statusIcon = '⏳';
+        if (isApproved) statusIcon = '✅';
+        else if (isReady) statusIcon = '✏️';
+
+        btn.innerHTML = `
+          <span>${statusIcon}</span>
+          <span class="font-mono">#${idx + 1}</span>
+          <span class="max-w-[120px] truncate text-slate-300">${it.topic}</span>
+        `;
+        tabsContainer.appendChild(btn);
+      });
+    }
+
+    function updateWizardApprovedStat() {
+      if (!currentBatchState || !currentBatchState.items) return;
+      const total = currentBatchState.items.length;
+      const approved = currentBatchState.items.filter(it => it.approved && it.challenge).length;
+      const statEl = document.getElementById('wizard-approved-stat');
+      if (statEl) statEl.textContent = `${approved}/${total}`;
+    }
+
+    function renderWizardQuestionsList(challenge, preserveSelected = []) {
+      const list = document.getElementById('wizard-questions-list');
+      if (!list || !challenge || !challenge.tiers) return;
+
+      list.innerHTML = '';
+      const preserveSet = new Set(preserveSelected);
+
+      challenge.tiers.forEach((tier) => {
+        const tierSection = document.createElement('div');
+        tierSection.className = 'p-3.5 rounded-xl bg-black/40 border border-white/[0.06] space-y-2.5';
+
+        const tierName = tier.tier_level === 'easy' ? 'Уровень 1: Легкий (Вопросы 1–3)' :
+                         tier.tier_level === 'medium' ? 'Уровень 2: Средний (Вопросы 4–6)' :
+                         'Уровень 3: Тяжелый (Вопросы 7–9)';
+        const color = tier.theme_color || '#22C55E';
+
+        const tierHeader = document.createElement('div');
+        tierHeader.className = 'flex items-center space-x-2 font-bold text-xs pb-1.5 border-b border-white/[0.06]';
+        tierHeader.style.color = color;
+        tierHeader.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background-color: ${color}"></span><span>${tierName}</span>`;
+        tierSection.appendChild(tierHeader);
+
+        tier.questions.forEach((q) => {
+          const qBox = document.createElement('div');
+          qBox.id = `wiz-q-card-${q.question_number}`;
+          qBox.className = 'space-y-2 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] transition-all duration-200';
+          const hasImage = Boolean(q.image_url || q.image_query || q.has_visual_clue);
+          const isSelected = preserveSet.has(q.question_number);
+
+          qBox.innerHTML = `
+            <div class="flex items-center justify-between pb-1.5 border-b border-white/[0.04]">
+              <div class="flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs shrink-0" style="background-color: ${color}22; color: ${color}; border: 1px solid ${color}44">${q.question_number}</span>
+                <span class="text-[11px] font-semibold text-slate-300">Вопрос #${q.question_number}</span>
+              </div>
+              <label class="group flex items-center space-x-1.5 cursor-pointer text-xs select-none">
+                <input 
+                  type="checkbox" 
+                  class="wiz-q-select-checkbox w-4 h-4 rounded text-amber-500 bg-black/60 border-white/20 focus:ring-amber-500 cursor-pointer accent-amber-500" 
+                  data-qnum="${q.question_number}" 
+                  id="wiz-q-select-${q.question_number}"
+                  ${isSelected ? 'checked' : ''}
+                  onchange="wizardUpdateSelectedUI()"
+                />
+                <span class="text-[11px] font-medium text-slate-400 group-hover:text-amber-300 transition-colors" id="wiz-q-select-label-${q.question_number}">Выбрать</span>
+              </label>
+            </div>
+
+            <div class="space-y-1.5 pt-1">
+              <input 
+                type="text" 
+                data-wiz-qnum="${q.question_number}" 
+                data-wiz-field="question_text"
+                value="${(q.question_text || '').replace(/"/g, '&quot;')}" 
+                class="w-full bg-black/60 border border-white/[0.1] focus:border-purple-500 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none transition-all"
+                title="Текст вопроса"
+              />
+              <div class="flex items-center space-x-2">
+                <span class="text-[11px] text-slate-400 shrink-0 font-medium">Ответ:</span>
+                <input 
+                  type="text" 
+                  data-wiz-qnum="${q.question_number}" 
+                  data-wiz-field="correct_answer"
+                  value="${(q.correct_answer || '').replace(/"/g, '&quot;')}" 
+                  class="flex-1 bg-black/60 border border-white/[0.1] focus:border-purple-500 rounded-lg px-2.5 py-1 text-xs text-emerald-400 font-bold focus:outline-none transition-all"
+                  title="Правильный ответ"
+                />
+              </div>
+            </div>
+
+            <!-- Visual Clue / Image Box -->
+            <div class="p-2.5 rounded-lg bg-black/40 border border-white/[0.06] space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="flex items-center space-x-2 cursor-pointer text-xs font-medium text-slate-300">
+                  <input 
+                    type="checkbox" 
+                    data-wiz-qnum="${q.question_number}" 
+                    data-wiz-field="use_image" 
+                    ${hasImage ? 'checked' : ''} 
+                    onchange="wizardToggleImageSection(${q.question_number})"
+                    class="w-3.5 h-3.5 rounded text-cyan-500 bg-black/50 border-white/20 focus:ring-cyan-500 cursor-pointer"
+                  />
+                  <span class="flex items-center space-x-1.5">
+                    <i data-lucide="image" class="w-3.5 h-3.5 text-cyan-400"></i>
+                    <span>Изображение / визуальная подсказка</span>
+                  </span>
+                </label>
+                <span class="text-[10px] text-slate-400 font-mono">1080x1080</span>
+              </div>
+
+              <div id="wiz-image-box-${q.question_number}" class="${hasImage ? '' : 'hidden'} space-y-2 pt-1 border-t border-white/[0.04]">
+                <div class="flex items-center space-x-3">
+                  <div class="relative w-14 h-14 rounded-lg bg-black/60 border border-white/[0.1] overflow-hidden shrink-0 flex items-center justify-center">
+                    <img 
+                      id="wiz-img-thumb-${q.question_number}" 
+                      src="${q.image_url || ''}" 
+                      alt="Preview" 
+                      class="w-full h-full object-cover ${q.image_url ? '' : 'hidden'}"
+                      onerror="this.classList.add('hidden'); const ph = document.getElementById('wiz-img-thumb-ph-${q.question_number}'); if (ph) ph.classList.remove('hidden');"
+                    />
+                    <div id="wiz-img-thumb-ph-${q.question_number}" class="${q.image_url ? 'hidden' : ''} text-slate-500 text-[10px] text-center p-1">
+                      <i data-lucide="image-off" class="w-4 h-4 mx-auto mb-0.5"></i>
+                      <span>Нет фото</span>
+                    </div>
+                  </div>
+
+                  <div class="flex-1 space-y-1.5">
+                    <div class="flex items-center space-x-2">
+                      <input 
+                        type="text" 
+                        id="wiz-img-query-input-${q.question_number}"
+                        data-wiz-qnum="${q.question_number}" 
+                        data-wiz-field="image_query" 
+                        value="${(q.image_query || '').replace(/"/g, '&quot;')}" 
+                        placeholder="Поисковый запрос картинки" 
+                        class="flex-1 bg-black/60 border border-white/[0.1] focus:border-cyan-400 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none transition-all"
+                      />
+                      <button 
+                        type="button" 
+                        id="wiz-img-search-btn-${q.question_number}"
+                        onclick="wizardSearchImageOptions(${q.question_number})" 
+                        class="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-medium transition-all flex items-center space-x-1 shrink-0 cursor-pointer"
+                        title="Найти альтернативные изображения"
+                      >
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Другое фото</span>
+                      </button>
+                    </div>
+                    <input 
+                      type="hidden" 
+                      id="wiz-img-url-input-${q.question_number}"
+                      data-wiz-qnum="${q.question_number}" 
+                      data-wiz-field="image_url" 
+                      value="${(q.image_url || '').replace(/"/g, '&quot;')}" 
+                    />
+                  </div>
+                </div>
+
+                <!-- Candidate gallery strip -->
+                <div id="wiz-candidates-strip-${q.question_number}" class="hidden space-y-1.5 pt-1.5 border-t border-white/[0.04]">
+                  <span class="text-[10px] text-cyan-400 font-medium">Выберите вариант из найденных (кликните):</span>
+                  <div id="wiz-candidates-list-${q.question_number}" class="flex gap-2 overflow-x-auto pb-1 max-w-full"></div>
+                </div>
+              </div>
+            </div>
+          `;
+          tierSection.appendChild(qBox);
+        });
+
+        list.appendChild(tierSection);
+      });
+
+      wizardUpdateSelectedUI();
+      lucide.createIcons();
+    }
+
+    function syncWizardChallengeFromInputs() {
+      if (!currentBatchState || !currentBatchState.items || !currentBatchState.items[wizardCurrentIndex]) return;
+      const item = currentBatchState.items[wizardCurrentIndex];
+      if (!item.challenge) return;
+
+      item.challenge.tiers.forEach((tier) => {
+        tier.questions.forEach((q) => {
+          const qnum = q.question_number;
+          const textInput = document.querySelector(`input[data-wiz-qnum="${qnum}"][data-wiz-field="question_text"]`);
+          const ansInput = document.querySelector(`input[data-wiz-qnum="${qnum}"][data-wiz-field="correct_answer"]`);
+          const queryInput = document.getElementById(`wiz-img-query-input-${qnum}`);
+          const urlInput = document.getElementById(`wiz-img-url-input-${qnum}`);
+          const useImgCheckbox = document.querySelector(`input[data-wiz-qnum="${qnum}"][data-wiz-field="use_image"]`);
+
+          if (textInput) q.question_text = textInput.value.trim();
+          if (ansInput) q.correct_answer = ansInput.value.trim();
+
+          const useImg = useImgCheckbox ? useImgCheckbox.checked : Boolean(q.image_url);
+          const urlVal = urlInput ? urlInput.value.trim() : (q.image_url || '');
+          const queryVal = queryInput ? queryInput.value.trim() : (q.image_query || '');
+
+          if (useImg && urlVal) {
+            q.image_url = urlVal;
+            q.image_query = queryVal || q.correct_answer;
+            q.has_visual_clue = true;
+          } else if (useImg && queryVal) {
+            q.image_url = null;
+            q.image_query = queryVal;
+            q.has_visual_clue = true;
+          } else {
+            q.image_url = null;
+            q.image_query = null;
+            q.has_visual_clue = false;
+          }
+        });
+      });
+      item.approved = true;
+    }
+
+    function wizardPrevStep() {
+      syncWizardChallengeFromInputs();
+      if (wizardCurrentIndex > 0) {
+        wizardCurrentIndex--;
+        renderWizardCurrentStep();
+      }
+    }
+
+    function wizardNextStep() {
+      syncWizardChallengeFromInputs();
+      if (currentBatchState && wizardCurrentIndex < currentBatchState.items.length - 1) {
+        wizardCurrentIndex++;
+        renderWizardCurrentStep();
+      } else {
+        renderWizardStepTabs();
+        updateWizardApprovedStat();
+      }
+    }
+
+    function wizardGoToStep(index) {
+      syncWizardChallengeFromInputs();
+      if (currentBatchState && index >= 0 && index < currentBatchState.items.length) {
+        wizardCurrentIndex = index;
+        renderWizardCurrentStep();
+      }
+    }
+
+    function wizardSkipCurrentVideo() {
+      if (!currentBatchState || !currentBatchState.items || currentBatchState.items.length === 0) return;
+      currentBatchState.items.splice(wizardCurrentIndex, 1);
+      if (currentBatchState.items.length === 0) {
+        closeBatchWizard();
+        return;
+      }
+      if (wizardCurrentIndex >= currentBatchState.items.length) {
+        wizardCurrentIndex = currentBatchState.items.length - 1;
+      }
+      renderWizardCurrentStep();
+    }
+
+    function wizardToggleImageSection(qnum) {
+      const box = document.getElementById(`wiz-image-box-${qnum}`);
+      const chk = document.querySelector(`input[data-wiz-qnum="${qnum}"][data-wiz-field="use_image"]`);
+      if (!box || !chk) return;
+      if (chk.checked) {
+        box.classList.remove('hidden');
+        const queryInput = document.getElementById(`wiz-img-query-input-${qnum}`);
+        const ansInput = document.querySelector(`input[data-wiz-qnum="${qnum}"][data-wiz-field="correct_answer"]`);
+        const qTextInput = document.querySelector(`input[data-wiz-qnum="${qnum}"][data-wiz-field="question_text"]`);
+
+        const currentVal = queryInput ? queryInput.value.trim() : '';
+        const qTextVal = qTextInput ? qTextInput.value.trim() : '';
+        const ansVal = ansInput ? ansInput.value.trim() : '';
+
+        if (queryInput && ansVal && (!currentVal || currentVal === qTextVal)) {
+          queryInput.value = ansVal;
+        }
+        const urlInput = document.getElementById(`wiz-img-url-input-${qnum}`);
+        if ((!urlInput || !urlInput.value.trim()) && queryInput && queryInput.value.trim()) {
+          wizardSearchImageOptions(qnum);
+        }
+      } else {
+        box.classList.add('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    async function wizardSearchImageOptions(qnum) {
+      const queryInput = document.getElementById(`wiz-img-query-input-${qnum}`);
+      const btn = document.getElementById(`wiz-img-search-btn-${qnum}`);
+      const strip = document.getElementById(`wiz-candidates-strip-${qnum}`);
+      const list = document.getElementById(`wiz-candidates-list-${qnum}`);
+      const query = queryInput ? queryInput.value.trim() : '';
+
+      if (!query) {
+        alert('Введите поисковый запрос для картинки!');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+      const origHtml = btn.innerHTML;
+      btn.innerHTML = '<span class="w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin inline-block"></span>';
+
+      try {
+        const resp = await fetch('/api/v1/quiz/search-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query, max_results: 6 }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Ошибка поиска изображений');
+        }
+        const data = await resp.json();
+        if (!data.images || data.images.length === 0) {
+          alert('По запросу "' + query + '" картинок не найдено.');
+          return;
+        }
+
+        list.innerHTML = '';
+        data.images.forEach((it) => {
+          const imgBtn = document.createElement('button');
+          imgBtn.type = 'button';
+          imgBtn.className = 'w-16 h-16 rounded-lg border-2 border-white/20 hover:border-cyan-400 overflow-hidden shrink-0 transition-all focus:outline-none focus:ring-2 focus:ring-cyan-400 cursor-pointer bg-black/40';
+          imgBtn.title = 'Выбрать эту картинку';
+          imgBtn.onclick = () => wizardSelectCandidateImage(qnum, it.image);
+
+          const thumbImg = document.createElement('img');
+          thumbImg.src = it.thumbnail || it.image;
+          thumbImg.className = 'w-full h-full object-cover';
+          thumbImg.referrerPolicy = 'no-referrer';
+          imgBtn.appendChild(thumbImg);
+          list.appendChild(imgBtn);
+        });
+
+        strip.classList.remove('hidden');
+      } catch (err) {
+        alert('Ошибка поиска картинок: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+        btn.innerHTML = origHtml;
+        lucide.createIcons();
+      }
+    }
+
+    function wizardSelectCandidateImage(qnum, selectedUrl) {
+      const thumb = document.getElementById(`wiz-img-thumb-${qnum}`);
+      const placeholder = document.getElementById(`wiz-img-thumb-ph-${qnum}`);
+      const urlInput = document.getElementById(`wiz-img-url-input-${qnum}`);
+      const chk = document.querySelector(`input[data-wiz-qnum="${qnum}"][data-wiz-field="use_image"]`);
+
+      if (urlInput) urlInput.value = selectedUrl;
+      if (thumb) {
+        thumb.src = selectedUrl;
+        thumb.classList.remove('hidden');
+      }
+      if (placeholder) placeholder.classList.add('hidden');
+      if (chk) chk.checked = true;
+
+      const list = document.getElementById(`wiz-candidates-list-${qnum}`);
+      if (list) {
+        Array.from(list.children).forEach((btn) => {
+          const img = btn.querySelector('img');
+          if (img && (img.src === selectedUrl || img.getAttribute('src') === selectedUrl)) {
+            btn.classList.add('border-cyan-400', 'ring-2', 'ring-cyan-400');
+          } else {
+            btn.classList.remove('border-cyan-400', 'ring-2', 'ring-cyan-400');
+          }
+        });
+      }
+    }
+
+    function wizardUpdateSelectedUI() {
+      const checkboxes = document.querySelectorAll('.wiz-q-select-checkbox');
+      let selectedCount = 0;
+
+      checkboxes.forEach((chk) => {
+        const qnum = chk.getAttribute('data-qnum');
+        const card = document.getElementById(`wiz-q-card-${qnum}`);
+        const label = document.getElementById(`wiz-q-select-label-${qnum}`);
+
+        if (chk.checked) {
+          selectedCount++;
+          if (card) {
+            card.classList.add('ring-1', 'ring-amber-500/60', 'bg-amber-500/[0.04]', 'border-amber-500/30');
+            card.classList.remove('bg-white/[0.02]', 'border-white/[0.04]');
+          }
+          if (label) {
+            label.textContent = 'Выбран';
+            label.className = 'text-[11px] font-semibold text-amber-300';
+          }
+        } else {
+          if (card) {
+            card.classList.remove('ring-1', 'ring-amber-500/60', 'bg-amber-500/[0.04]', 'border-amber-500/30');
+            card.classList.add('bg-white/[0.02]', 'border-white/[0.04]');
+          }
+          if (label) {
+            label.textContent = 'Выбрать';
+            label.className = 'text-[11px] font-medium text-slate-400 group-hover:text-amber-300 transition-colors';
+          }
+        }
+      });
+
+      const badge = document.getElementById('wizard-selected-badge');
+      if (badge) {
+        if (selectedCount > 0) {
+          badge.textContent = `Выбрано: ${selectedCount}`;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+
+      const regenBtn = document.getElementById('wizard-btn-regen-selected');
+      const regenText = document.getElementById('wizard-btn-regen-selected-text');
+      if (regenBtn && regenText) {
+        regenText.textContent = `Перегенерировать выбранные (${selectedCount})`;
+        if (selectedCount > 0) {
+          regenBtn.disabled = false;
+          regenBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+          regenBtn.classList.add('cursor-pointer', 'hover:bg-amber-500/20');
+        } else {
+          regenBtn.disabled = true;
+          regenBtn.classList.add('opacity-40', 'cursor-not-allowed');
+          regenBtn.classList.remove('cursor-pointer', 'hover:bg-amber-500/20');
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function wizardSelectAllQuestions(checked) {
+      const checkboxes = document.querySelectorAll('.wiz-q-select-checkbox');
+      checkboxes.forEach((chk) => {
+        chk.checked = checked;
+      });
+      wizardUpdateSelectedUI();
+    }
+
+    async function wizardRegenerateSelected() {
+      const selectedCheckboxes = Array.from(document.querySelectorAll('.wiz-q-select-checkbox:checked'));
+      const selectedNums = selectedCheckboxes.map(cb => parseInt(cb.getAttribute('data-qnum'), 10));
+
+      if (selectedNums.length === 0) {
+        alert('Отметьте вопросы галочками для перегенерации!');
+        return;
+      }
+
+      const curItem = currentBatchState?.items[wizardCurrentIndex];
+      if (!curItem || !curItem.challenge) return;
+
+      syncWizardChallengeFromInputs();
+
+      const btn = document.getElementById('wizard-btn-regen-selected');
+      const origHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.classList.add('opacity-70', 'cursor-not-allowed');
+      btn.innerHTML = `<span class="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin inline-block mr-1"></span><span>ИИ обновляет ${selectedNums.length}...</span>`;
+
+      try {
+        const tempSlider = document.getElementById('temperature-slider');
+        const temperature = tempSlider ? parseFloat(tempSlider.value) : 0.95;
+        const factCheckToggle = document.getElementById('fact-check-toggle');
+        const factCheck = factCheckToggle ? factCheckToggle.checked : true;
+
+        const resp = await fetch('/api/v1/quiz/regenerate-questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            challenge: curItem.challenge,
+            question_numbers: selectedNums,
+            temperature: temperature,
+            fact_check: factCheck,
+          })
+        });
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Ошибка перегенерации');
+        }
+
+        curItem.challenge = await resp.json();
+        renderWizardQuestionsList(curItem.challenge);
+
+        selectedNums.forEach((num) => {
+          const el = document.getElementById(`wiz-q-card-${num}`);
+          if (el) {
+            el.classList.add('ring-2', 'ring-emerald-400', 'bg-emerald-500/10');
+            setTimeout(() => {
+              el.classList.remove('ring-2', 'ring-emerald-400', 'bg-emerald-500/10');
+            }, 2500);
+          }
+        });
+      } catch (err) {
+        alert('Ошибка перегенерации выбранных вопросов: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        btn.innerHTML = origHtml;
+        wizardUpdateSelectedUI();
+        lucide.createIcons();
+      }
+    }
+
+    async function wizardRegenerateAll() {
+      const curItem = currentBatchState?.items[wizardCurrentIndex];
+      if (!curItem) return;
+
+      const btn = document.getElementById('wizard-btn-regen-all');
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+      const origHtml = btn.innerHTML;
+      btn.innerHTML = '<span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-1"></span><span>Новые вопросы...</span>';
+
+      try {
+        const langSelect = document.getElementById('language-select');
+        const language = langSelect ? langSelect.value : 'ru';
+        const tempSlider = document.getElementById('temperature-slider');
+        const factCheckToggle = document.getElementById('fact-check-toggle');
+        const temperature = tempSlider ? parseFloat(tempSlider.value) : 0.95;
+        const factCheck = factCheckToggle ? factCheckToggle.checked : true;
+
+        const resp = await fetch('/api/v1/quiz/preview-questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topic: curItem.topic,
+            language: language,
+            temperature: temperature,
+            fact_check: factCheck,
+          })
+        });
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Ошибка генерации вопросов');
+        }
+        curItem.challenge = await resp.json();
+        renderWizardQuestionsList(curItem.challenge);
+      } catch (err) {
+        alert('Ошибка генерации всех вопросов: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+        btn.innerHTML = origHtml;
+        lucide.createIcons();
+      }
+    }
+
+    async function finishWizardAndStartBatchRender() {
+      syncWizardChallengeFromInputs();
+      if (!currentBatchState || !currentBatchState.items) return;
+
+      const approvedItems = currentBatchState.items.filter(it => it.challenge != null);
+      if (approvedItems.length === 0) {
+        alert('Ни для одного видео ещё не сформированы вопросы!');
+        return;
+      }
+
+      const voice = document.getElementById('voice-select')?.value;
+      const background = document.getElementById('background-select')?.value;
+      const bannerToggle = document.getElementById('banner-toggle');
+      const bannerEnabled = bannerToggle ? bannerToggle.checked : false;
+      const musicToggle = document.getElementById('music-toggle');
+      const musicEnabled = musicToggle ? musicToggle.checked : false;
+      const musicVolumeSlider = document.getElementById('music-volume-slider');
+      const musicVolume = musicVolumeSlider ? parseFloat(musicVolumeSlider.value) : 0.18;
+
+      if (bannerEnabled && !uploadedBannerFile) {
+        alert('Вы включили промо-баннер, но не загрузили файл баннера!');
+        return;
+      }
+      if (musicEnabled && !uploadedMusicFile) {
+        alert('Вы включили музыку, но не выбрали аудио-файл!');
+        return;
+      }
+
+      const uniquifierEnabled = document.getElementById('uniquifier-toggle')?.checked ?? true;
+      const uniquifierConfig = uniquifierEnabled ? {
+        enabled: true,
+        mode: currentUniquifierMode,
+        brightness: parseFloat(document.getElementById('uniq-slider-brightness')?.value || '0.02'),
+        contrast: parseFloat(document.getElementById('uniq-slider-contrast')?.value || '1.04'),
+        saturation: parseFloat(document.getElementById('uniq-slider-saturation')?.value || '1.08'),
+        gamma: 1.01,
+        zoom_percent: parseFloat(document.getElementById('uniq-slider-zoom')?.value || '1.02'),
+        noise_intensity: parseFloat(document.getElementById('uniq-slider-noise')?.value || '1.5'),
+        flip_horizontal: document.getElementById('uniq-flip-toggle')?.checked ?? false,
+        audio_tempo_drift: parseFloat(document.getElementById('uniq-slider-audio')?.value || '1.005'),
+        strip_metadata: true,
+      } : { enabled: false };
+
+      const payload = {
+        batch_id: currentBatchState.batch_id,
+        items: approvedItems,
+        voice: voice,
+        background_video: background,
+        banner_video: bannerEnabled ? uploadedBannerFile : null,
+        background_music: (musicEnabled && uploadedMusicFile) ? uploadedMusicFile : null,
+        background_music_volume: musicVolume,
+        retention_enabled: true,
+        rank_bar_enabled: document.getElementById('rank-toggle')?.checked ?? true,
+        stress_timer_enabled: document.getElementById('timer-toggle')?.checked ?? true,
+        streak_fire_enabled: document.getElementById('streak-toggle')?.checked ?? true,
+        comment_trap_enabled: document.getElementById('trap-toggle')?.checked ?? true,
+        uniquifier: uniquifierConfig,
+        render_profile: currentRenderProfile
+      };
+
+      const finishBtn = document.getElementById('wizard-launch-render-btn');
+      if (finishBtn) {
+        finishBtn.disabled = true;
+        finishBtn.classList.add('opacity-60', 'cursor-not-allowed');
+      }
+
+      try {
+        const res = await fetch('/api/v1/quiz/batch/queue/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Ошибка запуска очереди рендеринга');
+        }
+
+        closeBatchWizard();
+        const queueSection = document.getElementById('batch-queue-section');
+        queueSection?.classList.remove('hidden');
+        queueSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        startBatchQueuePolling();
+      } catch (err) {
+        alert('Не удалось запустить очередь: ' + err.message);
+      } finally {
+        if (finishBtn) {
+          finishBtn.disabled = false;
+          finishBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+      }
+    }
+
+    function startBatchQueuePolling() {
+      if (batchQueuePollInterval) clearInterval(batchQueuePollInterval);
+
+      const fetchStatus = async () => {
+        try {
+          const res = await fetch('/api/v1/quiz/batch/queue/status');
+          if (!res.ok) return;
+          const state = await res.json();
+          if (!state || !state.items || state.items.length === 0) return;
+
+          renderBatchQueue(state);
+
+          if (!state.is_rendering && state.completed_count > 0 && state.active_item_id == null) {
+            const hasActive = state.items.some(it => it.status === 'processing' || it.status === 'pending');
+            if (!hasActive) {
+              clearInterval(batchQueuePollInterval);
+              batchQueuePollInterval = null;
+              loadGenerationHistory();
+            }
+          }
+        } catch (e) {
+          console.warn('Batch queue poll error:', e);
+        }
+      };
+
+      fetchStatus();
+      batchQueuePollInterval = setInterval(fetchStatus, 2500);
+    }
+
+    function renderBatchQueue(state) {
+      const completedEl = document.getElementById('batch-stat-completed');
+      const totalEl = document.getElementById('batch-stat-total');
+      const pctEl = document.getElementById('batch-overall-pct');
+      const barEl = document.getElementById('batch-overall-bar');
+      const listEl = document.getElementById('batch-queue-list');
+      const zipBtn = document.getElementById('batch-btn-download-zip');
+
+      if (completedEl) completedEl.textContent = `${state.completed_count} готово`;
+      if (totalEl) totalEl.textContent = `${state.total_count} видео`;
+
+      const overallPct = state.total_count > 0 ? Math.round((state.completed_count / state.total_count) * 100) : 0;
+      if (pctEl) pctEl.textContent = `${overallPct}%`;
+      if (barEl) barEl.style.width = `${overallPct}%`;
+
+      if (zipBtn) {
+        if (state.completed_count > 0) zipBtn.classList.remove('hidden');
+        else zipBtn.classList.add('hidden');
+      }
+
+      if (!listEl) return;
+      listEl.innerHTML = '';
+
+      state.items.forEach((it) => {
+        const card = document.createElement('div');
+        card.className = 'p-3.5 rounded-xl bg-black/40 border border-white/[0.06] space-y-2.5 transition-all';
+
+        let badgeHtml = '';
+        if (it.status === 'pending') {
+          badgeHtml = '<span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-300 border border-slate-500/30">⏳ В очереди</span>';
+        } else if (it.status === 'processing') {
+          badgeHtml = '<span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 animate-pulse font-bold">⚡ Рендеринг</span>';
+        } else if (it.status === 'completed') {
+          badgeHtml = '<span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">✅ Готово</span>';
+        } else if (it.status === 'failed') {
+          badgeHtml = '<span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">❌ Ошибка</span>';
+        } else if (it.status === 'cancelled') {
+          badgeHtml = '<span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-600/20 text-slate-400 border border-slate-600/30">🚫 Отменено</span>';
+        }
+
+        let actionHtml = '';
+        if (it.status === 'completed') {
+          actionHtml = `
+            <a 
+              href="${it.download_url || `/api/v1/quiz/batch/download/${it.item_id}`}" 
+              download 
+              class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold transition-all flex items-center space-x-1 shrink-0"
+            >
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>MP4</span>
+            </a>
+          `;
+        } else if (it.status === 'pending') {
+          actionHtml = `
+            <button 
+              type="button" 
+              onclick="cancelBatchItem('${it.item_id}')" 
+              class="px-2 py-0.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-white/[0.06] text-[10px] transition-all cursor-pointer"
+            >
+              Отмена
+            </button>
+          `;
+        } else if (it.status === 'failed') {
+          actionHtml = `<span class="text-[10px] text-rose-400 truncate max-w-[150px] font-mono" title="${(it.error_message || '').replace(/"/g, '&quot;')}">${it.error_message || 'Сбой'}</span>`;
+        }
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2 min-w-0">
+              <span class="w-5 h-5 rounded bg-purple-500/20 text-purple-300 font-mono text-[10px] flex items-center justify-center shrink-0 font-bold">
+                ${it.order_index}
+              </span>
+              <span class="text-xs font-bold text-white truncate" title="${it.topic.replace(/"/g, '&quot;')}">${it.topic}</span>
+            </div>
+            <div class="flex items-center space-x-2 shrink-0">
+              ${badgeHtml}
+              ${actionHtml}
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <div class="w-full bg-white/[0.06] rounded-full h-1.5 overflow-hidden">
+              <div class="bg-gradient-to-r from-purple-500 to-emerald-400 h-1.5 rounded-full transition-all duration-300" style="width: ${it.progress_percent || 0}%"></div>
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+              <span class="truncate max-w-[200px]">${it.stage || (it.status === 'pending' ? 'Ожидание очереди' : '')}</span>
+              <span>${it.progress_percent || 0}%</span>
+            </div>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    async function cancelBatchItem(itemId) {
+      try {
+        const res = await fetch(`/api/v1/quiz/batch/queue/cancel/${itemId}`, { method: 'POST' });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Не удалось отменить задачу');
+        }
+      } catch (err) {
+        alert('Ошибка отмены: ' + err.message);
+      }
+    }
+
+    async function clearCompletedBatchQueue() {
+      try {
+        await fetch('/api/v1/quiz/batch/queue/clear', { method: 'POST' });
+        const res = await fetch('/api/v1/quiz/batch/queue/status');
+        if (res.ok) {
+          const state = await res.json();
+          renderBatchQueue(state);
+        }
+      } catch (err) {
+        console.warn('Clear queue error:', err);
+      }
+    }
+
+    function downloadAllBatchZip() {
+      window.location.href = '/api/v1/quiz/batch/queue/download-all';
+    }
+
+    async function loadGenerationHistory() {
+      const grid = document.getElementById('history-grid');
+      const empty = document.getElementById('history-empty');
+      const badge = document.getElementById('history-count-badge');
+      if (!grid) return;
+
+      try {
+        const res = await fetch('/api/v1/quiz/history');
+        if (!res.ok) return;
+        const historyItems = await res.json();
+
+        if (badge) badge.textContent = historyItems.length;
+
+        if (!historyItems || historyItems.length === 0) {
+          grid.innerHTML = '';
+          empty?.classList.remove('hidden');
+          return;
+        }
+
+        empty?.classList.add('hidden');
+        grid.innerHTML = '';
+
+        historyItems.forEach((it) => {
+          const card = document.createElement('div');
+          card.className = 'glass-panel p-4 flex flex-col justify-between space-y-3 border border-white/[0.06] hover:border-amber-500/30 transition-all bg-black/40';
+
+          const dateStr = it.created_at ? new Date(it.created_at).toLocaleString('ru-RU', {
+            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+          }) : '';
+
+          card.innerHTML = `
+            <div class="space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono text-slate-400">${dateStr}</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">1080x1920</span>
+              </div>
+              <h4 class="text-xs font-bold text-white line-clamp-2" title="${it.topic.replace(/"/g, '&quot;')}">${it.topic}</h4>
+            </div>
+
+            <div class="w-full aspect-[9/16] max-h-[320px] bg-black/60 rounded-xl overflow-hidden border border-white/[0.08] relative flex items-center justify-center">
+              <video 
+                src="${it.download_url}" 
+                controls 
+                preload="metadata" 
+                playsinline 
+                class="w-full h-full object-cover"
+              ></video>
+            </div>
+
+            <a 
+              href="${it.download_url}" 
+              download 
+              class="w-full py-2 px-3 rounded-lg bg-white/[0.06] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-200 text-xs font-semibold border border-white/[0.1] hover:border-emerald-500/30 transition-all flex items-center justify-center space-x-1.5"
+            >
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Скачать MP4</span>
+            </a>
+          `;
+          grid.appendChild(card);
+        });
+        lucide.createIcons();
+      } catch (err) {
+        console.warn('Failed to load history:', err);
+      }
+    }
+
+    // Auto-load history and restore queue state on start
+    window.addEventListener('DOMContentLoaded', () => {
+      loadGenerationHistory();
+      fetch('/api/v1/quiz/batch/queue/status')
+        .then(r => r.json())
+        .then(st => {
+          if (st && st.items && st.items.length > 0) {
+            document.getElementById('batch-queue-section')?.classList.remove('hidden');
+            renderBatchQueue(st);
+            if (st.is_rendering) {
+              startBatchQueuePolling();
+            }
+          }
+        })
+        .catch(() => {});
+    });
   </script>
 </body>
 </html>

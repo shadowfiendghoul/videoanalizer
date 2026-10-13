@@ -13,14 +13,59 @@ from PIL import Image
 from videoanalizer.quiz.config import QuizConfig, get_quiz_config
 from videoanalizer.quiz.image_service import ImageService
 from videoanalizer.quiz.models import (
+    BatchTopicList,
     DifficultyTier,
     QuizChallenge,
     QuizItem,
     RegeneratedQuestionsPayload,
+    TopicSuggestion,
 )
+from videoanalizer.quiz.rate_limiter import get_gemini_rate_limiter
 from videoanalizer.quiz.workspace import QuizWorkspace
 
 logger = logging.getLogger(__name__)
+
+
+SINGLE_TOPIC_SYSTEM_PROMPT = """You are an elite short-form viral trivia producer specializing in Open-Recall
+concepts for TikTok and YouTube Shorts in the signature QuizyPeasy channel style.
+Your goal is to invent an engaging, viral, non-trivial quiz topic for a 9-question ladder video.
+
+TOPIC RULES:
+1. High-Curiosity Paradoxes:
+   - Topic must evoke intense curiosity, debate, or "I thought I knew this" feeling.
+   - Examples of great topics: "Анатомические парадоксы тела", "Забытые законы средневековья",
+     "Ошибки выжившего в истории", "Обман зрения и иллюзии", "Странные повадки хищников",
+     "Игры, изменившие законы физики", "Загадки советского быта".
+2. Strict Filter:
+   - NO generic school subjects (no "Столицы мира", no "Таблица умножения", no "Животные Африки").
+3. Format Constraints:
+   - 'topic': Concise, punchy topic title in the requested language (strictly <= 65 chars).
+   - 'category': Niche name (e.g. 'Биология', 'История', 'Гейминг', 'Психология', strictly <= 35 chars).
+   - 'curiosity_hook': 1 short sentence explaining why this will hook the audience (strictly <= 100 chars).
+4. Output:
+   - You MUST strictly return valid JSON adhering to the TopicSuggestion schema."""
+
+
+BATCH_TOPIC_SYSTEM_PROMPT = """You are an elite short-form viral trivia producer specializing in Open-Recall
+concepts for TikTok and YouTube Shorts in the signature QuizyPeasy channel style.
+Your goal is to invent N DISTINCT, NON-OVERLAPPING, HIGH-CURIOSITY quiz topics for a batch of 9-question ladder videos.
+
+BATCH RULES:
+1. Diversity Across Niches:
+   - Every single topic MUST come from a completely DIFFERENT niche/category (e.g., Topic 1: Bizarre Biology,
+     Topic 2: Historical Paradoxes, Topic 3: Gaming Mysteries, Topic 4: Space Anomalies,
+     Topic 5: Psychology & Cognitive Illusions, Topic 6: Food Chemistry, etc.).
+   - Zero duplication of themes or categories across the batch.
+2. Anti-Cliché Filter:
+   - Strictly forbidden to use generic school trivia (no "Столицы стран", no "География России", no "Простые загадки").
+3. Format Constraints:
+   - Generate exactly the requested count of topics.
+   - For each topic:
+     * 'topic': Concise, punchy title in requested language (strictly <= 65 chars).
+     * 'category': Distinct niche name (strictly <= 35 chars).
+     * 'curiosity_hook': 1 short sentence on the viral intrigue (strictly <= 100 chars).
+4. Output:
+   - You MUST strictly return valid JSON adhering to the BatchTopicList schema."""
 
 
 QUIZ_SYSTEM_PROMPT = """You are an elite short-form trivia creator specializing in viral TikTok
@@ -127,9 +172,7 @@ class ScriptService:
             f"Level 3 (Hardcore Paradoxes). Zero clichés, non-trivial questions, punchy text."
         )
 
-        eff_temp = (
-            temperature if temperature is not None else self.config.creative_temperature
-        )
+        eff_temp = temperature if temperature is not None else self.config.creative_temperature
 
         config = types.GenerateContentConfig(
             system_instruction=QUIZ_SYSTEM_PROMPT,
@@ -140,11 +183,13 @@ class ScriptService:
 
         # Execute call with retry on 503 temporary demand spikes
         loop = asyncio.get_running_loop()
+        limiter = get_gemini_rate_limiter()
         max_retries = 4
         last_error: Exception | None = None
 
         for attempt in range(max_retries):
             try:
+                await limiter.acquire()
                 response = await loop.run_in_executor(
                     None,
                     lambda: client.models.generate_content(
@@ -159,29 +204,149 @@ class ScriptService:
             except Exception as exc:
                 last_error = exc
                 err_msg = str(exc)
+                is_429 = "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg
                 is_transient = (
                     "503" in err_msg
                     or "UNAVAILABLE" in err_msg
                     or "high demand" in err_msg
-                    or "429" in err_msg
-                    or "RESOURCE_EXHAUSTED" in err_msg
+                    or is_429
                 )
                 if is_transient and attempt < max_retries - 1:
-                    delay = 2.5 * (2**attempt)
-                    logger.warning(
-                        "Transient Gemini API error (attempt %d/%d). Retrying in %.1fs: %s",
-                        attempt + 1,
-                        max_retries,
-                        delay,
-                        exc,
-                    )
-                    await asyncio.sleep(delay)
+                    if is_429:
+                        await limiter.record_429_backoff(attempt)
+                    else:
+                        delay = 2.5 * (2**attempt)
+                        logger.warning(
+                            "Transient Gemini API error (attempt %d/%d). Retrying in %.1fs: %s",
+                            attempt + 1,
+                            max_retries,
+                            delay,
+                            exc,
+                        )
+                        await asyncio.sleep(delay)
                 else:
                     raise exc
 
         if last_error:
             raise last_error
         raise RuntimeError("Failed to generate content from Gemini API.")
+
+    async def suggest_topic(
+        self,
+        category_hint: str | None = None,
+        language: str = "ru",
+    ) -> TopicSuggestion:
+        """Suggest a single viral, non-trivial quiz topic using Gemini REST API."""
+        api_key = self.config.effective_api_key.get_secret_value()
+        client = genai.Client(api_key=api_key)
+
+        prompt = f"Invent a viral, high-curiosity quiz topic in language: '{language}'."
+        if category_hint and category_hint.strip():
+            prompt += f" Theme/niche guidance: '{category_hint.strip()}'."
+        else:
+            prompt += (
+                " Focus on paradoxical biology, mind traps, strange laws, or unexpected trivia."
+            )
+
+        config = types.GenerateContentConfig(
+            system_instruction=SINGLE_TOPIC_SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            response_schema=TopicSuggestion,
+            temperature=1.05,
+        )
+
+        limiter = get_gemini_rate_limiter()
+        loop = asyncio.get_running_loop()
+        max_retries = 4
+
+        for attempt in range(max_retries):
+            try:
+                await limiter.acquire()
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: client.models.generate_content(
+                        model=self.config.gemini_model,
+                        contents=prompt,
+                        config=config,
+                    ),
+                )
+                raw_text = response.text or "{}"
+                data = json.loads(raw_text)
+                return TopicSuggestion.model_validate(data)
+            except Exception as exc:
+                err_msg = str(exc)
+                is_429 = "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg
+                is_transient = is_429 or "503" in err_msg or "UNAVAILABLE" in err_msg
+                if is_transient and attempt < max_retries - 1:
+                    if is_429:
+                        await limiter.record_429_backoff(attempt)
+                    else:
+                        delay = 2.5 * (2**attempt)
+                        await asyncio.sleep(delay)
+                else:
+                    logger.error("Failed to suggest topic: %s", exc)
+                    raise exc
+
+        raise RuntimeError("Failed to suggest topic from Gemini.")
+
+    async def suggest_batch_topics(
+        self,
+        count: int = 10,
+        category_hint: str | None = None,
+        language: str = "ru",
+    ) -> BatchTopicList:
+        """Suggest N distinct, non-overlapping viral topics in a SINGLE Gemini API request."""
+        count = max(2, min(20, count))
+        api_key = self.config.effective_api_key.get_secret_value()
+        client = genai.Client(api_key=api_key)
+
+        prompt = (
+            f"Generate exactly {count} unique, non-overlapping, high-curiosity quiz topics in language: '{language}'.\n"
+            f"Each topic must cover a different niche (e.g. biology paradoxes, weird history, tech illusions, nature, gaming)."
+        )
+        if category_hint and category_hint.strip():
+            prompt += f"\nOptional theme hint: '{category_hint.strip()}' (still keep individual topics varied)."
+
+        config = types.GenerateContentConfig(
+            system_instruction=BATCH_TOPIC_SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            response_schema=BatchTopicList,
+            temperature=1.05,
+        )
+
+        limiter = get_gemini_rate_limiter()
+        loop = asyncio.get_running_loop()
+        max_retries = 4
+
+        for attempt in range(max_retries):
+            try:
+                await limiter.acquire()
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: client.models.generate_content(
+                        model=self.config.gemini_model,
+                        contents=prompt,
+                        config=config,
+                    ),
+                )
+                raw_text = response.text or "{}"
+                data = json.loads(raw_text)
+                return BatchTopicList.model_validate(data)
+            except Exception as exc:
+                err_msg = str(exc)
+                is_429 = "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg
+                is_transient = is_429 or "503" in err_msg or "UNAVAILABLE" in err_msg
+                if is_transient and attempt < max_retries - 1:
+                    if is_429:
+                        await limiter.record_429_backoff(attempt)
+                    else:
+                        delay = 2.5 * (2**attempt)
+                        await asyncio.sleep(delay)
+                else:
+                    logger.error("Failed to suggest batch topics: %s", exc)
+                    raise exc
+
+        raise RuntimeError("Failed to suggest batch topics from Gemini.")
 
     async def _verify_and_refine_facts(
         self, challenge: QuizChallenge, language: str
@@ -240,9 +405,7 @@ class ScriptService:
         challenge = await self._call_gemini(topic, language, temperature=creative_temperature)
 
         # Stage 2: Strict fact-checking pass
-        do_fact_check = (
-            self.config.fact_check_enabled if fact_check is None else fact_check
-        )
+        do_fact_check = self.config.fact_check_enabled if fact_check is None else fact_check
         if do_fact_check:
             challenge = await self._verify_and_refine_facts(challenge, language)
 
@@ -264,8 +427,8 @@ class ScriptService:
                             item.image_query, max_results=2
                         )
                         if img_results:
-                            item.image_url = (
-                                img_results[0].get("image") or img_results[0].get("thumbnail")
+                            item.image_url = img_results[0].get("image") or img_results[0].get(
+                                "thumbnail"
                             )
                     except Exception as e:
                         logger.debug(
@@ -280,9 +443,7 @@ class ScriptService:
                 if item.image_url or item.image_query:
                     dest = workspace.get_image_path(f"q_{item.question_number}.png")
                     if item.image_url:
-                        image_tasks.append(
-                            self._download_and_verify_url(item.image_url, dest)
-                        )
+                        image_tasks.append(self._download_and_verify_url(item.image_url, dest))
                     else:
                         image_tasks.append(
                             self.image_service.search_and_download(item.image_query, dest)
@@ -351,9 +512,7 @@ class ScriptService:
             "fun_fact (<=90 символов), image_query (поисковый запрос картинки на английском)."
         )
 
-        eff_temp = (
-            temperature if temperature is not None else self.config.creative_temperature
-        )
+        eff_temp = temperature if temperature is not None else self.config.creative_temperature
 
         config = types.GenerateContentConfig(
             system_instruction=REGENERATE_QUESTIONS_SYSTEM_PROMPT,
@@ -432,14 +591,10 @@ class ScriptService:
         )
 
         # Index new items by question_number
-        new_items_by_num: dict[int, QuizItem] = {
-            item.question_number: item for item in new_items
-        }
+        new_items_by_num: dict[int, QuizItem] = {item.question_number: item for item in new_items}
 
         # If any requested question_number was missing from response, assign unmatched sequentially
-        unmatched_new = [
-            item for item in new_items if item.question_number not in target_nums
-        ]
+        unmatched_new = [item for item in new_items if item.question_number not in target_nums]
         for q_num in sorted(target_nums):
             if q_num not in new_items_by_num and unmatched_new:
                 fallback_item = unmatched_new.pop(0)
@@ -460,8 +615,8 @@ class ScriptService:
                         item.image_query, max_results=2
                     )
                     if img_results:
-                        item.image_url = (
-                            img_results[0].get("image") or img_results[0].get("thumbnail")
+                        item.image_url = img_results[0].get("image") or img_results[0].get(
+                            "thumbnail"
                         )
                 except Exception as e:
                     logger.debug(

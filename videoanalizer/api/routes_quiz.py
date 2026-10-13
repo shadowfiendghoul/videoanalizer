@@ -8,18 +8,28 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from videoanalizer.media.uniquifier import VideoUniquifierConfig
 from videoanalizer.quiz.audio_service import probe_audio_duration_ms
+from videoanalizer.quiz.batch_queue import get_batch_queue_manager
 from videoanalizer.quiz.models import (
+    BatchQueueItem,
+    BatchQueueItemStatus,
+    BatchQueueState,
+    BatchRenderStartRequest,
+    BatchTopicList,
+    BatchTopicSuggestRequest,
     ComboStreakConfig,
     CommentTrapConfig,
+    GenerationHistoryItem,
     HardwareCapabilities,
     QuizChallenge,
     QuizRetentionConfig,
     RenderProfile,
+    SingleTopicSuggestRequest,
+    TopicSuggestion,
 )
 from videoanalizer.quiz.orchestrator import QuizOrchestrator
 from videoanalizer.utils.hardware import get_hardware_capabilities
@@ -140,7 +150,6 @@ class QuizGenerateRequest(BaseModel):
         default=RenderProfile.GPU_FAST,
         description="Rendering acceleration profile ('gpu_fast' or 'cpu_safe').",
     )
-
 
 
 class ImageSearchRequest(BaseModel):
@@ -274,6 +283,22 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
             "total_questions": 9,
             "duration_seconds": 60.0,
         }
+
+        # Also record in persistent generation history
+        try:
+            manager = get_batch_queue_manager()
+            manager.record_history(
+                BatchQueueItem(
+                    item_id=job_id,
+                    topic=request.topic,
+                    order_index=1,
+                    status=BatchQueueItemStatus.COMPLETED,
+                    video_path=str(output_path),
+                    download_url=f"/api/v1/quiz/jobs/{job_id}/download",
+                )
+            )
+        except Exception as exc:
+            logger.warning("Failed to record single quiz to history: %s", exc)
     except Exception as exc:
         logger.error("Quiz job %s failed: %s", job_id, exc, exc_info=True)
         job["status"] = "failed"
@@ -324,6 +349,53 @@ async def regenerate_questions(request: QuizRegenerateSelectedRequest) -> QuizCh
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка перегенерации вопросов: {exc}",
+        )
+
+
+@router.post("/topics/suggest-single", response_model=TopicSuggestion)
+async def suggest_single_topic(request: SingleTopicSuggestRequest) -> TopicSuggestion:
+    """Suggest an individual viral quiz topic via Gemini REST API."""
+    orchestrator = QuizOrchestrator()
+    try:
+        suggestion = await orchestrator.script_service.suggest_topic(
+            category_hint=request.category_hint,
+            language=request.language,
+        )
+        return suggestion
+    except Exception as exc:
+        logger.error("Failed to suggest single topic: %s", exc, exc_info=True)
+        status_code = (
+            status.HTTP_429_TOO_MANY_REQUESTS
+            if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc)
+            else status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=f"Ошибка генерации темы: {exc}",
+        ) from exc
+
+
+@router.post("/topics/suggest-batch", response_model=BatchTopicList)
+async def suggest_batch_topics(request: BatchTopicSuggestRequest) -> BatchTopicList:
+    """Suggest N diverse viral quiz topics in a SINGLE Gemini API request to conserve 15 RPM quota."""
+    orchestrator = QuizOrchestrator()
+    try:
+        batch = await orchestrator.script_service.suggest_batch_topics(
+            count=request.count,
+            category_hint=request.category_hint,
+            language=request.language,
+        )
+        return batch
+    except Exception as exc:
+        logger.error("Failed to suggest batch topics: %s", exc, exc_info=True)
+        status_code = (
+            status.HTTP_429_TOO_MANY_REQUESTS
+            if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc)
+            else status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=f"Ошибка генерации списка тем: {exc}",
         ) from exc
 
 
@@ -373,9 +445,7 @@ async def upload_banner(file: UploadFile) -> BannerUploadResponse:
     with target_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    dur_frames = orchestrator._probe_video_duration_frames(
-        target_path, fps=orchestrator.config.fps
-    )
+    dur_frames = orchestrator._probe_video_duration_frames(target_path, fps=orchestrator.config.fps)
     dur_sec = round(dur_frames / orchestrator.config.fps, 2)
 
     return BannerUploadResponse(
@@ -435,11 +505,13 @@ async def list_available_music() -> list[dict[str, str | float]]:
         for p in sorted(music_dir.iterdir()):
             if p.is_file() and p.suffix.lower() in allowed_exts:
                 dur_ms = probe_audio_duration_ms(p)
-                results.append({
-                    "filename": p.name,
-                    "saved_filename": p.name,
-                    "duration_seconds": round(dur_ms / 1000.0, 2),
-                })
+                results.append(
+                    {
+                        "filename": p.name,
+                        "saved_filename": p.name,
+                        "duration_seconds": round(dur_ms / 1000.0, 2),
+                    }
+                )
     return results
 
 
@@ -564,3 +636,138 @@ async def download_quiz_video(job_id: str) -> FileResponse:
         media_type="video/mp4",
         filename=video_path.name,
     )
+
+
+# ==============================================================================
+# Batch Queue & Multi-Video Approval Endpoints (005-batch-queue-topics)
+# ==============================================================================
+
+
+class BatchInitRequest(BaseModel):
+    """Payload to initialize a batch session and start progressive script generation."""
+
+    topics: list[str] = Field(..., min_length=1, max_length=20, description="List of topics")
+    language: Literal["ru", "en"] = Field(default="ru")
+    temperature: float | None = Field(default=None, ge=0.0, le=2.0)
+    fact_check: bool | None = Field(default=None)
+
+
+@router.post("/batch/init", response_model=BatchQueueState)
+async def init_batch(request: BatchInitRequest) -> BatchQueueState:
+    """Initialize a batch session and launch progressive paced background generation."""
+    manager = get_batch_queue_manager()
+    state = await manager.init_batch(
+        topics=request.topics,
+        language=request.language,
+        temperature=request.temperature,
+        fact_check=request.fact_check,
+    )
+    return state
+
+
+@router.get("/batch/queue/status", response_model=BatchQueueState)
+async def get_batch_queue_status() -> BatchQueueState:
+    """Retrieve live status, progress percentages, and metrics of active batch queue."""
+    manager = get_batch_queue_manager()
+    if manager.current_state is None:
+        return BatchQueueState(
+            batch_id="empty",
+            items=[],
+            is_rendering=False,
+            active_item_id=None,
+            completed_count=0,
+            total_count=0,
+            rate_limit_waiting=False,
+            rate_limit_delay_sec=0.0,
+        )
+    return manager.current_state
+
+
+@router.post("/batch/queue/start", response_model=BatchQueueState)
+async def start_batch_queue(request: BatchRenderStartRequest) -> BatchQueueState:
+    """Enqueue approved batch items into sequential Remotion render queue."""
+    manager = get_batch_queue_manager()
+    state = await manager.start_render_queue(request)
+    return state
+
+
+@router.post("/batch/queue/cancel/{item_id}")
+async def cancel_batch_item(item_id: str) -> dict[str, str]:
+    """Cancel a queued item before its rendering starts."""
+    manager = get_batch_queue_manager()
+    ok = manager.cancel_item(item_id)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Элемент очереди '{item_id}' не найден или уже рендерится.",
+        )
+    return {"status": "cancelled", "item_id": item_id}
+
+
+@router.post("/batch/queue/clear")
+async def clear_batch_queue() -> dict[str, str]:
+    """Clear completed and failed jobs from queue list."""
+    manager = get_batch_queue_manager()
+    manager.clear_completed()
+    return {"status": "cleared"}
+
+
+@router.get("/batch/queue/download-all")
+async def download_all_batch_videos() -> StreamingResponse:
+    """Download ZIP archive containing all completed batch MP4 videos."""
+    manager = get_batch_queue_manager()
+    mem_zip = manager.create_batch_zip()
+    if not mem_zip:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Нет готовых видео для скачивания в архиве.",
+        )
+    return StreamingResponse(
+        mem_zip,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=quiz_batch_videos.zip"},
+    )
+
+
+@router.get("/batch/download/{item_id}")
+async def download_batch_item_video(item_id: str) -> FileResponse:
+    """Download single completed batch MP4 video."""
+    manager = get_batch_queue_manager()
+    found_item = None
+    if manager.current_state:
+        for it in manager.current_state.items:
+            if it.item_id == item_id:
+                found_item = it
+                break
+
+    if not found_item:
+        for it in manager.get_history():
+            if it.job_id == item_id:
+                if Path(it.video_path).exists():
+                    p = Path(it.video_path)
+                    return FileResponse(path=str(p), media_type="video/mp4", filename=p.name)
+
+    if (
+        not found_item
+        or found_item.status != BatchQueueItemStatus.COMPLETED
+        or not found_item.video_path
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Видео для задачи '{item_id}' ещё не готово или отсутствует.",
+        )
+
+    p = Path(found_item.video_path)
+    if not p.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Файл готового видео не найден на сервере.",
+        )
+    return FileResponse(path=str(p), media_type="video/mp4", filename=p.name)
+
+
+@router.get("/history", response_model=list[GenerationHistoryItem])
+async def get_generation_history() -> list[GenerationHistoryItem]:
+    """Retrieve persistent history of all completed quiz video generations."""
+    manager = get_batch_queue_manager()
+    return manager.get_history()
