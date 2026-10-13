@@ -274,33 +274,69 @@
           </div>
 
           <!-- Neural Creativity (Temperature) & 2-Stage Fact-Checking -->
-          <div class="space-y-2.5 pt-2 border-t border-white/[0.06]">
-            <div class="flex items-center justify-between">
-              <label class="block text-xs font-medium text-slate-300 flex items-center space-x-1.5">
-                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
-                <span>Оригинальность и креатив (Температура ИИ)</span>
-              </label>
-              <span id="temp-badge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                0.95 (Креативный рандом)
-              </span>
+          <div class="space-y-3.5 pt-2 border-t border-white/[0.06]">
+            <!-- Topic Ideas Temperature Slider -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="block text-xs font-medium text-slate-300 flex items-center space-x-1.5">
+                  <i data-lucide="lightbulb" class="w-3.5 h-3.5 text-purple-400"></i>
+                  <span>Креативность идей и тем (Температура ИИ)</span>
+                </label>
+                <span id="topic-temp-badge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                  1.05 (Креативный рандом)
+                </span>
+              </div>
+              <div class="flex items-center space-x-3">
+                <input 
+                  type="range" 
+                  id="topic-temperature-slider" 
+                  min="0.2" 
+                  max="3.0" 
+                  step="0.05" 
+                  value="1.05" 
+                  oninput="updateTopicTempBadge(this.value); saveSettings();"
+                  class="flex-1 accent-purple-500 cursor-pointer h-1.5 bg-black/50 rounded-lg appearance-none"
+                />
+              </div>
+              <div class="flex justify-between text-[10px] text-slate-400 px-0.5 font-mono">
+                <span>0.2 Строгие</span>
+                <span>1.0 Баланс</span>
+                <span class="text-purple-400 font-bold">1.05 Вирусные</span>
+                <span>2.0 Макс API</span>
+                <span>3.0</span>
+              </div>
             </div>
-            <div class="flex items-center space-x-3">
-              <input 
-                type="range" 
-                id="temperature-slider" 
-                min="0.2" 
-                max="1.2" 
-                step="0.05" 
-                value="0.95" 
-                oninput="updateTempBadge(this.value); saveSettings();"
-                class="flex-1 accent-amber-500 cursor-pointer h-1.5 bg-black/50 rounded-lg appearance-none"
-              />
-            </div>
-            <div class="flex justify-between text-[10px] text-slate-400 px-0.5 font-mono">
-              <span>0.2 Строгие факты</span>
-              <span>0.7 Баланс</span>
-              <span class="text-amber-400 font-bold">0.95 Оригинальные факты</span>
-              <span>1.2 Хаос</span>
+
+            <!-- Quiz Questions Temperature Slider -->
+            <div class="space-y-2 pt-1 border-t border-white/[0.04]">
+              <div class="flex items-center justify-between">
+                <label class="block text-xs font-medium text-slate-300 flex items-center space-x-1.5">
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+                  <span>Креативность вопросов (Температура ИИ)</span>
+                </label>
+                <span id="temp-badge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  0.95 (Креативный рандом)
+                </span>
+              </div>
+              <div class="flex items-center space-x-3">
+                <input 
+                  type="range" 
+                  id="temperature-slider" 
+                  min="0.2" 
+                  max="3.0" 
+                  step="0.05" 
+                  value="0.95" 
+                  oninput="updateTempBadge(this.value); saveSettings();"
+                  class="flex-1 accent-amber-500 cursor-pointer h-1.5 bg-black/50 rounded-lg appearance-none"
+                />
+              </div>
+              <div class="flex justify-between text-[10px] text-slate-400 px-0.5 font-mono">
+                <span>0.2 Факты</span>
+                <span>1.0 Баланс</span>
+                <span class="text-amber-400 font-bold">0.95 Оригинальные</span>
+                <span>2.0 Макс API</span>
+                <span>3.0</span>
+              </div>
             </div>
 
             <!-- Two-Pass Fact Checking Toggle -->
@@ -1325,15 +1361,29 @@
       }
     }
 
+    function updateTopicTempBadge(val) {
+      const num = parseFloat(val);
+      const badge = document.getElementById('topic-temp-badge');
+      if (!badge) return;
+      let label = 'Баланс';
+      if (num <= 0.4) label = 'Классические темы';
+      else if (num <= 0.8) label = 'Популярные тренды';
+      else if (num <= 1.2) label = 'Креативный рандом';
+      else if (num <= 2.0) label = 'Ультра-вирусные идеи';
+      else label = 'Макс. креатив (макс. API 2.0)';
+      badge.textContent = `${num.toFixed(2)} (${label})`;
+    }
+
     function updateTempBadge(val) {
       const num = parseFloat(val);
       const badge = document.getElementById('temp-badge');
       if (!badge) return;
       let label = 'Баланс';
       if (num <= 0.4) label = 'Строгие факты';
-      else if (num <= 0.75) label = 'Классика';
-      else if (num <= 1.0) label = 'Креативный рандом';
-      else label = 'Макс. оригинальность';
+      else if (num <= 0.8) label = 'Классика';
+      else if (num <= 1.2) label = 'Креативный рандом';
+      else if (num <= 2.0) label = 'Высокая оригинальность';
+      else label = 'Ультра-креатив (макс. API 2.0)';
       badge.textContent = `${num.toFixed(2)} (${label})`;
     }
 
@@ -1356,6 +1406,7 @@
         timerEnabled: document.getElementById('timer-toggle')?.checked ?? true,
         streakEnabled: document.getElementById('streak-toggle')?.checked ?? true,
         trapEnabled: document.getElementById('trap-toggle')?.checked ?? true,
+        topicTemperature: document.getElementById('topic-temperature-slider') ? parseFloat(document.getElementById('topic-temperature-slider').value) : 1.05,
         temperature: document.getElementById('temperature-slider') ? parseFloat(document.getElementById('temperature-slider').value) : 0.95,
         factCheckEnabled: document.getElementById('fact-check-toggle')?.checked ?? true,
         uniquifierEnabled: document.getElementById('uniquifier-toggle')?.checked ?? true,
@@ -1440,6 +1491,10 @@
       }
       if (typeof s.trapEnabled === 'boolean' && document.getElementById('trap-toggle')) {
         document.getElementById('trap-toggle').checked = s.trapEnabled;
+      }
+      if (typeof s.topicTemperature === 'number' && document.getElementById('topic-temperature-slider')) {
+        document.getElementById('topic-temperature-slider').value = s.topicTemperature;
+        updateTopicTempBadge(s.topicTemperature);
       }
       if (typeof s.temperature === 'number' && document.getElementById('temperature-slider')) {
         document.getElementById('temperature-slider').value = s.temperature;
@@ -2477,6 +2532,8 @@
       const topicInput = document.getElementById('topic-input');
       const langSelect = document.getElementById('language-select');
       const language = langSelect ? langSelect.value : 'ru';
+      const topicTempSlider = document.getElementById('topic-temperature-slider');
+      const topicTemperature = topicTempSlider ? parseFloat(topicTempSlider.value) : 1.05;
 
       if (!btn || !topicInput) return;
 
@@ -2489,7 +2546,7 @@
         const res = await fetch('/api/v1/quiz/topics/suggest-single', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ language })
+          body: JSON.stringify({ language, temperature: topicTemperature })
         });
         if (!res.ok) {
           const err = await res.json();
@@ -2520,6 +2577,8 @@
       const hint = hintInput ? hintInput.value.trim() : '';
       const langSelect = document.getElementById('language-select');
       const language = langSelect ? langSelect.value : 'ru';
+      const topicTempSlider = document.getElementById('topic-temperature-slider');
+      const topicTemperature = topicTempSlider ? parseFloat(topicTempSlider.value) : 1.05;
 
       const btn = document.getElementById('btn-generate-batch-topics');
       const btnText = document.getElementById('btn-generate-batch-topics-text');
@@ -2538,7 +2597,8 @@
           body: JSON.stringify({
             count: count,
             category_hint: hint || null,
-            language: language
+            language: language,
+            temperature: topicTemperature
           })
         });
         if (!res.ok) {
@@ -2617,11 +2677,13 @@
     async function refreshSingleBatchTopic(index) {
       const langSelect = document.getElementById('language-select');
       const language = langSelect ? langSelect.value : 'ru';
+      const topicTempSlider = document.getElementById('topic-temperature-slider');
+      const topicTemperature = topicTempSlider ? parseFloat(topicTempSlider.value) : 1.05;
       try {
         const res = await fetch('/api/v1/quiz/topics/suggest-single', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ language })
+          body: JSON.stringify({ language, temperature: topicTemperature })
         });
         if (!res.ok) throw new Error('Ошибка обновления темы');
         const data = await res.json();

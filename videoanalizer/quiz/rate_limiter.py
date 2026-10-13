@@ -52,7 +52,7 @@ class PacedLimiter:
             self.is_waiting = True
             self.current_delay_sec = delay
             logger.warning(
-                "PacedLimiter: Received HTTP 429 quota exhaustion. Backing off for %.1fs (attempt %d)",
+                "PacedLimiter: 429 quota exhaustion. Backing off for %.1fs (attempt %d)",
                 delay,
                 attempt + 1,
             )

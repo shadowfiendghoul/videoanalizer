@@ -527,6 +527,9 @@ class SingleTopicSuggestRequest(BaseModel):
     language: Literal["ru", "en"] = Field(
         default="ru", description="Output language (ru or en)"
     )
+    temperature: float | None = Field(
+        default=None, ge=0.0, le=3.0, description="Sampling temperature (0.0-3.0, clamped to 2.0)"
+    )
 
 
 class BatchTopicSuggestRequest(BaseModel):
@@ -538,6 +541,9 @@ class BatchTopicSuggestRequest(BaseModel):
     )
     language: Literal["ru", "en"] = Field(
         default="ru", description="Output language (ru or en)"
+    )
+    temperature: float | None = Field(
+        default=None, ge=0.0, le=3.0, description="Sampling temperature (0.0-3.0, clamped to 2.0)"
     )
 
 

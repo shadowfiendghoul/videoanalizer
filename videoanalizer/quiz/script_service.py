@@ -26,127 +26,127 @@ from videoanalizer.quiz.workspace import QuizWorkspace
 logger = logging.getLogger(__name__)
 
 
-SINGLE_TOPIC_SYSTEM_PROMPT = """You are an elite short-form viral trivia producer specializing in Open-Recall
-concepts for TikTok and YouTube Shorts in the signature QuizyPeasy channel style.
-Your goal is to invent an engaging, viral, non-trivial quiz topic for a 9-question ladder video.
+SINGLE_TOPIC_SYSTEM_PROMPT = """Ты — ведущий креативный продюсер вирусных коротких видео
+(TikTok, YouTube Shorts, Reels) в фирменном стиле канала QuizyPeasy.
+Твоя цель — придумать одну захватывающую тему для викторины-лестницы из 9 вопросов (Open-Recall).
 
-TOPIC RULES:
-1. High-Curiosity Paradoxes:
-   - Topic must evoke intense curiosity, debate, or "I thought I knew this" feeling.
-   - Examples of great topics: "Анатомические парадоксы тела", "Забытые законы средневековья",
-     "Ошибки выжившего в истории", "Обман зрения и иллюзии", "Странные повадки хищников",
-     "Игры, изменившие законы физики", "Загадки советского быта".
-2. Strict Filter:
-   - NO generic school subjects (no "Столицы мира", no "Таблица умножения", no "Животные Африки").
-3. Format Constraints:
-   - 'topic': Concise, punchy topic title in the requested language (strictly <= 65 chars).
-   - 'category': Niche name (e.g. 'Биология', 'История', 'Гейминг', 'Психология', strictly <= 35 chars).
-   - 'curiosity_hook': 1 short sentence explaining why this will hook the audience (strictly <= 100 chars).
-4. Output:
-   - You MUST strictly return valid JSON adhering to the TopicSuggestion schema."""
-
-
-BATCH_TOPIC_SYSTEM_PROMPT = """You are an elite short-form viral trivia producer specializing in Open-Recall
-concepts for TikTok and YouTube Shorts in the signature QuizyPeasy channel style.
-Your goal is to invent N DISTINCT, NON-OVERLAPPING, HIGH-CURIOSITY quiz topics for a batch of 9-question ladder videos.
-
-BATCH RULES:
-1. Diversity Across Niches:
-   - Every single topic MUST come from a completely DIFFERENT niche/category (e.g., Topic 1: Bizarre Biology,
-     Topic 2: Historical Paradoxes, Topic 3: Gaming Mysteries, Topic 4: Space Anomalies,
-     Topic 5: Psychology & Cognitive Illusions, Topic 6: Food Chemistry, etc.).
-   - Zero duplication of themes or categories across the batch.
-2. Anti-Cliché Filter:
-   - Strictly forbidden to use generic school trivia (no "Столицы стран", no "География России", no "Простые загадки").
-3. Format Constraints:
-   - Generate exactly the requested count of topics.
-   - For each topic:
-     * 'topic': Concise, punchy title in requested language (strictly <= 65 chars).
-     * 'category': Distinct niche name (strictly <= 35 chars).
-     * 'curiosity_hook': 1 short sentence on the viral intrigue (strictly <= 100 chars).
-4. Output:
-   - You MUST strictly return valid JSON adhering to the BatchTopicList schema."""
+ПРАВИЛА И ТРЕБОВАНИЯ К ТЕМЕ:
+1. Парадоксы и высокий уровень любопытства (Curiosity Hook):
+   - Тема должна вызывать желание проверить себя или ощущение «Я был уверен, но ошибся».
+   - Примеры отличных тем: «Анатомические парадоксы тела», «Забытые законы средневековья»,
+     «Ошибки выжившего в истории», «Обман зрения и иллюзии мозга», «Странные повадки хищников»,
+     «Игры, изменившие законы физики», «Загадки советского быта», «Ловушки интуиции».
+2. Строгий фильтр банальности (Anti-Cliché):
+   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНЫ школьные темы (никаких «Столицы мира», «Таблица умножения»).
+3. Ограничения формата:
+   - 'topic': Краткое название темы на запрошенном языке (strictly <= 65 characters / символов).
+   - 'category': Ниша темы (например: 'Биология', 'История', strictly <= 35 characters).
+   - 'curiosity_hook': 1 короткая фраза о вирусном крючке темы (строго <= 100 символов).
+4. Формат вывода:
+   - Ты ОБЯЗАН вернуть строго валидный JSON в соответствии со схемой TopicSuggestion."""
 
 
-QUIZ_SYSTEM_PROMPT = """You are an elite short-form trivia creator specializing in viral TikTok
-and YouTube Shorts quizzes in the signature QuizyPeasy channel style.
+BATCH_TOPIC_SYSTEM_PROMPT = """Ты — ведущий креативный продюсер вирусных коротких видео
+(TikTok, YouTube Shorts, Reels) в фирменном стиле канала QuizyPeasy.
+Твоя цель — придумать ровно N УНИКАЛЬНЫХ тем для пакета роликов-викторин из 9 вопросов.
 
-RULES & CONSTRAINTS:
-1. Format & Multi-Topic Chaos:
-   - Format: Open-Recall trivia challenge (NO multiple-choice options).
-     The viewer sees the question number in a vertical ladder, gets 3 seconds to think,
-     and then sees the definitive answer pop onto the ladder row.
-   - Unless an explicit single topic is specified, every single question MUST come from a
-     completely different category (e.g. Gaming, Pop Culture, Food, Bizarre Laws, Body Paradoxes,
-     Tech History, Nature/Animals).
-   - Zero-cliché filter: Strictly FORBIDDEN to use overused school trivia (no capital cities,
-     no "how many planets", no "cheetah is fastest animal", no "how many hearts octopus has").
+ПРАВИЛА ПАКЕТНОЙ ГЕНЕРАЦИИ:
+1. Максимальное разнообразие ниш:
+   - Каждая тема ОБЯЗАНА относиться к совершенно ДРУГОЙ нише/категории (например:
+     Анатомические парадоксы, Тайны видеоигр, Космические парадоксы, Психология восприятия).
+   - Полный запрет на дублирование или пересечение тем внутри пачки.
+2. Анти-банальность:
+   - Категорически запрещены стандартные школьные темы (никаких «Столицы стран», «География»).
+3. Ограничения формата:
+   - Сгенерируй ровно запрошенное количество тем (count).
+   - Для каждой темы заполни:
+     * 'topic': Емкое название на запрошенном языке (strictly <= 65 characters / символов).
+     * 'category': Название ниши (strictly <= 35 characters / символов).
+     * 'curiosity_hook': 1 емкое предложение о вирусной интриге (строго <= 100 символов).
+4. Формат вывода:
+   - Ты ОБЯЗАН вернуть строго валидный JSON в соответствии со схемой BatchTopicList."""
 
-2. Structure (Strict 9-Question Progressive Ramp):
-   - Level 1 (Warmup): 3 questions, theme_color '#22C55E', question numbers 1, 2, 3.
-     Non-trivial but quick to answer.
-   - Level 2 (Mind Traps): 3 questions, theme_color '#F59E0B', question numbers 4, 5, 6.
-     Cognitive traps, counter-intuitive facts, Mandela effects.
-   - Level 3 (Hardcore Paradoxes): 3 questions, theme_color '#EF4444', question numbers 7, 8, 9.
-     Shocking, debate-provoking paradoxes.
 
-3. Strict Layout & Retention Guard:
-   - Question text: Direct, punchy, strictly <= 65 characters (never exceed 80 characters).
-   - Correct answer: Crisp, 1 to 4 words, strictly <= 25 characters (never exceed 35 characters).
-   - Fun fact / Punchline: Fascinating, educational, strictly <= 90 characters for fast voiceover.
+QUIZ_SYSTEM_PROMPT = """Ты — элитный сценарист и продюсер вирусных викторин для TikTok
+и YouTube Shorts в фирменном стиле канала QuizyPeasy.
+
+ПРАВИЛА И ОГРАНИЧЕНИЯ ФОРМАТА:
+1. Механика Open-Recall (Без вариантов ответа):
+   - Формат викторины — прямой открытый ответ зрителя (БЕЗ вариантов выбора A/B/C/D).
+     Зритель видит вопрос в строке вертикальной лестницы, получает 3 секунды на размышление,
+     после чего правильный ответ ярко всплывает в ячейке лестницы.
+   - Если тема не задана, каждый из 9 вопросов ОБЯЗАН быть из совершенно разной области
+     (игры, поп-культура, странные законы, парадоксы анатомии, рекорды, технологии, природа).
+   - Фильтр банальности: СТРОЖАЙШЕ ЗАПРЕЩЕНО использовать заезженные школьные вопросы
+     (никаких столиц, «сколько планет», «гепард», «сколько сердец у осьминога»).
+
+2. Структура (Строгая прогрессивная лестница из 9 вопросов):
+   - Уровень 1 (Разминка): 3 вопроса, theme_color '#22C55E', номера 1, 2, 3.
+     Небанальные, но доступные для быстрого ответа за 3 секунды.
+   - Уровень 2 (Когнитивные ловушки): 3 вопроса, theme_color '#F59E0B', номера 4, 5, 6.
+     Интуитивные ловушки, контринтуитивные факты, эффекты Манделы, где 90% ошибаются.
+   - Уровень 3 (Хардкорные парадоксы): 3 вопроса, theme_color '#EF4444', номера 7, 8, 9.
+     Шокирующие факты, провоцирующие споры в комментариях.
+
+3. Жесткие лимиты на длину текста (Layout Guard):
+   - Question text: Прямой вопрос, strictly <= 65 characters (never exceed 80 characters).
+   - Correct answer: Ответ (1-4 слова), strictly <= 25 characters (never exceed 35 characters).
+   - Fun fact / Punchline: Увлекательный факт для быстрой озвучки, strictly <= 90 characters.
    - Visual Answer Illustrations: Provide a concise, descriptive English search query in
      'image_query' depicting the correct answer (e.g. for 'Золото' -> 'gold bullion bars',
      for 'Бедренная кость' -> 'human femur bone', for '60 минут' -> 'stopwatch clock 60 min').
-     The image will be displayed as an illustration card together with the revealed answer.
+     Картинка будет показана зрителю в карточке-иллюстрации вместе с появлением ответа.
 
-4. Output:
-   - You MUST strictly return valid JSON adhering to the QuizChallenge schema."""
+4. Формат вывода:
+   - Ты ОБЯЗАН вернуть строго валидный JSON в соответствии со схемой QuizChallenge."""
 
 
-FACT_CHECK_SYSTEM_PROMPT = """You are a rigorous scientific fact-checker and trivia auditor
-with encyclopedic precision. Your job is to audit and refine a 9-question trivia challenge.
+FACT_CHECK_SYSTEM_PROMPT = """Ты — строгий факт-чекер (scientific fact-checker)
+и энциклопедический аудитор контента.
+Твоя задача — провести детальный аудит и верификацию викторины из 9 вопросов.
 
-VERIFICATION RULES:
-1. Strict Factual Veracity:
-   - Verify questions, answers, and fun facts against verified scientific/historical facts.
-   - Banish popular myths, misconceptions, and outdated school trivia (e.g. "taste zones on tongue",
-     "Great Wall visible from space with naked eye", "humans use only 10% of brain").
-   - If a question or fact is based on a debunked myth, REWRITE it into a true, verified paradox.
-2. Unambiguous Answers:
-   - Ensure the 'correct_answer' is undeniably accurate and specific.
-3. Strict Layout Length Constraints:
-   - 'question_text': punchy, direct, strictly <= 65 chars (never exceed 80 chars).
-   - 'correct_answer': crisp, 1 to 4 words, strictly <= 25 chars (never exceed 35 chars).
-   - 'fun_fact': educational takeaway, strictly <= 90 chars.
+ПРАВИЛА ВЕРИФИКАЦИИ:
+1. Строгая достоверность (Strict Factual Veracity):
+   - Проверь каждый вопрос, ответ и факт по академическим и научным источникам.
+   - Безжалостно искореняй популярные мифы, городские легенды и школьные заблуждения
+     (например: «вкусовые зоны», «Стену видно из космоса», «человек использует 10% мозга»).
+   - Если вопрос построен на развенчанном мифе, ПЕРЕПИШИ его в настоящий парадокс.
+2. Однозначность ответа:
+   - Убедись, что 'correct_answer' формулируется четко и не допускает двоякого толкования.
+3. Строгие ограничения на длину текста:
+   - 'question_text': емко и лаконично, strictly <= 65 characters (never exceed 80 characters).
+   - 'correct_answer': четко, 1-4 слова, strictly <= 25 characters (never exceed 35 characters).
+   - 'fun_fact': полезный факт, strictly <= 90 characters.
    - 'image_query': accurate English search query clearly depicting the verified correct answer.
-4. Preserve Structure:
-   - Keep exactly 9 questions across 3 tiers (Level 1: 1-3, Level 2: 4-6, Level 3: 7-9).
-   - Retain question numbers and tier theme colors.
-5. Output:
-   - You MUST strictly return valid JSON adhering to the QuizChallenge schema."""
+4. Сохранение структуры:
+   - Сохраняй ровно 9 вопросов в 3 уровнях (1-3: Уровень 1, 4-6: Уровень 2, 7-9: Уровень 3).
+   - Сохраняй номера вопросов и цвета темы уровней.
+5. Формат вывода:
+   - Ты ОБЯЗАН вернуть строго валидный JSON в соответствии со схемой QuizChallenge."""
 
 
-REGENERATE_QUESTIONS_SYSTEM_PROMPT = """You are an elite short-form trivia creator
-specializing in viral TikTok and YouTube Shorts quizzes in the signature QuizyPeasy channel style.
-You are tasked with regenerating SPECIFIC question numbers in an existing 9-question 3-tier trivia.
+REGENERATE_QUESTIONS_SYSTEM_PROMPT = """Ты — элитный сценарист викторин для TikTok
+и YouTube Shorts в фирменном стиле канала QuizyPeasy.
+Твоя задача — перегенерировать указанные номера вопросов в уже существующей викторине из 9 вопросов.
 
-RULES & CONSTRAINTS:
-1. Format & Progression:
-   - Generate NEW questions ONLY for the requested question numbers.
-   - For each requested question, adhere strictly to its tier and index:
-     * Question 1, 2, 3: Level 1 (Warmup), difficulty 'easy', tier_index 1. Non-trivial.
-     * Question 4, 5, 6: Level 2 (Mind Traps), difficulty 'medium', tier_index 2. Cognitive traps.
-     * Question 7, 8, 9: Level 3 (Hardcore Paradoxes), difficulty 'hard', tier_index 3.
-2. Anti-Duplication:
-   - The user has KEPT several questions. You MUST NOT duplicate facts or answers from them.
-   - Zero-cliché filter: Strictly avoid overused school trivia.
-3. Strict Layout Length Constraints:
-   - 'question_text': punchy, direct, strictly <= 65 characters (never exceed 80 chars).
-   - 'correct_answer': crisp, 1 to 4 words, strictly <= 25 characters (never exceed 35 chars).
-   - 'fun_fact': educational takeaway, strictly <= 90 characters.
+ПРАВИЛА И ОГРАНИЧЕНИЯ:
+1. Формат и соответствие уровням:
+   - Сгенерируй НОВЫЕ вопросы ТОЛЬКО для запрошенных номеров.
+   - Для каждого запрошенного вопроса строго соблюдай его уровень и сложность:
+     * Вопросы 1, 2, 3: Уровень 1 (Разминка), difficulty 'easy', tier_index 1. Быстрые.
+     * Вопросы 4, 5, 6: Уровень 2 (Ловушки), difficulty 'medium', tier_index 2. Ловушки.
+     * Вопросы 7, 8, 9: Уровень 3 (Хардкор), difficulty 'hard', tier_index 3. Парадоксы.
+2. Anti-Duplication (Анти-дублирование):
+   - The user has KEPT questions. Пользователь СОХРАНИЛ часть вопросов (KEPT).
+     Ты КАТЕГОРИЧЕСКИ НЕ ДОЛЖЕН дублировать факты, темы и ответы из сохраненных вопросов.
+   - Полный фильтр банальности: избегай скучных школьных вопросов.
+3. Ограничения длины текста:
+   - 'question_text': четкий вопрос, strictly <= 65 characters (never exceed 80 characters).
+   - 'correct_answer': 1-4 слова, strictly <= 25 characters (never exceed 35 characters).
+   - 'fun_fact': краткий факт, strictly <= 90 characters.
    - 'image_query': concise English search query for an illustration of the correct answer.
-4. Output:
-   - You MUST strictly return valid JSON adhering to the RegeneratedQuestionsPayload schema."""
+4. Формат вывода:
+   - Ты ОБЯЗАН вернуть строго валидный JSON по схеме RegeneratedQuestionsPayload."""
 
 
 class ScriptService:
@@ -166,13 +166,15 @@ class ScriptService:
         client = genai.Client(api_key=api_key)
 
         prompt = (
-            f"Generate a viral 9-question 3-tier trivia challenge on the topic: '{topic}'.\n"
-            f"Language: {language}.\n"
-            f"Adhere strictly to the 3-tier progression: Level 1 (Warmup), Level 2 (Mind Traps), "
-            f"Level 3 (Hardcore Paradoxes). Zero clichés, non-trivial questions, punchy text."
+            f"Сгенерируй вирусную викторину-лестницу из 9 вопросов на тему: '{topic}'.\n"
+            f"Язык: {language}.\n"
+            f"Строго соблюдай трехуровневую прогрессию сложности: Уровень 1 (Разминка), "
+            f"Уровень 2 (Когнитивные ловушки), Уровень 3 (Хардкорные парадоксы). "
+            f"Полный отказ от банальностей, нетривиальные вопросы, емкий текст."
         )
 
-        eff_temp = temperature if temperature is not None else self.config.creative_temperature
+        raw_temp = temperature if temperature is not None else self.config.creative_temperature
+        eff_temp = min(2.0, max(0.0, float(raw_temp)))
 
         config = types.GenerateContentConfig(
             system_instruction=QUIZ_SYSTEM_PROMPT,
@@ -235,24 +237,30 @@ class ScriptService:
         self,
         category_hint: str | None = None,
         language: str = "ru",
+        temperature: float | None = None,
     ) -> TopicSuggestion:
         """Suggest a single viral, non-trivial quiz topic using Gemini REST API."""
         api_key = self.config.effective_api_key.get_secret_value()
         client = genai.Client(api_key=api_key)
 
-        prompt = f"Invent a viral, high-curiosity quiz topic in language: '{language}'."
+        prompt = (
+            f"Придумай вирусную, интригующую тему для викторины-лестницы на языке: '{language}'."
+        )
         if category_hint and category_hint.strip():
-            prompt += f" Theme/niche guidance: '{category_hint.strip()}'."
+            prompt += f" Направление/ниша: '{category_hint.strip()}'."
         else:
             prompt += (
-                " Focus on paradoxical biology, mind traps, strange laws, or unexpected trivia."
+                " Сделай упор на парадоксы анатомии, игры разума, законы или парадоксальные факты."
             )
+
+        raw_temp = temperature if temperature is not None else 1.05
+        eff_temp = min(2.0, max(0.0, float(raw_temp)))
 
         config = types.GenerateContentConfig(
             system_instruction=SINGLE_TOPIC_SYSTEM_PROMPT,
             response_mime_type="application/json",
             response_schema=TopicSuggestion,
-            temperature=1.05,
+            temperature=eff_temp,
         )
 
         limiter = get_gemini_rate_limiter()
@@ -294,6 +302,7 @@ class ScriptService:
         count: int = 10,
         category_hint: str | None = None,
         language: str = "ru",
+        temperature: float | None = None,
     ) -> BatchTopicList:
         """Suggest N distinct, non-overlapping viral topics in a SINGLE Gemini API request."""
         count = max(2, min(20, count))
@@ -301,17 +310,24 @@ class ScriptService:
         client = genai.Client(api_key=api_key)
 
         prompt = (
-            f"Generate exactly {count} unique, non-overlapping, high-curiosity quiz topics in language: '{language}'.\n"
-            f"Each topic must cover a different niche (e.g. biology paradoxes, weird history, tech illusions, nature, gaming)."
+            f"Сгенерируй ровно {count} уникальных, неповторяющихся тем для викторин "
+            f"на языке: '{language}'.\n"
+            f"Каждая тема должна относиться к совершенно другой нише (биология, история, гейминг)."
         )
         if category_hint and category_hint.strip():
-            prompt += f"\nOptional theme hint: '{category_hint.strip()}' (still keep individual topics varied)."
+            prompt += (
+                f"\nДополнительное пожелание по нише: '{category_hint.strip()}' "
+                f"(при этом темы между собой должны сильно различаться)."
+            )
+
+        raw_temp = temperature if temperature is not None else 1.05
+        eff_temp = min(2.0, max(0.0, float(raw_temp)))
 
         config = types.GenerateContentConfig(
             system_instruction=BATCH_TOPIC_SYSTEM_PROMPT,
             response_mime_type="application/json",
             response_schema=BatchTopicList,
-            temperature=1.05,
+            temperature=eff_temp,
         )
 
         limiter = get_gemini_rate_limiter()
@@ -357,17 +373,20 @@ class ScriptService:
         client = genai.Client(api_key=api_key)
 
         prompt = (
-            f"Audit and verify this 9-question trivia challenge in language '{language}'.\n"
-            f"Verify all questions are unambiguous and all facts are scientifically true.\n"
-            f"Debunk any myths and ensure strict character length limits.\n"
-            f"Input Challenge JSON:\n{challenge.model_dump_json()}"
+            f"Проведи строгий научный аудит этой викторины из 9 вопросов на языке '{language}'.\n"
+            f"Убедись, что все вопросы однозначны, а факты строго соответствуют науке и истории.\n"
+            f"Искорени любые мифы и обеспечь соблюдение лимитов длины.\n"
+            f"Исходный JSON викторины:\n{challenge.model_dump_json()}"
         )
+
+        raw_temp = self.config.verifier_temperature
+        eff_temp = min(2.0, max(0.0, float(raw_temp)))
 
         config = types.GenerateContentConfig(
             system_instruction=FACT_CHECK_SYSTEM_PROMPT,
             response_mime_type="application/json",
             response_schema=QuizChallenge,
-            temperature=self.config.verifier_temperature,
+            temperature=eff_temp,
         )
 
         loop = asyncio.get_running_loop()
@@ -508,11 +527,12 @@ class ScriptService:
             + "\n".join(requested_lines)
             + "\n\n"
             "Для каждого номера верни question_number, difficulty, tier_index, "
-            "punchy question_text (<=65 символов), correct_answer (<=25 символов), "
-            "fun_fact (<=90 символов), image_query (поисковый запрос картинки на английском)."
+            "question_text (<=65 символов), correct_answer (<=25 символов), "
+            "fun_fact (<=90 символов), image_query (поисковый запрос на английском)."
         )
 
-        eff_temp = temperature if temperature is not None else self.config.creative_temperature
+        raw_temp = temperature if temperature is not None else self.config.creative_temperature
+        eff_temp = min(2.0, max(0.0, float(raw_temp)))
 
         config = types.GenerateContentConfig(
             system_instruction=REGENERATE_QUESTIONS_SYSTEM_PROMPT,

@@ -55,8 +55,10 @@ class QuizQuestionsPreviewRequest(BaseModel):
     temperature: float | None = Field(
         default=None,
         ge=0.0,
-        le=2.0,
-        description="Sampling temperature for creative generation (0.2-1.2, default 0.95).",
+        le=3.0,
+        description=(
+            "Sampling temperature for creative generation (0.2-3.0, default 0.95, clamped to 2.0)."
+        ),
     )
     fact_check: bool | None = Field(
         default=None,
@@ -79,8 +81,10 @@ class QuizRegenerateSelectedRequest(BaseModel):
     temperature: float | None = Field(
         default=None,
         ge=0.0,
-        le=2.0,
-        description="Sampling temperature for creative generation (0.2-1.2, default 0.95).",
+        le=3.0,
+        description=(
+            "Sampling temperature for creative generation (0.2-3.0, default 0.95, clamped to 2.0)."
+        ),
     )
     fact_check: bool | None = Field(
         default=None,
@@ -96,8 +100,10 @@ class QuizGenerateRequest(BaseModel):
     temperature: float | None = Field(
         default=None,
         ge=0.0,
-        le=2.0,
-        description="Sampling temperature for creative generation (0.2-1.2, default 0.95).",
+        le=3.0,
+        description=(
+            "Sampling temperature for creative generation (0.2-3.0, default 0.95, clamped to 2.0)."
+        ),
     )
     fact_check: bool | None = Field(
         default=None,
@@ -349,7 +355,7 @@ async def regenerate_questions(request: QuizRegenerateSelectedRequest) -> QuizCh
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка перегенерации вопросов: {exc}",
-        )
+        ) from exc
 
 
 @router.post("/topics/suggest-single", response_model=TopicSuggestion)
@@ -360,6 +366,7 @@ async def suggest_single_topic(request: SingleTopicSuggestRequest) -> TopicSugge
         suggestion = await orchestrator.script_service.suggest_topic(
             category_hint=request.category_hint,
             language=request.language,
+            temperature=request.temperature,
         )
         return suggestion
     except Exception as exc:
@@ -377,13 +384,14 @@ async def suggest_single_topic(request: SingleTopicSuggestRequest) -> TopicSugge
 
 @router.post("/topics/suggest-batch", response_model=BatchTopicList)
 async def suggest_batch_topics(request: BatchTopicSuggestRequest) -> BatchTopicList:
-    """Suggest N diverse viral quiz topics in a SINGLE Gemini API request to conserve 15 RPM quota."""
+    """Suggest N diverse viral quiz topics in a SINGLE request to conserve quota."""
     orchestrator = QuizOrchestrator()
     try:
         batch = await orchestrator.script_service.suggest_batch_topics(
             count=request.count,
             category_hint=request.category_hint,
             language=request.language,
+            temperature=request.temperature,
         )
         return batch
     except Exception as exc:
@@ -648,7 +656,7 @@ class BatchInitRequest(BaseModel):
 
     topics: list[str] = Field(..., min_length=1, max_length=20, description="List of topics")
     language: Literal["ru", "en"] = Field(default="ru")
-    temperature: float | None = Field(default=None, ge=0.0, le=2.0)
+    temperature: float | None = Field(default=None, ge=0.0, le=3.0)
     fact_check: bool | None = Field(default=None)
 
 
@@ -742,10 +750,9 @@ async def download_batch_item_video(item_id: str) -> FileResponse:
 
     if not found_item:
         for it in manager.get_history():
-            if it.job_id == item_id:
-                if Path(it.video_path).exists():
-                    p = Path(it.video_path)
-                    return FileResponse(path=str(p), media_type="video/mp4", filename=p.name)
+            if it.job_id == item_id and Path(it.video_path).exists():
+                p = Path(it.video_path)
+                return FileResponse(path=str(p), media_type="video/mp4", filename=p.name)
 
     if (
         not found_item

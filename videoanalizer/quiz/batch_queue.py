@@ -1,14 +1,13 @@
-"""BatchQueueManager: Orchestrates progressive script generation, sequential rendering (concurrency=1), and generation history."""
+"""BatchQueueManager: Progressive script generation, sequential rendering, and history."""
 
 import asyncio
-from datetime import UTC, datetime
 import io
 import json
 import logging
-from pathlib import Path
 import uuid
 import zipfile
-from typing import Any
+from datetime import UTC, datetime
+from pathlib import Path
 
 from videoanalizer.quiz.config import QuizConfig, get_quiz_config
 from videoanalizer.quiz.models import (
@@ -19,7 +18,6 @@ from videoanalizer.quiz.models import (
     GenerationHistoryItem,
     QuizChallenge,
     QuizRetentionConfig,
-    RenderProfile,
 )
 from videoanalizer.quiz.orchestrator import QuizOrchestrator
 from videoanalizer.quiz.rate_limiter import get_gemini_rate_limiter
@@ -93,7 +91,7 @@ class BatchQueueManager:
         temperature: float | None = None,
         fact_check: bool | None = None,
     ) -> BatchQueueState:
-        """Initialize a new batch session and launch progressive paced background question generation."""
+        """Initialize a new batch session and launch progressive background generation."""
         async with self._lock:
             # Cancel any running background generator
             if self._generator_task and not self._generator_task.done():
@@ -290,7 +288,9 @@ class BatchQueueManager:
             async with self.render_semaphore:
                 try:
 
-                    def on_progress(pct: int, stage_name: str, item: BatchQueueItem = target_item) -> None:
+                    def on_progress(
+                        pct: int, stage_name: str, item: BatchQueueItem = target_item
+                    ) -> None:
                         item.progress_percent = max(10, min(100, pct))
                         item.stage = stage_name
 
