@@ -1,0 +1,111 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Quiz Topics Ideation API",
+    "version": "1.0.0",
+    "description": "API endpoints for single and batch AI topic ideation respecting 15 RPM limits."
+  },
+  "paths": {
+    "/api/v1/quiz/topics/suggest-single": {
+      "post": {
+        "summary": "Suggest a single viral quiz topic",
+        "operationId": "suggestSingleTopic",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category_hint": { "type": ["string", "null"], "maxLength": 60 },
+                  "language": { "type": "string", "enum": ["ru", "en"], "default": "ru" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Topic generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicSuggestion"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (15 RPM)"
+          },
+          "500": {
+            "description": "Internal error during generation"
+          }
+        }
+      }
+    },
+    "/api/v1/quiz/topics/suggest-batch": {
+      "post": {
+        "summary": "Suggest N diverse topics in a single API call",
+        "operationId": "suggestBatchTopics",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "count": { "type": "integer", "minimum": 2, "maximum": 20, "default": 10 },
+                  "category_hint": { "type": ["string", "null"], "maxLength": 60 },
+                  "language": { "type": "string", "enum": ["ru", "en"], "default": "ru" }
+                },
+                "required": ["count"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Batch of topics generated in 1 request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchTopicList"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (15 RPM)"
+          },
+          "500": {
+            "description": "Internal error during generation"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TopicSuggestion": {
+        "type": "object",
+        "properties": {
+          "topic": { "type": "string", "minLength": 3, "maxLength": 70 },
+          "category": { "type": "string", "minLength": 2, "maxLength": 40 },
+          "curiosity_hook": { "type": "string", "minLength": 5, "maxLength": 120 }
+        },
+        "required": ["topic", "category", "curiosity_hook"]
+      },
+      "BatchTopicList": {
+        "type": "object",
+        "properties": {
+          "topics": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TopicSuggestion" }
+          }
+        },
+        "required": ["topics"]
+      }
+    }
+  }
+}

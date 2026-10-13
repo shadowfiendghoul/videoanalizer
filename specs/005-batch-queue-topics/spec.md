@@ -10,6 +10,15 @@
 
 ---
 
+## Clarifications
+
+### Session 2026-10-13
+
+- Q: Какие квоты и ограничения накладывает модель Gemini? → A: Модель ограничена лимитом 15 RPM (запросов в минуту) и 250K TPM. Пакетная генерация должна строго соблюдать pacing (интервал >= 4.5-5.0 сек между вызовами API), объединять генерацию всех тем в 1 запрос и реализовывать автоматический retry с backoff на случай HTTP 429 (Resource Exhausted).
+- Q: Как генерировать вопросы для пачки видео с учетом лимита 15 RPM? → A: Прогрессивная фоновая генерация (Paced Background Pipeline): вопросы для видео 1 готовы сразу для начала проверки, а вопросы для последующих видео генерируются в фоновом потоке с интервалом 5 секунд, пока пользователь изучает и одобряет первое видео. Это гарантирует нулевое ожидание при переключении и 100% соблюдение лимита 15 RPM.
+
+---
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Single Video AI Topic Suggestion (Priority: P1)
@@ -30,23 +39,23 @@ As a content creator creating an individual quiz video, I want an AI button next
 
 ### User Story 2 - Batch Topic Ideation & Review (Priority: P2)
 
-As a creator planning a batch of multiple videos (e.g., 5 or 10 Shorts at once), I want to specify the desired quantity of videos and have the AI generate a list of distinct, diverse topics across different curiosity niches so that every video in the batch covers unique subject matter without repetition.
+As a creator planning a batch of multiple videos (e.g., 5 or 10 Shorts at once), I want to specify the desired quantity of videos and have the AI generate a list of distinct, diverse topics across different curiosity niches in a SINGLE API request so that 15 RPM quota is preserved and every video covers a unique niche.
 
 **Why this priority**: Essential preparatory step for multi-video generation; allows creators to oversee and adjust the lineup before generating 9-question scripts.
 
-**Independent Test**: Switch to Batch Mode, enter a quantity (e.g., 5), click "Сгенерировать темы для пачки", verify 5 distinct non-overlapping topics are produced, and edit or regenerate any individual topic in the list.
+**Independent Test**: Switch to Batch Mode, enter a quantity (e.g., 5), click "Сгенерировать темы для пачки", verify 5 distinct non-overlapping topics are produced in a single API call, and edit or regenerate any individual topic in the list.
 
 **Acceptance Scenarios**:
 
-1. **Given** the user enters a batch size N (between 2 and 20), **When** the user clicks "Сгенерировать темы", **Then** the system displays a list of N numbered topics covering diverse categories (e.g., gaming paradoxes, world mysteries, human body, bizarre science, inventions).
+1. **Given** the user enters a batch size N (between 2 and 20), **When** the user clicks "Сгенерировать темы", **Then** the system issues a single structured prompt and displays a list of N numbered topics covering diverse categories (e.g., gaming paradoxes, world mysteries, human body, bizarre science, inventions).
 2. **Given** the generated batch list of topics, **When** the user notices a topic they want to adjust, **Then** the user can edit the topic text directly in place or click a single-item refresh button to replace that specific topic with a new one.
-3. **Given** the user is satisfied with the topic list, **When** the user confirms the batch, **Then** the system initiates batch question generation and transitions into the Sequential Question Approval flow.
+3. **Given** the user is satisfied with the topic list, **When** the user confirms the batch, **Then** the system initiates progressive rate-limited question generation and transitions into the Sequential Question Approval flow.
 
 ---
 
 ### User Story 3 - Sequential Multi-Video Question Approval Flow (Priority: P1)
 
-As a creator generating a batch of videos, I want to review, edit, and approve the 9 trivia questions for each video sequentially (Video 1 of N, Video 2 of N, etc.) before final video rendering so that I maintain 100% editorial quality control over all scripts in the queue.
+As a creator generating a batch of videos, I want to review, edit, and approve the 9 trivia questions for each video sequentially (Video 1 of N, Video 2 of N, etc.) while background question generation paces itself within the 15 RPM ceiling so that I maintain 100% editorial quality control without hitting rate limits.
 
 **Why this priority**: Fulfills the core user requirement ("сначала по очереди одобряешь вопросы для каждого"); prevents rendering inaccurate or low-quality scripts without user consent.
 
@@ -54,7 +63,7 @@ As a creator generating a batch of videos, I want to review, edit, and approve t
 
 **Acceptance Scenarios**:
 
-1. **Given** a batch of N videos has its questions generated, **When** the review wizard opens, **Then** it clearly shows progress (e.g., "Видео 1 из N: [Название темы]") and displays all 9 questions with difficulty tiers, answers, visual clues, and selection checkboxes.
+1. **Given** a batch of N videos has its questions generated progressively, **When** the review wizard opens, **Then** it clearly shows progress (e.g., "Видео 1 из N: [Название темы]") and displays all 9 questions with difficulty tiers, answers, visual clues, and selection checkboxes.
 2. **Given** the current video card in the approval wizard, **When** the user makes inline edits or selectively regenerates questions, **Then** all adjustments are preserved for that specific video.
 3. **Given** the user clicks "Одобрить и далее" on item k (1 <= k < N), **Then** the wizard saves item k's approved state and smoothly loads item k+1 for review.
 4. **Given** the user wants to jump back or forward, **When** using the step navigation (e.g. tabs or step indicator 1..N), **Then** the user can inspect and re-edit any previously approved video in the active batch.
@@ -82,8 +91,9 @@ As a content creator who has approved a batch of videos, I want the system to re
 
 ### Edge Cases
 
-- **User enters invalid batch size**: If the user inputs 0, negative, or more than 25 videos, the system enforces boundary limits (min 1, max 20) with friendly UI feedback.
-- **Network interruption during AI topic generation**: If Gemini experiences a transient 503 or timeout while generating 10 topics, the system uses exponential retry and reports a clear error if unresolvable, without losing user settings.
+- **Strict 15 RPM Rate Limit Throttling**: When generating questions for a batch of 10 videos, system introduces an intentional delay (>= 4.5–5.0 seconds between consecutive Gemini calls) ensuring the request rate never exceeds 12 requests/minute.
+- **HTTP 429 (Resource Exhausted) Handling**: If Gemini reports code 429, the system triggers exponential backoff (e.g. wait 10s, 20s) and displays an informative banner: "Ожидание квоты нейросети (15 RPM)...", resuming automatically without loss of progress.
+- **User enters invalid batch size**: If the user inputs 0, negative, or more than 20 videos, the system enforces boundary limits (min 2, max 20) with friendly UI feedback.
 - **User abandons batch halfway through review**: If the user closes or refreshes the page during the review step (e.g. at video 4 of 10), the draft batch state is preserved in local session storage so the user can resume review without re-generating from scratch.
 - **Queue cancellation**: The user can cancel remaining queued jobs or remove a specific video from the queue before its rendering starts.
 - **System crash / server restart during queue**: Jobs that were waiting in queue remain recorded with their approved scripts so the user can restart rendering with a single click.
@@ -97,7 +107,7 @@ As a content creator who has approved a batch of videos, I want the system to re
 - **FR-001**: System MUST provide a single-click "🎲 Придумать тему" action in the single-video creation form that generates an engaging, viral quiz topic via Gemini AI.
 - **FR-002**: System MUST allow creators to specify an optional topic theme/category hint (or leave it blank for maximum diversity) when requesting AI topic suggestions.
 - **FR-003**: System MUST provide a "Пакетная генерация (Очередь)" toggle or mode allowing users to specify a batch count between 2 and 20 videos.
-- **FR-004**: System MUST generate N unique, non-overlapping, high-curiosity topics in a single AI operation when initiating a batch.
+- **FR-004**: System MUST generate N unique, non-overlapping, high-curiosity topics in a SINGLE Gemini API request when initiating a batch, preventing unnecessary RPM consumption.
 - **FR-005**: System MUST allow users to view, edit, or regenerate any topic in the generated batch list before proceeding to question generation.
 - **FR-006**: System MUST generate 9-question 3-tier trivia challenges for all items in the batch according to the established viral progression rules (Levels 1–3).
 - **FR-007**: System MUST provide a sequential review wizard ("Видео 1 из N", "Видео 2 из N") allowing users to approve each video's questions in turn.
@@ -114,6 +124,8 @@ As a content creator who has approved a batch of videos, I want the system to re
 - **FR-018**: System MUST isolate failures such that a failure in video k does not halt the rendering of remaining videos in the queue.
 - **FR-019**: System MUST allow users to cancel or clear remaining items in the queue at any time.
 - **FR-020**: System MUST preserve batch settings (voice, music, uniquifier, render profile) uniformly across all items in the batch unless individually overridden.
+- **FR-021**: System MUST implement strict rate-limiting / request pacing (<= 12 RPM, minimum 4.5-5.0 seconds delay between API calls) when generating batch questions to prevent exceeding the provider's 15 RPM quota.
+- **FR-022**: System MUST implement exponential backoff retry on HTTP 429 (Resource Exhausted) errors, gracefully holding the queue without crashing or discarding batch state.
 
 ---
 
@@ -132,7 +144,7 @@ As a content creator who has approved a batch of videos, I want the system to re
   - `video_path`: Local path to completed MP4.
   - `download_url`: API URL for downloading the MP4.
   - `error_message`: Optional error details if failed.
-- **BatchQueue**: The orchestrator queue manager maintaining the list of `BatchQueueItem` records, active rendering lock, and execution state.
+- **BatchQueue**: The orchestrator queue manager maintaining the list of `BatchQueueItem` records, active rendering lock, rate-limiting queue, and execution state.
 
 ---
 
@@ -141,17 +153,18 @@ As a content creator who has approved a batch of videos, I want the system to re
 ### Measurable Outcomes
 
 - **SC-001**: Single topic generation completes and populates the input in under 3.5 seconds from user click.
-- **SC-002**: Batch topic generation creates 10 distinct, non-overlapping topics across diverse categories in under 6.0 seconds.
-- **SC-003**: 100% of approved batch items are rendered without memory exhaustion or crash on host hardware due to strict single-concurrency queue enforcement.
-- **SC-004**: Users can review and approve a 10-video batch in under 5 minutes through the streamlined step wizard.
-- **SC-005**: If one item in a 10-video batch encounters an asset or encoding failure, 9 out of 10 remaining videos continue and finish successfully without queue abort.
-- **SC-006**: All completed batch videos are accessible for preview and download from a single persistent queue panel.
+- **SC-002**: Batch topic generation creates up to 20 distinct topics in a SINGLE API request within 6.0 seconds, consuming exactly 1 request against the 15 RPM quota.
+- **SC-003**: 100% of batch AI requests remain within the 15 RPM limit without unhandled 429 errors due to automated pacing (<= 12 RPM).
+- **SC-004**: 100% of approved batch items are rendered without memory exhaustion or crash on host hardware due to strict single-concurrency queue enforcement.
+- **SC-005**: Users can review and approve a 10-video batch in under 5 minutes through the streamlined step wizard.
+- **SC-006**: If one item in a 10-video batch encounters an asset or encoding failure, 9 out of 10 remaining videos continue and finish successfully without queue abort.
+- **SC-007**: All completed batch videos are accessible for preview and download from a single persistent queue panel.
 
 ---
 
 ## Assumptions
 
 - **Concurrency**: Remotion video encoding is CPU- and GPU-intensive; sequential (concurrency = 1) rendering is optimal for desktop consumer hardware to ensure stability and zero crashes.
+- **AI Rate Limits**: The configured Gemini model (`Gemini 2.5 Flash Lite` / `Gemini 3.5 Flash Lite`) enforces a strict quota of 15 RPM and 250K TPM. All batch operations must respect this through single-call batch ideation and progressive 5-second pacing for script generation.
 - **Voice and Style Consistency**: By default, all videos in a batch share the user's selected voice, sound effects volume, and render profile, while background videos are dynamically varied per video if "Случайный фон" is selected.
-- **Persistence**: Batch and queue state will be maintained in-memory on the backend server with local session persistence in the web browser, so page refreshes do not disrupt ongoing renders or lose completed download links.
-- **AI Model**: Topic ideation and question generation utilize Google Gemini REST API (`gemini-2.5-flash` or configured default) with structured JSON responses.
+- **Persistence**: Batch and queue state will be maintained in-memory on the backend server with local session persistence in the web browser, so page refreshes do not disrupt ongoing renders or lose completed download links.\n
