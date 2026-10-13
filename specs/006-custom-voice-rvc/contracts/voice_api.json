@@ -1,0 +1,149 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "VideoAnalyzer Voice Pipeline & RVC Cloning API",
+    "version": "1.0.0",
+    "description": "API contracts for speech synthesis, voice cloning via RVC, and model registry"
+  },
+  "paths": {
+    "/api/v1/voice/models": {
+      "get": {
+        "summary": "List available RVC voice models",
+        "description": "Scans assets/models/rvc/ directory for .pth and .index checkpoints",
+        "responses": {
+          "200": {
+            "description": "List of discovered voice models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RvcModelListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/voice/preview": {
+      "post": {
+        "summary": "Synthesize a voice preview snippet",
+        "description": "Generates a 3-5 second voice sample using Edge-TTS, RVC, or Offline Fallback",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoicePreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Voice sample generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoicePreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid voice configuration or model not found"
+          }
+        }
+      }
+    },
+    "/api/v1/voice/preview/audio/{preview_id}": {
+      "get": {
+        "summary": "Stream preview audio file",
+        "parameters": [
+          {
+            "name": "preview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audio stream (WAV or MP3)",
+            "content": {
+              "audio/wav": {},
+              "audio/mpeg": {}
+            }
+          },
+          "404": {
+            "description": "Preview file not found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "VoiceMode": {
+        "type": "string",
+        "enum": ["edge_tts", "custom_rvc", "offline_fallback"]
+      },
+      "VoiceConfig": {
+        "type": "object",
+        "properties": {
+          "voice_mode": { "$ref": "#/components/schemas/VoiceMode" },
+          "base_voice": { "type": "string", "default": "ru-RU-DmitryNeural" },
+          "rvc_model_path": { "type": ["string", "null"], "default": null },
+          "rvc_index_path": { "type": ["string", "null"], "default": null },
+          "pitch_shift": { "type": "integer", "minimum": -12, "maximum": 12, "default": 0 },
+          "speech_rate": { "type": "number", "minimum": 0.8, "maximum": 1.5, "default": 1.15 },
+          "pitch_method": { "type": "string", "enum": ["rmvpe", "pm", "harvest"], "default": "rmvpe" },
+          "device": { "type": "string", "enum": ["auto", "cuda", "cpu"], "default": "auto" }
+        },
+        "required": ["voice_mode"]
+      },
+      "RvcModelInfo": {
+        "type": "object",
+        "properties": {
+          "model_id": { "type": "string" },
+          "name": { "type": "string" },
+          "file_path": { "type": "string" },
+          "index_path": { "type": ["string", "null"] },
+          "file_size_bytes": { "type": "integer" },
+          "is_valid": { "type": "boolean" }
+        },
+        "required": ["model_id", "name", "file_path", "file_size_bytes", "is_valid"]
+      },
+      "RvcModelListResponse": {
+        "type": "object",
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RvcModelInfo" }
+          },
+          "active_model_id": { "type": ["string", "null"] },
+          "total_count": { "type": "integer" }
+        },
+        "required": ["models", "total_count"]
+      },
+      "VoicePreviewRequest": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string", "maxLength": 200 },
+          "config": { "$ref": "#/components/schemas/VoiceConfig" }
+        },
+        "required": ["config"]
+      },
+      "VoicePreviewResponse": {
+        "type": "object",
+        "properties": {
+          "audio_url": { "type": "string" },
+          "duration_ms": { "type": "integer" },
+          "voice_mode_used": { "$ref": "#/components/schemas/VoiceMode" }
+        },
+        "required": ["audio_url", "duration_ms", "voice_mode_used"]
+      }
+    }
+  }
+}
