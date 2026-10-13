@@ -693,6 +693,13 @@ class VoiceConfig(BaseModel):
         default=VoiceMode.EDGE_TTS,
         description="Active synthesis mode: edge_tts, custom_rvc, qwen3_rvc, or offline_fallback",
     )
+    allow_fallback: bool = Field(
+        default=False,
+        description=(
+            "Whether to allow degrading to a different voice mode on failure "
+            "(default: False to guarantee 100% session voice consistency)."
+        ),
+    )
     base_voice: str = Field(
         default="ru-RU-DmitryNeural",
         description="Base neural speaker for pristine diction and word timings",

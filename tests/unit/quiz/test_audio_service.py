@@ -157,12 +157,41 @@ async def test_synthesize_speech_offline_fallback_on_error(tmp_path: Path) -> No
             text="Тестовый вопрос номер один?",
             voice="ru-RU-SvetlanaNeural",
             output_path=test_out,
+            allow_fallback=True,
         )
 
         assert test_out.exists()
         assert dur_ms > 0
         assert len(words) == 4
         assert words[0].word == "Тестовый"
+
+
+@pytest.mark.asyncio
+async def test_synthesize_speech_strict_consistency_raises_without_fallback(
+    tmp_path: Path,
+) -> None:
+    """Verify that when allow_fallback=False (default), failure aborts to prevent robot voice."""
+    import edge_tts.exceptions
+
+    service = AudioService()
+    test_out = tmp_path / "strict_speech.mp3"
+
+    with (
+        patch(
+            "edge_tts.Communicate.stream",
+            side_effect=edge_tts.exceptions.NoAudioReceived("No audio received"),
+        ),
+        pytest.raises(
+            RuntimeError,
+            match="Mid-session degradation to offline robotic voice is disabled",
+        ),
+    ):
+        await service.synthesize_speech_with_cues(
+            text="Строгий тест без робота",
+            voice="ru-RU-SvetlanaNeural",
+            output_path=test_out,
+            allow_fallback=False,
+        )
 
 
 @pytest.mark.asyncio

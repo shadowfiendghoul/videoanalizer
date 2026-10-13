@@ -301,10 +301,11 @@ class AudioService:
         voice: str,
         output_path: Path,
         voice_config: VoiceConfig | None = None,
+        allow_fallback: bool = False,
     ) -> tuple[int, list[WordCue]]:
         """Synthesize text via edge-tts or VoiceService, capturing audio and word-level timestamps.
 
-        Includes multiple fallback voices, exponential retry backoff, and an offline TTS fallback.
+        Includes multiple fallback voices, exponential retry backoff, and strict voice consistency.
         """
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -380,7 +381,7 @@ class AudioService:
         tts_text = " ".join(tts_text.split())
 
         for v in voices_to_try:
-            max_attempts = 1 if "dmitry" in v.lower() and len(voices_to_try) > 1 else 2
+            max_attempts = 2 if len(voices_to_try) > 1 else 3
             for attempt in range(max_attempts):
                 try:
                     communicate = edge_tts.Communicate(tts_text, v, rate=rate_arg)
@@ -410,30 +411,43 @@ class AudioService:
                         break
                 except Exception as e:
                     logger.info(
-                        "Voice %s attempt %d/%d note for '%s': %s (trying fallback)",
+                        "Voice %s attempt %d/%d note for '%s': %s (retrying)",
                         v,
                         attempt + 1,
                         max_attempts,
                         text[:30],
                         e,
                     )
-                    await asyncio.sleep(0.2 * (attempt + 1))
+                    await asyncio.sleep(0.3 * (attempt + 1))
             if synthesized_successfully:
                 break
 
         if not synthesized_successfully or not audio_bytes:
-            logger.warning(
-                "All edge-tts voices failed for '%s'. Engaging offline TTS fallback.",
-                text[:40],
+            effective_allow_fallback = (
+                voice_config.allow_fallback if voice_config is not None else allow_fallback
             )
-            self._synthesize_offline_fallback(text, output_path, voice=voice)
-            duration_ms = probe_audio_duration_ms(output_path)
-            tokens = text.split()
-            if tokens and duration_ms > 0:
-                step = duration_ms // len(tokens)
-                for i, tok in enumerate(tokens):
-                    words.append(WordCue(word=tok, start_ms=i * step, end_ms=(i + 1) * step))
-            return duration_ms, words
+            is_offline_voice = any(
+                term in voice.lower() for term in ("sapi", "offline", "irina")
+            )
+            if effective_allow_fallback or is_offline_voice:
+                logger.warning(
+                    "All edge-tts voices failed for '%s'. Engaging offline TTS fallback.",
+                    text[:40],
+                )
+                self._synthesize_offline_fallback(text, output_path, voice=voice)
+                duration_ms = probe_audio_duration_ms(output_path)
+                tokens = text.split()
+                if tokens and duration_ms > 0:
+                    step = duration_ms // len(tokens)
+                    for i, tok in enumerate(tokens):
+                        words.append(WordCue(word=tok, start_ms=i * step, end_ms=(i + 1) * step))
+                return duration_ms, words
+            else:
+                raise RuntimeError(
+                    f"Speech synthesis failed for voice '{voice}' on cue text: '{text[:50]}...'. "
+                    "Mid-session degradation to offline robotic voice is disabled "
+                    "to guarantee voice consistency."
+                )
 
         with open(output_path, "wb") as f:
             f.write(audio_bytes)

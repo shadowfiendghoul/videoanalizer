@@ -138,10 +138,11 @@ async def test_voice_service_degradation_ladder(tmp_path: Path) -> None:
     svc = VoiceService()
     out_file = tmp_path / "test_degrade.wav"
 
-    # 1. Custom RVC fails because model is missing -> degrades to Edge-TTS
+    # 1. Custom RVC fails because model is missing -> degrades to Edge-TTS when allow_fallback=True
     config_rvc = VoiceConfig(
         voice_mode=VoiceMode.CUSTOM_RVC,
         rvc_model_path="non_existent_voice.pth",
+        allow_fallback=True,
     )
 
     mock_stream = MockAsyncStream(["тест"])
@@ -161,8 +162,8 @@ async def test_voice_service_degradation_ladder(tmp_path: Path) -> None:
         # Degraded to EDGE_TTS
         assert result.voice_mode_used == VoiceMode.EDGE_TTS
 
-    # 2. Edge-TTS network exception -> degrades to OFFLINE_FALLBACK
-    config_edge = VoiceConfig(voice_mode=VoiceMode.EDGE_TTS)
+    # 2. Edge-TTS network exception -> degrades to OFFLINE_FALLBACK when allow_fallback=True
+    config_edge = VoiceConfig(voice_mode=VoiceMode.EDGE_TTS, allow_fallback=True)
     with patch("edge_tts.Communicate", side_effect=ConnectionError("Network down")), patch(
         "videoanalizer.quiz.voice_service.probe_audio_duration_ms", return_value=1000
     ):
@@ -174,6 +175,26 @@ async def test_voice_service_degradation_ladder(tmp_path: Path) -> None:
 
         assert result.voice_mode_used == VoiceMode.OFFLINE_FALLBACK
         assert len(result.words) == 4
+
+
+@pytest.mark.asyncio
+async def test_voice_service_strict_consistency_disallows_offline_fallback(
+    tmp_path: Path,
+) -> None:
+    """Verify that with allow_fallback=False (default), errors raise instead of robot voice."""
+    svc = VoiceService()
+    out_file = tmp_path / "test_strict.wav"
+    config_edge = VoiceConfig(voice_mode=VoiceMode.EDGE_TTS, allow_fallback=False)
+
+    with (
+        patch("edge_tts.Communicate", side_effect=ConnectionError("Network down")),
+        pytest.raises(RuntimeError),
+    ):
+        await svc.synthesize(
+            text="строгий режим без робота",
+            output_path=out_file,
+            config=config_edge,
+        )
 
 
 def test_compress_speech_pauses() -> None:

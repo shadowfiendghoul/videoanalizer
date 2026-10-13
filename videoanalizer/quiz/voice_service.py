@@ -203,7 +203,19 @@ class VoiceService:
 
         mode = cfg.voice_mode
 
-        # 0. Tier 0: Qwen3-TTS + RVC voice conversion
+        if not cfg.allow_fallback:
+            if mode == VoiceMode.QWEN3_RVC:
+                return await self._synthesize_qwen3_rvc(text, target_path, cfg)
+            elif mode == VoiceMode.CUSTOM_RVC:
+                return await self._synthesize_rvc(text, target_path, cfg)
+            elif mode == VoiceMode.EDGE_TTS:
+                return await self._synthesize_edge_tts(text, target_path, cfg)
+            elif mode == VoiceMode.OFFLINE_FALLBACK:
+                return self._synthesize_offline_fallback(text, target_path, cfg)
+            else:
+                raise ValueError(f"Unknown voice mode: {mode}")
+
+        # 0. Tier 0: Qwen3-TTS + RVC voice conversion (degradation ladder enabled)
         if mode == VoiceMode.QWEN3_RVC:
             try:
                 return await self._synthesize_qwen3_rvc(text, target_path, cfg)
@@ -383,6 +395,28 @@ class VoiceService:
                 pitch_shift=cfg.pitch_shift,
                 index_path=cfg.rvc_index_path,
             )
+        except Exception as rvc_err:
+            if not cfg.allow_fallback:
+                logger.warning(
+                    "RVC voice conversion failed in strict custom_rvc mode (%s). "
+                    "Preserving intermediate base audio.",
+                    rvc_err,
+                )
+                if output_path.suffix.lower() == intermediate_wav.suffix.lower():
+                    shutil.copy2(intermediate_wav, output_path)
+                else:
+                    cmd = [
+                        self._ffmpeg_bin,
+                        "-y",
+                        "-i",
+                        str(intermediate_wav),
+                        "-c:a",
+                        "libmp3lame" if output_path.suffix.lower() == ".mp3" else "pcm_s16le",
+                        str(output_path),
+                    ]
+                    subprocess.run(cmd, check=True, capture_output=True)  # noqa: S603
+            else:
+                raise
         finally:
             if intermediate_wav.exists() and intermediate_wav != output_path:
                 intermediate_wav.unlink(missing_ok=True)
@@ -428,14 +462,32 @@ class VoiceService:
             )
 
         def _run_qwen3() -> tuple[np.ndarray, int]:
-            wavs, sr = model.generate_voice_clone(
-                text=clean_text,
-                language="russian",
-                ref_audio=str(ref_path),
-                x_vector_only_mode=True,
-                do_sample=False,
-            )
-            return wavs[0], sr
+            for attempt in range(3):
+                try:
+                    wavs, sr = model.generate_voice_clone(
+                        text=clean_text,
+                        language="russian",
+                        ref_audio=str(ref_path),
+                        x_vector_only_mode=True,
+                        do_sample=False,
+                    )
+                    return wavs[0], sr
+                except Exception as e:
+                    if attempt == 2:
+                        raise
+                    try:
+                        import torch
+
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                    except ImportError:
+                        pass
+                    logger.warning(
+                        "Qwen3 voice clone attempt %d failed (%s). Retrying...",
+                        attempt + 1,
+                        e,
+                    )
+            raise RuntimeError(f"Failed to generate Qwen3 voice clone for '{clean_text}'")
 
         audio_raw, sr = await asyncio.to_thread(_run_qwen3)
 
@@ -484,6 +536,25 @@ class VoiceService:
                 pitch_shift=cfg.pitch_shift,
                 index_path=index_path,
             )
+        except Exception as rvc_err:
+            logger.warning(
+                "RVC voice conversion failed in Qwen3-RVC mode (%s). "
+                "Using direct Qwen3 cloned audio to maintain Mellstroy speaker consistency.",
+                rvc_err,
+            )
+            if output_path.suffix.lower() == intermediate_wav.suffix.lower():
+                shutil.copy2(intermediate_wav, output_path)
+            else:
+                cmd = [
+                    self._ffmpeg_bin,
+                    "-y",
+                    "-i",
+                    str(intermediate_wav),
+                    "-c:a",
+                    "libmp3lame" if output_path.suffix.lower() == ".mp3" else "pcm_s16le",
+                    str(output_path),
+                ]
+                subprocess.run(cmd, check=True, capture_output=True)  # noqa: S603
         finally:
             if intermediate_wav.exists() and intermediate_wav != output_path:
                 intermediate_wav.unlink(missing_ok=True)

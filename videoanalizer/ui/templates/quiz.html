@@ -317,15 +317,18 @@
               </div>
 
               <!-- Voice Pipeline Mode Selector -->
-              <div class="grid grid-cols-3 gap-2">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button type="button" id="btn-mode-edge" onclick="setVoiceMode('edge_tts')" class="py-1.5 px-2 rounded-lg text-xs font-medium border border-purple-500 bg-purple-500/20 text-purple-200 transition-all text-center">
                   ⚡ Edge-TTS
                 </button>
+                <button type="button" id="btn-mode-qwen3" onclick="setVoiceMode('qwen3_rvc')" class="py-1.5 px-2 rounded-lg text-xs font-medium border border-white/10 bg-black/40 text-slate-400 hover:text-white transition-all text-center">
+                  🔥 Qwen3 + RVC
+                </button>
                 <button type="button" id="btn-mode-rvc" onclick="setVoiceMode('custom_rvc')" class="py-1.5 px-2 rounded-lg text-xs font-medium border border-white/10 bg-black/40 text-slate-400 hover:text-white transition-all text-center">
-                  🎭 RVC Клонирование
+                  🎭 RVC Клон
                 </button>
                 <button type="button" id="btn-mode-offline" onclick="setVoiceMode('offline_fallback')" class="py-1.5 px-2 rounded-lg text-xs font-medium border border-white/10 bg-black/40 text-slate-400 hover:text-white transition-all text-center">
-                  🛡️ Офлайн резерв
+                  🛡️ Офлайн
                 </button>
               </div>
 
@@ -1594,16 +1597,22 @@
       const rvcPanel = document.getElementById('rvc-controls-panel');
 
       const btnEdge = document.getElementById('btn-mode-edge');
+      const btnQwen = document.getElementById('btn-mode-qwen3');
       const btnRvc = document.getElementById('btn-mode-rvc');
       const btnOff = document.getElementById('btn-mode-offline');
 
-      [btnEdge, btnRvc, btnOff].forEach(b => {
+      [btnEdge, btnQwen, btnRvc, btnOff].forEach(b => {
         if (b) {
           b.className = 'py-1.5 px-2 rounded-lg text-xs font-medium border border-white/10 bg-black/40 text-slate-400 hover:text-white transition-all text-center';
         }
       });
 
-      if (mode === 'custom_rvc') {
+      if (mode === 'qwen3_rvc') {
+        if (badge) badge.textContent = 'Режим: 🔥 Qwen3 + RVC (Mellstroy)';
+        if (btnQwen) btnQwen.className = 'py-1.5 px-2 rounded-lg text-xs font-medium border border-purple-500 bg-purple-500/20 text-purple-200 transition-all text-center';
+        if (rvcPanel) rvcPanel.classList.remove('hidden');
+        loadRvcModels();
+      } else if (mode === 'custom_rvc') {
         if (badge) badge.textContent = 'Режим: RVC Клонирование';
         if (btnRvc) btnRvc.className = 'py-1.5 px-2 rounded-lg text-xs font-medium border border-purple-500 bg-purple-500/20 text-purple-200 transition-all text-center';
         if (rvcPanel) rvcPanel.classList.remove('hidden');
@@ -1657,11 +1666,12 @@
       return {
         voice_mode: mode,
         base_voice: baseVoice,
-        rvc_model_path: mode === 'custom_rvc' ? rvcModel : null,
+        rvc_model_path: (mode === 'custom_rvc' || mode === 'qwen3_rvc') ? (rvcModel || 'Mellstroy-strimer.pth') : null,
         pitch_shift: pitchShift,
         speech_rate: speechRate,
         pitch_method: 'rmvpe',
-        device: 'auto'
+        device: 'auto',
+        allow_fallback: false
       };
     }
 
