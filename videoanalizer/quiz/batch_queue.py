@@ -327,6 +327,7 @@ class BatchQueueManager:
     async def _render_worker_loop(self, request: BatchRenderStartRequest) -> None:
         """FIFO Sequential Remotion Render worker with concurrency = 1 (Semaphore=1)."""
         logger.info("Batch render worker started for batch '%s'", request.batch_id)
+        used_batch_backgrounds: list[Path] = []
 
         while True:
             if not self.current_state:
@@ -370,15 +371,15 @@ class BatchQueueManager:
                         stress_timer_enabled=request.stress_timer_enabled,
                     )
 
-                    # Dynamic background per video if "random"
-                    bg_video = (
-                        self.orchestrator.select_background("random")
-                        if (
-                            not request.background_video
-                            or request.background_video.lower() == "random"
+                    # Dynamic background per video if "random" without repetition
+                    if not request.background_video or request.background_video.lower() == "random":
+                        bg_video = self.orchestrator.select_background(
+                            "random", exclude_paths=used_batch_backgrounds
                         )
-                        else request.background_video
-                    )
+                        if isinstance(bg_video, Path):
+                            used_batch_backgrounds.append(bg_video)
+                    else:
+                        bg_video = request.background_video
 
                     output_path = await self.orchestrator.generate(
                         topic=next_item.topic,

@@ -239,6 +239,16 @@ def test_orchestrator_select_background(tmp_path: Path) -> None:
     default_bg = orchestrator.select_background(None)
     assert default_bg in (bg1, bg2)
 
+    # 5. Consecutive random selections avoid repeating the exact same background
+    QuizOrchestrator._recent_random_backgrounds.clear()
+    first_choice = orchestrator.select_background("random")
+    second_choice = orchestrator.select_background("random")
+    assert first_choice != second_choice
+
+    # 6. Respects explicit exclude_paths
+    excluded = orchestrator.select_background("random", exclude_paths=[bg1])
+    assert excluded == bg2
+
 
 @pytest.mark.asyncio
 async def test_orchestrator_generate_with_banner(tmp_path: Path) -> None:
@@ -600,6 +610,12 @@ def test_orchestrator_chains_random_backgrounds_when_short(tmp_path: Path) -> No
 
     def fake_subprocess_run(cmd: list[str], **kwargs: object) -> MagicMock:
         captured_cmds.append(cmd)
+        concat_txt = tmp_path / "public" / "_concat_background.txt"
+        if concat_txt.exists():
+            content = concat_txt.read_text(encoding="utf-8")
+            lines = [line.strip() for line in content.splitlines() if line.strip()]
+            assert len(lines) == 3
+            assert len(set(lines)) == 3  # Each candidate clip is used once without repeating
         # Create output file so it looks like ffmpeg succeeded
         target_bg.write_bytes(b"stitched video")
         return MagicMock(returncode=0)

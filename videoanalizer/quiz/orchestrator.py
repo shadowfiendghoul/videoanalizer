@@ -47,13 +47,19 @@ def get_render_semaphore() -> asyncio.Semaphore:
 class QuizOrchestrator:
     """Orchestrator for the complete vertical quiz short generation pipeline."""
 
+    _recent_random_backgrounds: list[Path] = []
+
     def __init__(self, config: QuizConfig | None = None) -> None:
         self.config = config or get_quiz_config()
         self.script_service = ScriptService(config=self.config)
         self.audio_service = AudioService(config=self.config)
         self.image_service = ImageService()
 
-    def select_background(self, explicit_path: Path | str | None = None) -> Path:
+    def select_background(
+        self,
+        explicit_path: Path | str | None = None,
+        exclude_paths: list[Path | str] | None = None,
+    ) -> Path:
         """Select a vertical background video, either specific or randomly chosen."""
         if explicit_path and str(explicit_path).strip().lower() != "random":
             p = Path(explicit_path)
@@ -71,10 +77,50 @@ class QuizOrchestrator:
         if bg_dir.exists():
             mp4_candidates = [
                 f for f in bg_dir.glob("*.mp4")
-                if not f.name.startswith(".")
+                if not f.name.startswith(".") and f.is_file()
             ]
             if mp4_candidates:
-                return secrets.choice(mp4_candidates)
+                if len(mp4_candidates) == 1:
+                    return mp4_candidates[0]
+
+                excluded_set: set[Path] = set()
+                if exclude_paths:
+                    for ep in exclude_paths:
+                        p_ep = Path(ep)
+                        excluded_set.add(p_ep)
+                        excluded_set.add(bg_dir / p_ep.name)
+
+                # Prioritize candidates not excluded and not recently used
+                recent = QuizOrchestrator._recent_random_backgrounds
+                fresh_candidates = [
+                    f for f in mp4_candidates
+                    if f not in excluded_set and f not in recent
+                ]
+
+                # If all available were recently used, relax recent history
+                if not fresh_candidates:
+                    fresh_candidates = [
+                        f for f in mp4_candidates
+                        if f not in excluded_set
+                    ]
+
+                if not fresh_candidates:
+                    fresh_candidates = mp4_candidates
+
+                # Avoid repeating the immediate last picked background if multiple choices exist
+                if len(fresh_candidates) > 1 and QuizOrchestrator._recent_random_backgrounds:
+                    last_used = QuizOrchestrator._recent_random_backgrounds[-1]
+                    non_last = [f for f in fresh_candidates if f != last_used]
+                    if non_last:
+                        fresh_candidates = non_last
+
+                picked = secrets.choice(fresh_candidates)
+                QuizOrchestrator._recent_random_backgrounds.append(picked)
+                max_history = max(1, len(mp4_candidates) - 1)
+                while len(QuizOrchestrator._recent_random_backgrounds) > max_history:
+                    QuizOrchestrator._recent_random_backgrounds.pop(0)
+
+                return picked
 
         default_bg = bg_dir / "default_bg.mp4"
         if default_bg.exists():
@@ -171,19 +217,28 @@ class QuizOrchestrator:
 
         playlist: list[Path] = [bg_source]
         accumulated_sec = dur_initial
+        used_in_video: set[Path] = {bg_source}
         last_picked = bg_source
 
         while accumulated_sec < duration_sec and len(playlist) < 60:
-            other_candidates = [p for p in all_candidates if p != last_picked]
-            next_bg = (
-                secrets.choice(other_candidates)
-                if other_candidates
-                else secrets.choice(all_candidates)
-            )
+            # First priority: pick candidates that have NOT been used in this video yet
+            unused_candidates = [p for p in all_candidates if p not in used_in_video]
+            if unused_candidates:
+                next_bg = secrets.choice(unused_candidates)
+            else:
+                # All available candidates in the folder have already been used at least once.
+                # Start new cycle, strictly avoiding repeating the immediate last clip.
+                recycle_candidates = [p for p in all_candidates if p != last_picked]
+                if not recycle_candidates:
+                    recycle_candidates = all_candidates
+                next_bg = secrets.choice(recycle_candidates)
+                used_in_video = {last_picked}
+
             dur_next = self._probe_video_duration_sec(next_bg)
             if dur_next <= 0.0:
                 dur_next = max(10.0, dur_initial)
             playlist.append(next_bg)
+            used_in_video.add(next_bg)
             accumulated_sec += dur_next
             last_picked = next_bg
 
