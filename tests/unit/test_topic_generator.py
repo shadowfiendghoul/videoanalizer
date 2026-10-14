@@ -64,7 +64,10 @@ async def test_suggest_single_topic_random_angle(mock_script_service):
             "generate_content",
             new=AsyncMock(return_value=mock_resp),
         ) as mock_gen,
-        patch("random.choice", return_value="культовые видеоигры (узнай игру по фразе NPC)"),
+        patch(
+            "random.choice",
+            return_value="культовые видеоигры разных лет (персонажи, миры, сюжеты, предметы)",
+        ),
     ):
         suggestion = await mock_script_service.suggest_topic(category_hint=None, language="ru")
 
