@@ -25,7 +25,9 @@ async def test_suggest_single_topic_success(mock_script_service):
     fake_payload = {
         "topic": "Анатомические парадоксы тела",
         "category": "Биология",
-        "curiosity_hook": "Почему мозг чувствует боль других органов, но сам не имеет болевых рецепторов?",
+        "curiosity_hook": (
+            "Почему мозг чувствует боль других органов, но сам не имеет болевых рецепторов?"
+        ),
     }
 
     mock_resp = MagicMock()

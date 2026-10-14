@@ -177,9 +177,9 @@
                   <input 
                     type="text" 
                     id="topic-input" 
-                    placeholder="Например: Анатомические парадоксы, Забытые законы, Игры..." 
+                    placeholder="Например: Угадай фильм по фразе, Культовые видеоигры, Тайны космоса..." 
                     class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-all"
-                    value="Школьные знания"
+                    value="Школьная программа"
                   />
                 </div>
                 <button 
@@ -187,7 +187,7 @@
                   onclick="generateSingleTopic()" 
                   type="button" 
                   class="shrink-0 flex items-center space-x-1.5 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 text-purple-300 border border-purple-500/30 hover:border-purple-500/60 transition-all text-xs font-semibold shadow-lg shadow-purple-500/10 cursor-pointer"
-                  title="Придумать вирусную тему с помощью нейросети"
+                  title="Придумать тему для викторины с помощью нейросети"
                 >
                   <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i>
                   <span id="suggest-topic-btn-text">🎲 Придумать тему</span>
@@ -197,11 +197,11 @@
               <!-- Preset Chips -->
               <div class="flex flex-wrap gap-2 pt-1">
                 <span class="text-xs text-slate-400 self-center mr-1">Быстрые темы:</span>
-                <button onclick="setTopic('Школьные знания')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">📚 Школьные знания</button>
-                <button onclick="setTopic('Анатомические парадоксы тела')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-purple-500/20 hover:text-purple-300 text-slate-300 border border-white/[0.06] transition-all">🧠 Анатомия</button>
-                <button onclick="setTopic('Забытые законы средневековья')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-amber-500/20 hover:text-amber-300 text-slate-300 border border-white/[0.06] transition-all">📜 Странные законы</button>
-                <button onclick="setTopic('Игры, изменившие законы физики')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🎮 Игры</button>
-                <button onclick="setTopic('Ошибки выжившего в истории')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-rose-500/20 hover:text-rose-300 text-slate-300 border border-white/[0.06] transition-all">🛡️ История</button>
+                <button onclick="setTopic('Школьная программа: вспомнишь все ответы?')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">📚 Школьная программа</button>
+                <button onclick="setTopic('Угадай культовую видеоигру')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🎮 Видеоигры</button>
+                <button onclick="setTopic('Угадай фильм по одной фразе')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-purple-500/20 hover:text-purple-300 text-slate-300 border border-white/[0.06] transition-all">🎬 Кино</button>
+                <button onclick="setTopic('Тест на эрудицию: Тайны космоса и планет')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-amber-500/20 hover:text-amber-300 text-slate-300 border border-white/[0.06] transition-all">🚀 Космос</button>
+                <button onclick="setTopic('Автомобили: угадай легендарную марку')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-rose-500/20 hover:text-rose-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Автомобили</button>
               </div>
             </div>
           </div>
