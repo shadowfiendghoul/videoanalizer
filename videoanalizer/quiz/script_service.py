@@ -4,11 +4,14 @@ import asyncio
 import io
 import json
 import logging
+import random
 from pathlib import Path
+from typing import TypeVar
 
 from google import genai
 from google.genai import types
 from PIL import Image
+from pydantic import BaseModel
 
 from videoanalizer.quiz.config import QuizConfig, get_quiz_config
 from videoanalizer.quiz.image_service import ImageService
@@ -25,211 +28,199 @@ from videoanalizer.quiz.workspace import QuizWorkspace
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar("T", bound=BaseModel)
 
-SINGLE_TOPIC_SYSTEM_PROMPT = """Ты — топовый креативный продюсер вирусных коротких видео
-(TikTok, YouTube Shorts, Reels) с миллионными охватами в стиле QuizyPeasy.
-Твоя цель — придумать ультра-хайповую тему ИМЕННО ДЛЯ ВИКТОРИНЫ (квиза из 9 вопросов).
+RANDOM_QUIZ_ANGLES = [
+    "культовые видеоигры (узнай игру по механике, предмету, боссу или фразе NPC)",
+    "кино и сериалы (угадай фильм по абсурдному пересказу сюжета или детали)",
+    "мировые бренды и гаджеты (скрытые функции, история создания, первые продукты)",
+    "география с подвохом (странные границы, законы, микрогосударства, рекорды)",
+    "еда и продукты (из чего на самом деле делают, опасные деликатесы, специи)",
+    "космос и вселенная (экстремальные планеты, парадоксы времени, черные дыры)",
+    "исторические мистификации (отличи реальное событие от популярного вымысла)",
+    "интернет-культура и мемы (история легендарных трендов, игр и вирусных явлений)",
+    "автомобили и техника (легендарные модели, безумные рекорды, скрытые фишки)",
+    "психология и когнитивные ловушки (эффект Манделы, иллюзии восприятия, парадоксы)",
+    "супергерои, аниме и поп-культура (способности, артефакты, сюжетные повороты)",
+    "криминал и громкие ограбления (невероятные побеги, аферы века, детективы)",
+    "деньги и миллиардеры (самые дорогие вещи в мире, странные покупки, валюты)",
+    "выживание и экстремальные ситуации (как спастись, природные аномалии, яды)",
+    "бытовые вещи вокруг нас (секретное назначение привычных предметов)",
+    "странные мировые рекорды и безумные изобретения человечества",
+]
 
-ГЛАВНЫЙ ПРИНЦИП — ЭТО ДОЛЖНА БЫТЬ ИМЕННО ВИКТОРИНА, А НЕ СТАТЬЯ И НЕ СБОРНИК ФАКТОВ:
-1. КАТЕГОРИЧЕСКИЙ ЗАПРЕТ на темы-подборки фактов:
-   - СТРОЖАЙШЕ ЗАПРЕЩЕНЫ заголовки в стиле статей или познавательных видео:
-     ❌ «Сумасшедшие законы городов мира...»
-     ❌ «Шокирующие тайны глубин океана...»
-     ❌ «10 невероятных фактов о животных...»
-     ❌ «Странные привычки великих людей...»
-   - Это НЕ познавательный ролик, НЕ документалка и НЕ сборник фактов! Это ВИКТОРИНА,
-     где зрителю задают 9 вопросов, дают 3 секунды, и он соревнуется сам с собой.
+SINGLE_TOPIC_SYSTEM_PROMPT = """Ты — креативный продюсер вирусных вертикальных видео-викторин (Shorts, TikTok, Reels) в формате «лестница из 9 вопросов».
+Твоя задача — придумать ОДНУ цепляющую, азартную тему для интерактивной текстовой викторины.
 
-2. Формат правильной темы викторины:
-   - Тема обязана звучать как челлендж, тест на эрудицию, соревнование или игра «Угадай X»:
-     ✓ «Угадай культовый фильм по одной фразе»
-     ✓ «Тест на знание культовых видеоигр 2000-х»
-     ✓ «Школьная физика: ответишь на 9 из 9?»
-     ✓ «Сможешь назвать 9 стран по описанию?»
-     ✓ «Викторина по вселенной Гарри Поттера»
-     ✓ «Угадай породу собаки по силуэту и факту»
-     ✓ «Тест на эрудицию: поп-культура и мемы»
-     ✓ «Автомобили: угадай легендарную марку»
-     ✓ «Сможешь отличить ложь от научного факта?»
-     ✓ «Мировая история: сложный тест для знатоков»
-   - По теме должно быть легко составить 9 открытых вопросов с краткими ответами (1-3 слова).
+ГЛАВНЫЕ ПРАВИЛА ФОРМАТА:
+1. ЭТО ИНТЕРАКТИВНЫЙ ТЕСТ, А НЕ СТАТЬЯ С ФАКТАМИ:
+   - Зрителю задают 9 открытых вопросов, дают 3 секунды на ответ в уме, после чего показывают правильный ответ.
+   - СТРОЖАЙШЕ ЗАПРЕЩЕНЫ заголовки в стиле познавательных роликов или топ-списков:
+     ❌ «Сумасшедшие законы разных стран»
+     ❌ «10 шокирующих фактов о космосе»
+     ❌ «Странные привычки гениев»
+   - Тема ОБЯЗАНА звучать как прямой вызов, игра или проверка эрудиции:
+     ✓ «Угадай культовый фильм по анти-описанию сюжета»
+     ✓ «Тест для геймеров: назови игру по одному предмету»
+     ✓ «Эффект Манделы: отличи правду от ложного воспоминания»
+     ✓ «Секреты вещей: угадай, зачем нужна эта деталь»
+     ✓ «Физика на выживание: ответишь на 9 из 9?»
+     ✓ «Викторина по вселенной Гарри Поттера: от новичка до профи»
 
-3. Разнообразие и хайп:
-   - Если тема не задана — генерируй ПОЛНЫЙ РАНДОМ сфер
-     (игры, кино, сериалы, поп-культура, музыка, история, авто, спорт, бренды, технологии).
-   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО зацикливаться на анатомии тела или биологии.
-   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНЫ унылые школьные банальности («Столицы стран», «Таблица умножения»).
+2. ТОЛЬКО ТЕКСТОВАЯ МЕХАНИКА ВОПРОСОВ (ВАЖНО!):
+   - На этапе вопроса зритель видит ТОЛЬКО текст (без картинок-загадок и без звука треков). Картинка появляется только вместе с готовым ответом!
+   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО предлагать темы, где для ответа нужно смотреть на картинку или слушать аудио:
+     ❌ «Угадай бренд по логотипу / собаку по силуэту / страну по флагу / актера по фото»
+     ❌ «Угадай песню по мелодии / группу по риффу / игру по звуку»
+   - Все 9 вопросов темы должны идеально работать через текст (по описанию, цитате, факту, сюжету, характеристике) и иметь короткий однозначный ответ (1-3 слова).
 
-4. Ограничения формата:
-   - 'topic': Название темы в формате викторины/челленджа (strictly <= 65 characters).
+3. ПРИГОДНОСТЬ ДЛЯ «ЛЕСТНИЦЫ СЛОЖНОСТИ»:
+   - Тема должна быть понятна широкой аудитории на старте (Уровень 1), иметь подвохи в середине (Уровень 2) и глубокие малоизвестные детали для знатоков в финале (Уровень 3).
+   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО предлагать анатомию человека, медицину и скучную школьную биологию (если пользователь явно не попросил об этом).
+   - Запрещены унылые школьные банальности («Столицы мира», «Таблица умножения»).
+
+4. ЛИМИТЫ И СХЕМА:
+   - 'topic': Название темы в формате вызова/игры (strictly <= 65 characters).
    - 'category': Краткое название ниши (strictly <= 35 characters).
-   - 'curiosity_hook': 1 емкий вопрос-вызов (строго <= 100 символов, напр. «Ответишь на 7 из 9?»).
-
-5. Формат вывода:
-   - Ты ОБЯЗАН вернуть строго валидный JSON в соответствии со схемой TopicSuggestion."""
+   - 'curiosity_hook': Короткий вопрос-байт для удержания зрителя (strictly <= 100 characters).
+   - Верни строго валидный JSON по схеме TopicSuggestion."""
 
 
-BATCH_TOPIC_SYSTEM_PROMPT = """Ты — ведущий креативный продюсер вирусных коротких видео
-(TikTok, YouTube Shorts, Reels) в фирменном стиле канала QuizyPeasy.
-Твоя цель — придумать ровно N УНИКАЛЬНЫХ тем для пакета роликов-викторин из 9 вопросов.
+BATCH_TOPIC_SYSTEM_PROMPT = """Ты — креативный продюсер вирусных вертикальных видео-викторин (Shorts, TikTok, Reels) в формате «лестница из 9 вопросов».
+Твоя задача — придумать пакет из N уникальных, неповторяющихся тем для интерактивных текстовых викторин.
 
-ГЛАВНЫЙ ПРИНЦИП — КАЖДАЯ ТЕМА ОБЯЗАНА БЫТЬ ИМЕННО ВИКТОРИНОЙ, А НЕ СТАТЬЕЙ С ФАКТАМИ:
-1. КАТЕГОРИЧЕСКИЙ ЗАПРЕТ на темы-подборки фактов:
-   - СТРОЖАЙШЕ ЗАПРЕЩЕНЫ заголовки в стиле статей или познавательных видео:
-     ❌ «Сумасшедшие законы городов мира...»
-     ❌ «Удивительные факты о космосе...»
-     ❌ «Шокирующие секреты природы...»
-   - Это НЕ познавательные ролики! Это ИНТЕРАКТИВНЫЕ ВИКТОРИНЫ (квизы), где зрителю задают 9 прямых
-     вопросов, дают 3 секунды, и он пытается вспомнить конкретный ответ.
+ГЛАВНЫЕ ПРАВИЛА ФОРМАТА:
+1. КАЖДАЯ ТЕМА — ЭТО ИНТЕРАКТИВНЫЙ ЧЕЛЛЕНДЖ, А НЕ ПОДБОРКА ФАКТОВ:
+   - Запрещены заголовки документалок и статей («Тайны океана...», «Невероятные факты о...», «Странные законы...»).
+   - Каждая тема должна звучать как игра или тест («Угадай X по описанию», «Тест на знание Y», «Отличи миф от правды о Z», «Назови предмет по скрытой функции»).
 
-2. Формат правильных тем:
-   - Каждая тема обязана звучать как челлендж, тест на эрудицию или соревнование:
-     ✓ «Угадай фильм по одной фразе»
-     ✓ «Тест на знание культовых видеоигр»
-     ✓ «Школьная программа: вспомнишь все ответы?»
-     ✓ «Викторина по вселенной Marvel»
-     ✓ «Угадай рок-группу по легендарному треку»
-     ✓ «Тест на эрудицию: Тайны космоса»
-     ✓ «Угадай бренд по логотипу и слогану»
-   - По каждой теме должны существовать 9 четких угадываемых вопросов с краткими ответами.
+2. ЗАПРЕТ НА ВИЗУАЛЬНЫЕ И АУДИО-ЗАГАДКИ:
+   - В викторине вопрос задается ТОЛЬКО текстом, а картинка всплывает лишь при показе ответа.
+   - СТРОГО ЗАПРЕЩЕНЫ темы вроде «Угадай по логотипу / фото / силуэту / флагу / кадру» или «Угадай песню по звуку / треку».
+   - Каждая тема должна позволять составить 9 текстовых вопросов с краткими ответами (1-3 слова).
 
-3. Максимальное разнообразие ниш:
-   - Каждая тема ОБЯЗАНА относиться к совершенно ДРУГОЙ нише/категории
-     (Космос, Видеоигры, Кино, История, Психология, Спорт, Музыка, Технологии, Авто).
-   - Запрет на пересечение тем: не более 1 темы из схожей тематики на пачку.
-   - Запрет на зацикливание исключительно на анатомии или биологии.
-   - Запрет на унылые школьные банальности.
+3. ПРАВИЛО РАЗНООБРАЗИЯ (ЗАВИСИТ ОТ ЗАПРОСА ПОЛЬЗОВАТЕЛЯ):
+   - Если пользователь НЕ задал конкретную нишу: каждая из N тем ОБЯЗАНА принадлежать к совершенно разной сфере жизни (не более 1 темы на категорию).
+   - Если пользователь ЗАДАЛ конкретную нишу: все N тем должны быть внутри этой ниши, но заходить с совершенно РАЗНЫХ углов и игровых механик (например: по цитатам, по предметам, по лору, по анти-описанию, по рекордам, по ошибкам новичков).
+   - Запрет на анатомию, медицину и скучные школьные темы.
 
-4. Ограничения формата:
+4. ЛИМИТЫ И СХЕМА:
    - Сгенерируй ровно запрошенное количество тем (count).
-   - 'topic': Название темы в формате викторины/челленджа (strictly <= 65 characters).
-   - 'category': Название ниши (strictly <= 35 characters).
-   - 'curiosity_hook': 1 емкий вопрос-вызов зрителю (строго <= 100 символов).
-
-5. Формат вывода:
-   - Ты ОБЯЗАН вернуть строго валидный JSON в соответствии со схемой BatchTopicList."""
+   - 'topic': strictly <= 65 characters.
+   - 'category': strictly <= 35 characters.
+   - 'curiosity_hook': strictly <= 100 characters.
+   - Верни строго валидный JSON по схеме BatchTopicList."""
 
 
-QUIZ_SYSTEM_PROMPT = """Ты — элитный сценарист и продюсер вирусных викторин для TikTok
-и YouTube Shorts в фирменном стиле канала QuizyPeasy.
+QUIZ_SYSTEM_PROMPT = """Ты — элитный сценарист вирусных викторин для TikTok и YouTube Shorts в формате прогрессивной лестницы из 9 вопросов.
 
 ПРАВИЛА И ОГРАНИЧЕНИЯ ФОРМАТА:
-1. Механика Open-Recall (Без вариантов ответа):
-   - Формат викторины — прямой открытый ответ зрителя (БЕЗ вариантов выбора A/B/C/D).
-     Зритель видит вопрос в строке вертикальной лестницы, получает 3 секунды на размышление,
-     после чего правильный ответ ярко всплывает в ячейке лестницы.
-   - Если тема не задана, каждый из 9 вопросов ОБЯЗАН быть из совершенно разной области
-     (игры, кино, сериалы, поп-культура, наука, технологии, авто, спорт, логика, история).
-   - Фильтр банальности: СТРОЖАЙШЕ ЗАПРЕЩЕНО использовать заезженные школьные вопросы
-     (никаких столиц, «сколько планет», «гепард», «сколько сердец у осьминога»).
+1. Механика Open-Recall (Без вариантов ответа A/B/C/D):
+   - Зритель читает короткий вопрос, думает 3 секунды и называет ответ вслух, после чего правильный ответ и его иллюстрация всплывают на экране.
+   - Каждый вопрос обязан иметь ОДИН четкий, бесспорный и конкретный ответ (1-3 слова).
+   - Вопрос должен работать чисто текстом: не пиши «Кто изображен на фото?» или «Чей это логотип?», так как фото появится только вместе с ответом!
+   - Фильтр банальности: строжайше запрещены заезженные вопросы («какая планета красная», «самое быстрое животное — гепард», «сколько сердец у осьминога», «столица Франции»).
 
-2. Структура (Строгая прогрессивная лестница из 9 вопросов):
-   - Уровень 1 (Разминка): 3 вопроса, theme_color '#22C55E', номера 1, 2, 3.
-     Небанальные, но доступные для быстрого ответа за 3 секунды.
-   - Уровень 2 (Когнитивные ловушки): 3 вопроса, theme_color '#F59E0B', номера 4, 5, 6.
-     Интуитивные ловушки, контринтуитивные факты, эффекты Манделы, где 90% ошибаются.
-   - Уровень 3 (Хардкорные парадоксы): 3 вопроса, theme_color '#EF4444', номера 7, 8, 9.
-     Шокирующие факты, провоцирующие споры в комментариях.
+2. Строгая прогрессивная лестница (3 уровня по 3 вопроса):
+   - Уровень 1 (Разминка — вопросы 1, 2, 3, theme_color '#22C55E'):
+     Доступные, но интересные вопросы с мгновенным узнаванием, чтобы вовлечь 90% зрителей за первые секунды.
+   - Уровень 2 (Когнитивные ловушки — вопросы 4, 5, 6, theme_color '#F59E0B'):
+     Контринтуитивные вопросы, частые заблуждения, эффекты Манделы и вопросы с подвохом, где интуитивный ответ оказывается неверным.
+   - Уровень 3 (Хардкор — вопросы 7, 8, 9, theme_color '#EF4444'):
+     Сложные вопросы для 1% экспертов, парадоксальные детали и редкие факты, провоцирующие жаркие споры в комментариях.
 
-3. Жесткие лимиты на длину текста (Layout Guard):
-   - Question text: Прямой вопрос, strictly <= 65 characters (never exceed 80 characters).
-   - Correct answer: Ответ (1-4 слова), strictly <= 25 characters (never exceed 35 characters).
-   - Fun fact / Punchline: Увлекательный факт для быстрой озвучки, strictly <= 90 characters.
-   - Visual Answer Illustrations: Provide a concise, descriptive English search query in
-     'image_query' depicting the correct answer (e.g. for 'Золото' -> 'gold bullion bars',
-     for 'Бедренная кость' -> 'human femur bone', for '60 минут' -> 'stopwatch clock 60 min').
-     Картинка будет показана зрителю в карточке-иллюстрации вместе с появлением ответа.
+3. Жесткие лимиты длины (Layout Guard):
+   - 'question_text': прямой, плотный вопрос без воды, strictly <= 65 characters (never exceed 80 characters).
+   - 'correct_answer': точный ответ (1-3 слова), strictly <= 25 characters (never exceed 35 characters).
+   - 'fun_fact': панчлайн или удивительное пояснение к ответу для озвучки, strictly <= 90 characters.
+   - 'image_query': точный поисковый запрос на АНГЛИЙСКОМ языке (2-5 слов), описывающий конкретный физический объект, персонажа или сцену из правильного ответа для поиска картинки (например: для 'Вольфрам' -> 'glowing tungsten filament bulb', для 'Марио' -> 'Super Mario Nintendo character'). Избегай абстрактных слов.
 
 4. Формат вывода:
-   - Ты ОБЯЗАН вернуть строго валидный JSON в соответствии со схемой QuizChallenge."""
+   - Верни строго валидный JSON в соответствии со схемой QuizChallenge."""
 
 
-FACT_CHECK_SYSTEM_PROMPT = """Ты — строгий факт-чекер (scientific fact-checker)
-и энциклопедический аудитор контента.
-Твоя задача — провести детальный аудит и верификацию викторины из 9 вопросов.
+FACT_CHECK_SYSTEM_PROMPT = """Ты — главный редактор и строгий верификатор контента для викторин.
+Твоя задача — проверить и при необходимости исправить викторину из 9 вопросов.
 
-ПРАВИЛА ВЕРИФИКАЦИИ:
-1. Строгая достоверность (Strict Factual Veracity):
-   - Проверь каждый вопрос, ответ и факт по академическим и научным источникам.
-   - Безжалостно искореняй популярные мифы, городские легенды и школьные заблуждения
-     (например: «вкусовые зоны», «Стену видно из космоса», «человек использует 10% мозга»).
-   - Если вопрос построен на развенчанном мифе, ПЕРЕПИШИ его в настоящий парадокс.
-2. Однозначность ответа:
-   - Убедись, что 'correct_answer' формулируется четко и не допускает двоякого толкования.
-3. Строгие ограничения на длину текста:
-   - 'question_text': емко и лаконично, strictly <= 65 characters (never exceed 80 characters).
-   - 'correct_answer': четко, 1-4 слова, strictly <= 25 characters (never exceed 35 characters).
-   - 'fun_fact': полезный факт, strictly <= 90 characters.
-   - 'image_query': accurate English search query clearly depicting the verified correct answer.
-4. Сохранение структуры:
-   - Сохраняй ровно 9 вопросов в 3 уровнях (1-3: Уровень 1, 4-6: Уровень 2, 7-9: Уровень 3).
-   - Сохраняй номера вопросов и цвета темы уровней.
-5. Формат вывода:
-   - Ты ОБЯЗАН вернуть строго валидный JSON в соответствии со схемой QuizChallenge."""
+ПРАВИЛА АУДИТА:
+1. Проверка достоверности (Наука + Канон поп-культуры):
+   - Для научных, исторических и бытовых тем: проверяй факты по энциклопедическим источникам. Безжалостно исправляй развенчанные мифы («человек использует 10% мозга», «Великую стену видно из космоса», «зоны вкуса на языке», «хамелеон меняет цвет для маскировки»).
+   - Для тем по видеоиграм, кино, сериалам и книгам: проверяй строгую точность по официальному канону и лору вселенной (имена, механики, даты выхода, сюжетные детали).
+   - Если вопрос содержит фактическую ошибку или миф, перепиши его или разверни так, чтобы он разоблачал этот миф.
 
+2. Однозначность и текстовая самодостаточность:
+   - Убедись, что на каждый вопрос существует только один точный ответ без двусмысленности.
+   - Убедись, что вопрос не требует от зрителя видеть картинку до появления ответа.
 
-REGENERATE_QUESTIONS_SYSTEM_PROMPT = """Ты — элитный сценарист викторин для TikTok
-и YouTube Shorts в фирменном стиле канала QuizyPeasy.
-Твоя задача — перегенерировать указанные номера вопросов в уже существующей викторине из 9 вопросов.
-
-ПРАВИЛА И ОГРАНИЧЕНИЯ:
-1. Формат и соответствие уровням:
-   - Сгенерируй НОВЫЕ вопросы ТОЛЬКО для запрошенных номеров.
-   - Для каждого запрошенного вопроса строго соблюдай его уровень и сложность:
-     * Вопросы 1, 2, 3: Уровень 1 (Разминка), difficulty 'easy', tier_index 1. Быстрые.
-     * Вопросы 4, 5, 6: Уровень 2 (Ловушки), difficulty 'medium', tier_index 2. Ловушки.
-     * Вопросы 7, 8, 9: Уровень 3 (Хардкор), difficulty 'hard', tier_index 3. Парадоксы.
-2. Anti-Duplication (Анти-дублирование):
-   - The user has KEPT questions. Пользователь СОХРАНИЛ часть вопросов (KEPT).
-     Ты КАТЕГОРИЧЕСКИ НЕ ДОЛЖЕН дублировать факты, темы и ответы из сохраненных вопросов.
-   - Полный фильтр банальности: избегай скучных школьных вопросов.
-3. Ограничения длины текста:
-   - 'question_text': четкий вопрос, strictly <= 65 characters (never exceed 80 characters).
+3. Сохранение жестких лимитов верстки:
+   - 'question_text': strictly <= 65 characters (never exceed 80 characters).
    - 'correct_answer': 1-4 слова, strictly <= 25 characters (never exceed 35 characters).
-   - 'fun_fact': краткий факт, strictly <= 90 characters.
-   - 'image_query': concise English search query for an illustration of the correct answer.
+   - 'fun_fact': strictly <= 90 characters.
+   - 'image_query': конкретный англоязычный запрос (2-5 слов), наглядно изображающий правильный ответ.
+   - Сохраняй структуру: 3 уровня по 3 вопроса (1-3, 4-6, 7-9) и их цвета.
+
 4. Формат вывода:
-   - Ты ОБЯЗАН вернуть строго валидный JSON по схеме RegeneratedQuestionsPayload."""
+   - Верни строго валидный JSON в соответствии со схемой QuizChallenge."""
+
+
+REGENERATE_QUESTIONS_SYSTEM_PROMPT = """Ты — элитный сценарист вирусных викторин для TikTok и YouTube Shorts.
+Твоя задача — сгенерировать замену ТОЛЬКО для указанных номеров вопросов в существующей викторине.
+
+ПРАВИЛА ЗАМЕНЫ:
+1. Строгое попадание в уровень сложности:
+   - Номера 1, 2, 3 -> Уровень 1 (Разминка), difficulty 'easy', tier_index 1. Быстрые и вовлекающие.
+   - Номера 4, 5, 6 -> Уровень 2 (Ловушки), difficulty 'medium', tier_index 2. С подвохом.
+   - Номера 7, 8, 9 -> Уровень 3 (Хардкор), difficulty 'hard', tier_index 3. Для настоящих знатоков.
+
+2. Полный запрет на дублирование (Anti-Duplication):
+   - В запросе передан список СОХРАНЕННЫХ вопросов (KEPT). Категорически запрещено повторять их ответы, объекты, персонажей или смежные факты.
+   - Вопрос должен быть полностью понятен из текста (без опоры на картинку до ответа) и не содержать школьных банальностей.
+
+3. Жесткие лимиты длины:
+   - 'question_text': strictly <= 65 characters (never exceed 80 characters).
+   - 'correct_answer': 1-3 слова, strictly <= 25 characters (never exceed 35 characters).
+   - 'fun_fact': strictly <= 90 characters.
+   - 'image_query': конкретный запрос на английском языке (2-5 слов), иллюстрирующий правильный ответ.
+
+4. Формат вывода:
+   - Верни строго валидный JSON по схеме RegeneratedQuestionsPayload."""
 
 
 class ScriptService:
     """Service responsible for generating quiz trivia content using Gemini REST API."""
 
     def __init__(
-        self, image_service: ImageService | None = None, config: QuizConfig | None = None
+        self,
+        image_service: ImageService | None = None,
+        config: QuizConfig | None = None,
+        client: genai.Client | None = None,
     ) -> None:
         self.config = config or get_quiz_config()
         self.image_service = image_service or ImageService()
+        if client is not None:
+            self._client = client
+        else:
+            api_key = self.config.effective_api_key.get_secret_value()
+            self._client = genai.Client(api_key=api_key)
 
-    async def _call_gemini(
-        self, topic: str, language: str, temperature: float | None = None
-    ) -> QuizChallenge:
-        """Execute Gemini REST API call with structured Pydantic v2 schema."""
-        api_key = self.config.effective_api_key.get_secret_value()
-        client = genai.Client(api_key=api_key)
-
-        prompt = (
-            f"Сгенерируй вирусную викторину-лестницу из 9 вопросов на тему: '{topic}'.\n"
-            f"Язык: {language}.\n"
-            f"Строго соблюдай трехуровневую прогрессию сложности: Уровень 1 (Разминка), "
-            f"Уровень 2 (Когнитивные ловушки), Уровень 3 (Хардкорные парадоксы).\n"
-            f"ВАЖНО: Каждый вопрос обязан быть именно конкретным вопросом викторины "
-            f"с четким, угадываемым кратким ответом (1-3 слова). Никаких расплывчатых фактоидов. "
-            f"Полный отказ от банальностей, нетривиальные вопросы, емкий текст."
-        )
-
+    async def _generate_structured(
+        self,
+        prompt: str,
+        system_instruction: str,
+        response_schema: type[T],
+        temperature: float | None = None,
+    ) -> T:
+        """Unified structured generation method using native async Client.aio with retries and rate limiter."""
         raw_temp = temperature if temperature is not None else self.config.creative_temperature
         eff_temp = min(2.0, max(0.0, float(raw_temp)))
 
         config = types.GenerateContentConfig(
-            system_instruction=QUIZ_SYSTEM_PROMPT,
+            system_instruction=system_instruction,
             response_mime_type="application/json",
-            response_schema=QuizChallenge,
+            response_schema=response_schema,
             temperature=eff_temp,
         )
 
-        # Execute call with retry on 503 temporary demand spikes
-        loop = asyncio.get_running_loop()
         limiter = get_gemini_rate_limiter()
         max_retries = 4
         last_error: Exception | None = None
@@ -237,17 +228,14 @@ class ScriptService:
         for attempt in range(max_retries):
             try:
                 await limiter.acquire()
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: client.models.generate_content(
-                        model=self.config.gemini_model,
-                        contents=prompt,
-                        config=config,
-                    ),
+                response = await self._client.aio.models.generate_content(
+                    model=self.config.gemini_model,
+                    contents=prompt,
+                    config=config,
                 )
                 raw_text = response.text or "{}"
                 data = json.loads(raw_text)
-                return QuizChallenge.model_validate(data)
+                return response_schema.model_validate(data)
             except Exception as exc:
                 last_error = exc
                 err_msg = str(exc)
@@ -278,6 +266,23 @@ class ScriptService:
             raise last_error
         raise RuntimeError("Failed to generate content from Gemini API.")
 
+    async def _call_gemini(
+        self, topic: str, language: str, temperature: float | None = None
+    ) -> QuizChallenge:
+        """Execute Gemini API call with structured Pydantic v2 schema."""
+        prompt = (
+            f"Тема викторины: «{topic}».\n"
+            f"Язык: {language}.\n"
+            f"Сгенерируй викторину-лестницу из 9 открытых вопросов (Уровень 1: Разминка, Уровень 2: Ловушки, Уровень 3: Хардкор). "
+            f"Вопросы должны быть строго текстовыми, нетривиальными и иметь однозначный краткий ответ (1-3 слова)."
+        )
+        return await self._generate_structured(
+            prompt=prompt,
+            system_instruction=QUIZ_SYSTEM_PROMPT,
+            response_schema=QuizChallenge,
+            temperature=temperature,
+        )
+
     async def suggest_topic(
         self,
         category_hint: str | None = None,
@@ -286,84 +291,33 @@ class ScriptService:
         previous_topic: str | None = None,
     ) -> TopicSuggestion:
         """Suggest a single viral, non-trivial quiz topic using Gemini REST API."""
-        api_key = self.config.effective_api_key.get_secret_value()
-        client = genai.Client(api_key=api_key)
-
-        prompt = (
-            f"Придумай интерактивную тему ДЛЯ ВИКТОРИНЫ (проверки знаний и эрудиции зрителя) "
-            f"из 9 открытых вопросов на языке: '{language}'.\n"
-            f"ВАЖНЕЙШЕЕ ПРАВИЛО: Тема должна быть именно для викторины/игры со зрителем "
-            f"(например: 'Угадай фильм по одной фразе', 'Тест на знание культовых видеоигр', "
-            f"'Проверь эрудицию: Тайны космоса', 'Сможешь ответить на 9 вопросов по истории?').\n"
-            f"КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНЫ заголовки статей и подборок фактов (вроде "
-            f"'Сумасшедшие законы городов', '10 фактов о...', 'Шокирующие тайны...'). "
-            f"Зритель должен сразу понять: это интерактивный тест, где нужно угадывать ответы!\n"
-        )
+        prompt_lines = [
+            f"Язык: {language}.",
+            "Придумай 1 яркую тему для интерактивной текстовой викторины из 9 вопросов.",
+        ]
         if category_hint and category_hint.strip():
-            prompt += f"Фокусное направление от пользователя: '{category_hint.strip()}'.\n"
+            prompt_lines.append(
+                f"Обязательное направление от пользователя: «{category_hint.strip()}». Сделай из него крутой интерактивный тест."
+            )
         else:
-            prompt += (
-                "ПОЛНЫЙ РАНДОМ! Никаких рамок по жанрам или сферам.\n"
-                "Придумай с нуля совершенно случайную, максимально азартную тему для викторины, "
-                "которая вызовет желание посоревноваться в комментариях "
-                "(видеоигры, кино, сериалы, поп-культура, музыка, наука, "
-                "история, автомобили, супергерои, мировые бренды, логика, спорт).\n"
+            angle = random.choice(RANDOM_QUIZ_ANGLES)
+            prompt_lines.append(
+                f"Вектор для вдохновения (сделай оригинальный челлендж в этой сфере): «{angle}»."
             )
 
         if previous_topic and previous_topic.strip():
-            prompt += (
-                f"КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО повторять или предлагать тему, похожую на предыдущую: "
-                f"'{previous_topic.strip()}'. Придумай тему из совершенно другой области!\n"
+            prompt_lines.append(
+                f"КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО повторять или брать тему, смежную с предыдущей: «{previous_topic.strip()}»."
             )
 
-        prompt += (
-            "Обязательное условие: Тема должна позволять задать 9 конкретных вопросов с краткими "
-            "ответами (1-3 слова). Не зацикливайся на биологии/медицине."
-        )
-
-        raw_temp = temperature if temperature is not None else 1.05
-        eff_temp = min(2.0, max(0.0, float(raw_temp)))
-
-        config = types.GenerateContentConfig(
+        prompt = "\n".join(prompt_lines)
+        temp = temperature if temperature is not None else 1.05
+        return await self._generate_structured(
+            prompt=prompt,
             system_instruction=SINGLE_TOPIC_SYSTEM_PROMPT,
-            response_mime_type="application/json",
             response_schema=TopicSuggestion,
-            temperature=eff_temp,
+            temperature=temp,
         )
-
-        limiter = get_gemini_rate_limiter()
-        loop = asyncio.get_running_loop()
-        max_retries = 4
-
-        for attempt in range(max_retries):
-            try:
-                await limiter.acquire()
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: client.models.generate_content(
-                        model=self.config.gemini_model,
-                        contents=prompt,
-                        config=config,
-                    ),
-                )
-                raw_text = response.text or "{}"
-                data = json.loads(raw_text)
-                return TopicSuggestion.model_validate(data)
-            except Exception as exc:
-                err_msg = str(exc)
-                is_429 = "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg
-                is_transient = is_429 or "503" in err_msg or "UNAVAILABLE" in err_msg
-                if is_transient and attempt < max_retries - 1:
-                    if is_429:
-                        await limiter.record_429_backoff(attempt)
-                    else:
-                        delay = 2.5 * (2**attempt)
-                        await asyncio.sleep(delay)
-                else:
-                    logger.error("Failed to suggest topic: %s", exc)
-                    raise exc
-
-        raise RuntimeError("Failed to suggest topic from Gemini.")
 
     async def suggest_batch_topics(
         self,
@@ -374,108 +328,45 @@ class ScriptService:
     ) -> BatchTopicList:
         """Suggest N distinct, non-overlapping viral topics in a SINGLE Gemini API request."""
         count = max(2, min(20, count))
-        api_key = self.config.effective_api_key.get_secret_value()
-        client = genai.Client(api_key=api_key)
-
-        prompt = (
-            f"Сгенерируй ровно {count} уникальных тем ИМЕННО ДЛЯ ВИКТОРИН "
-            f"(интерактивных челленджей из 9 открытых вопросов) на языке: '{language}'.\n"
-            f"КАТЕГОРИЧЕСКИЙ ЗАПРЕТ на темы-подборки фактов или заголовки статей "
-            f"(никаких 'Сумасшедшие законы...', 'Факты о...', 'Тайны...').\n"
-            f"Каждая тема обязана звучать как челлендж или тест эрудиции "
-            f"(напр. 'Угадай X', 'Тест на знание Y', 'Сможешь ответить на 9 вопросов о Z?').\n"
-            f"Каждая тема ОБЯЗАТЕЛЬНО должна относиться к совершенно другой категории\n"
-            f"(например: космос, видеоигры, история, кино, авто, спорт, музыка, поп-культура).\n"
-            f"Ни в коем случае не делай упор на одну лишь анатомию или медицину!"
-        )
+        prompt_lines = [
+            f"Язык: {language}.",
+            f"Сгенерируй ровно {count} уникальных тем для интерактивных текстовых викторин из 9 вопросов.",
+        ]
         if category_hint and category_hint.strip():
-            prompt += (
-                f"\nДополнительное пожелание по нише: '{category_hint.strip()}' "
-                f"(при этом темы между собой должны сильно различаться)."
+            prompt_lines.append(
+                f"Все {count} тем должны быть внутри ниши «{category_hint.strip()}», но каждая обязана использовать уникальный угол или игровую механику (без самоповторов)."
+            )
+        else:
+            prompt_lines.append(
+                "Каждая из тем обязана относиться к совершенно разной жизненной, научной или поп-культурной категории (максимальный разброс ниш)."
             )
 
-        raw_temp = temperature if temperature is not None else 1.05
-        eff_temp = min(2.0, max(0.0, float(raw_temp)))
-
-        config = types.GenerateContentConfig(
+        prompt = "\n".join(prompt_lines)
+        temp = temperature if temperature is not None else 1.05
+        return await self._generate_structured(
+            prompt=prompt,
             system_instruction=BATCH_TOPIC_SYSTEM_PROMPT,
-            response_mime_type="application/json",
             response_schema=BatchTopicList,
-            temperature=eff_temp,
+            temperature=temp,
         )
-
-        limiter = get_gemini_rate_limiter()
-        loop = asyncio.get_running_loop()
-        max_retries = 4
-
-        for attempt in range(max_retries):
-            try:
-                await limiter.acquire()
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: client.models.generate_content(
-                        model=self.config.gemini_model,
-                        contents=prompt,
-                        config=config,
-                    ),
-                )
-                raw_text = response.text or "{}"
-                data = json.loads(raw_text)
-                return BatchTopicList.model_validate(data)
-            except Exception as exc:
-                err_msg = str(exc)
-                is_429 = "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg
-                is_transient = is_429 or "503" in err_msg or "UNAVAILABLE" in err_msg
-                if is_transient and attempt < max_retries - 1:
-                    if is_429:
-                        await limiter.record_429_backoff(attempt)
-                    else:
-                        delay = 2.5 * (2**attempt)
-                        await asyncio.sleep(delay)
-                else:
-                    logger.error("Failed to suggest batch topics: %s", exc)
-                    raise exc
-
-        raise RuntimeError("Failed to suggest batch topics from Gemini.")
 
     async def _verify_and_refine_facts(
         self, challenge: QuizChallenge, language: str
     ) -> QuizChallenge:
         """Run strict secondary fact-checking pass to correct inaccuracies and myths."""
         logger.info("Running secondary strict fact-checking pass on 9-question challenge...")
-        api_key = self.config.effective_api_key.get_secret_value()
-        client = genai.Client(api_key=api_key)
-
         prompt = (
-            f"Проведи строгий научный аудит этой викторины из 9 вопросов на языке '{language}'.\n"
-            f"Убедись, что все вопросы однозначны, а факты строго соответствуют науке и истории.\n"
-            f"Искорени любые мифы и обеспечь соблюдение лимитов длины.\n"
-            f"Исходный JSON викторины:\n{challenge.model_dump_json()}"
+            f"Язык викторины: {language}.\n"
+            f"Проведи строгий аудит достоверности (по науке или официальному канону/лору), однозначности ответов и лимитов длины символов.\n"
+            f"Исходный JSON:\n{challenge.model_dump_json()}"
         )
-
-        raw_temp = self.config.verifier_temperature
-        eff_temp = min(2.0, max(0.0, float(raw_temp)))
-
-        config = types.GenerateContentConfig(
-            system_instruction=FACT_CHECK_SYSTEM_PROMPT,
-            response_mime_type="application/json",
-            response_schema=QuizChallenge,
-            temperature=eff_temp,
-        )
-
-        loop = asyncio.get_running_loop()
         try:
-            response = await loop.run_in_executor(
-                None,
-                lambda: client.models.generate_content(
-                    model=self.config.gemini_model,
-                    contents=prompt,
-                    config=config,
-                ),
+            verified = await self._generate_structured(
+                prompt=prompt,
+                system_instruction=FACT_CHECK_SYSTEM_PROMPT,
+                response_schema=QuizChallenge,
+                temperature=self.config.verifier_temperature,
             )
-            raw_text = response.text or "{}"
-            data = json.loads(raw_text)
-            verified = QuizChallenge.model_validate(data)
             logger.info("Fact-checking verifier pass completed successfully.")
             return verified
         except Exception as exc:
@@ -484,6 +375,24 @@ class ScriptService:
                 exc,
             )
             return challenge
+
+    async def _resolve_preview_images(self, questions: list[QuizItem]) -> None:
+        """Resolve candidate preview image URLs in parallel for items that have image_query and no image_url."""
+        candidates = [q for q in questions if q.image_query and not q.image_url]
+        if not candidates:
+            return
+
+        async def _fetch(item: QuizItem) -> None:
+            try:
+                img_results = await self.image_service._search_image_urls(
+                    item.image_query, max_results=2
+                )
+                if img_results:
+                    item.image_url = img_results[0].get("image") or img_results[0].get("thumbnail")
+            except Exception as e:
+                logger.debug("Failed to resolve preview image for '%s': %s", item.image_query, e)
+
+        await asyncio.gather(*[_fetch(item) for item in candidates], return_exceptions=True)
 
     async def generate_quiz(
         self,
@@ -494,7 +403,7 @@ class ScriptService:
         fact_check: bool | None = None,
     ) -> QuizChallenge:
         """Generate 9-question trivia challenge and download visual assets if applicable."""
-        logger.info(f"Generating 9-question quiz challenge for topic: '{topic}' (lang={language})")
+        logger.info("Generating 9-question quiz challenge for topic: '%s' (lang=%s)", topic, language)
         challenge = await self._call_gemini(topic, language, temperature=creative_temperature)
 
         # Stage 2: Strict fact-checking pass
@@ -511,22 +420,9 @@ class ScriptService:
         for tier in challenge.tiers:
             tier.theme_color = color_map.get(tier.tier_level, tier.theme_color)
 
-        # Resolve image preview URLs for visual questions (allowing user approval in UI)
+        # Resolve image preview URLs in parallel for visual questions (allowing user approval in UI)
         if workspace is None:
-            for item in challenge.all_questions():
-                if item.image_query and not item.image_url:
-                    try:
-                        img_results = await self.image_service._search_image_urls(
-                            item.image_query, max_results=2
-                        )
-                        if img_results:
-                            item.image_url = img_results[0].get("image") or img_results[0].get(
-                                "thumbnail"
-                            )
-                    except Exception as e:
-                        logger.debug(
-                            "Failed to resolve preview image for '%s': %s", item.image_query, e
-                        )
+            await self._resolve_preview_images(challenge.all_questions())
 
         # Resolve local image assets if workspace provided
         if workspace:
@@ -557,18 +453,23 @@ class ScriptService:
         )
         return challenge
 
-    async def _download_and_verify_url(self, url: str, dest_path: Path) -> Path | None:
-        """Download image from direct URL and verify it opens as valid image."""
-        raw_bytes = await self.image_service._download_bytes(url)
-        if raw_bytes:
-            try:
-                dest_path.parent.mkdir(parents=True, exist_ok=True)
-                img = Image.open(io.BytesIO(raw_bytes))
+    def _save_image_thread(self, raw_bytes: bytes, dest_path: Path) -> Path | None:
+        """Synchronous helper running in worker thread to process and save PIL image."""
+        try:
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+            with Image.open(io.BytesIO(raw_bytes)) as img:
                 img = img.convert("RGBA")
                 img.save(dest_path, "PNG")
-                return dest_path
-            except Exception as e:
-                logger.warning("Failed to save image from URL %s: %s", url, e)
+            return dest_path
+        except Exception as e:
+            logger.warning("Failed to save image from URL to %s: %s", dest_path, e)
+            return None
+
+    async def _download_and_verify_url(self, url: str, dest_path: Path) -> Path | None:
+        """Download image from direct URL and verify/save it in a background thread."""
+        raw_bytes = await self.image_service._download_bytes(url)
+        if raw_bytes:
+            return await asyncio.to_thread(self._save_image_thread, raw_bytes, dest_path)
         return None
 
     async def _call_gemini_regenerate(
@@ -578,9 +479,6 @@ class ScriptService:
         temperature: float | None = None,
     ) -> list[QuizItem]:
         """Call Gemini to regenerate specifically requested question numbers."""
-        api_key = self.config.effective_api_key.get_secret_value()
-        client = genai.Client(api_key=api_key)
-
         kept_lines = [
             f"- Вопрос {q.question_number}: {q.question_text} (Ответ: {q.correct_answer})"
             for q in challenge.all_questions()
@@ -593,7 +491,7 @@ class ScriptService:
         ]
 
         prompt = (
-            f"Тема викторины: '{challenge.topic}'. Язык: '{challenge.language}'.\n"
+            f"Тема викторины: «{challenge.topic}». Язык: {challenge.language}.\n"
             f"В викторине ОСТАЮТСЯ следующие вопросы (НЕ ДУБЛИРОВАТЬ их факты, темы и ответы!):\n"
             + ("\n".join(kept_lines) if kept_lines else "(Нет оставшихся вопросов)")
             + "\n\n"
@@ -605,60 +503,13 @@ class ScriptService:
             "fun_fact (<=90 символов), image_query (поисковый запрос на английском)."
         )
 
-        raw_temp = temperature if temperature is not None else self.config.creative_temperature
-        eff_temp = min(2.0, max(0.0, float(raw_temp)))
-
-        config = types.GenerateContentConfig(
+        payload = await self._generate_structured(
+            prompt=prompt,
             system_instruction=REGENERATE_QUESTIONS_SYSTEM_PROMPT,
-            response_mime_type="application/json",
             response_schema=RegeneratedQuestionsPayload,
-            temperature=eff_temp,
+            temperature=temperature,
         )
-
-        loop = asyncio.get_running_loop()
-        max_retries = 4
-        last_error: Exception | None = None
-
-        for attempt in range(max_retries):
-            try:
-                response = await loop.run_in_executor(
-                    None,
-                    lambda: client.models.generate_content(
-                        model=self.config.gemini_model,
-                        contents=prompt,
-                        config=config,
-                    ),
-                )
-                raw_text = response.text or "{}"
-                data = json.loads(raw_text)
-                payload = RegeneratedQuestionsPayload.model_validate(data)
-                return payload.questions
-            except Exception as exc:
-                last_error = exc
-                err_msg = str(exc)
-                is_transient = (
-                    "503" in err_msg
-                    or "UNAVAILABLE" in err_msg
-                    or "high demand" in err_msg
-                    or "429" in err_msg
-                    or "RESOURCE_EXHAUSTED" in err_msg
-                )
-                if is_transient and attempt < max_retries - 1:
-                    delay = 2.5 * (2**attempt)
-                    logger.warning(
-                        "Transient Gemini error on regen (attempt %d/%d). Retrying in %.1fs: %s",
-                        attempt + 1,
-                        max_retries,
-                        delay,
-                        exc,
-                    )
-                    await asyncio.sleep(delay)
-                else:
-                    raise exc
-
-        if last_error:
-            raise last_error
-        raise RuntimeError("Failed to regenerate questions from Gemini API.")
+        return payload.questions
 
     async def regenerate_selected_questions(
         self,
@@ -701,23 +552,8 @@ class ScriptService:
                 )
                 new_items_by_num[q_num] = fallback_item
 
-        # Resolve candidate preview image URLs for visual questions
-        for item in new_items_by_num.values():
-            if item.image_query and not item.image_url:
-                try:
-                    img_results = await self.image_service._search_image_urls(
-                        item.image_query, max_results=2
-                    )
-                    if img_results:
-                        item.image_url = img_results[0].get("image") or img_results[0].get(
-                            "thumbnail"
-                        )
-                except Exception as e:
-                    logger.debug(
-                        "Failed to resolve preview image for '%s': %s",
-                        item.image_query,
-                        e,
-                    )
+        # Resolve candidate preview image URLs in parallel for visual questions
+        await self._resolve_preview_images(list(new_items_by_num.values()))
 
         # Update challenge in place, preserving all unselected questions and their edits
         for tier in challenge.tiers:
@@ -731,6 +567,11 @@ class ScriptService:
                 else:
                     updated_questions.append(existing_q)
             tier.questions = updated_questions
+
+        # Secondary fact-checking pass if requested
+        do_fact_check = self.config.fact_check_enabled if fact_check is None else fact_check
+        if do_fact_check:
+            challenge = await self._verify_and_refine_facts(challenge, challenge.language)
 
         logger.info(
             "Successfully regenerated %d questions in challenge.",

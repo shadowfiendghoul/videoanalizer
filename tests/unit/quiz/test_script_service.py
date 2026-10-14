@@ -153,8 +153,8 @@ async def test_two_stage_fact_checking_pass() -> None:
     """Verify generate_quiz invokes both creative generation and secondary fact-checking pass."""
     from videoanalizer.quiz.script_service import FACT_CHECK_SYSTEM_PROMPT
 
-    assert "scientific fact-checker" in FACT_CHECK_SYSTEM_PROMPT
-    assert "Strict Factual Veracity" in FACT_CHECK_SYSTEM_PROMPT
+    assert "главный редактор и строгий верификатор" in FACT_CHECK_SYSTEM_PROMPT
+    assert "Проверка достоверности" in FACT_CHECK_SYSTEM_PROMPT
 
     service = ScriptService()
     initial_challenge = make_mock_challenge()
@@ -251,11 +251,17 @@ async def test_regenerate_selected_questions() -> None:
             "_search_image_urls",
             new=AsyncMock(return_value=fake_preview_results),
         ),
+        patch.object(
+            service,
+            "_verify_and_refine_facts",
+            new=AsyncMock(side_effect=lambda ch, lang: ch),
+        ) as mock_verifier,
     ):
         updated = await service.regenerate_selected_questions(
             challenge=challenge,
             question_numbers=[2, 5],
             creative_temperature=0.8,
+            fact_check=True,
         )
 
         mock_gemini_regen.assert_called_once_with(
@@ -263,6 +269,7 @@ async def test_regenerate_selected_questions() -> None:
             question_numbers=[2, 5],
             temperature=0.8,
         )
+        mock_verifier.assert_called_once_with(challenge, challenge.language)
 
         all_q = updated.all_questions()
         # Q1 should remain custom user edit!
@@ -284,6 +291,38 @@ async def test_regenerate_selected_questions() -> None:
 
         # Q6-Q9 should remain original
         assert all_q[8].question_number == 9
+
+
+@pytest.mark.asyncio
+async def test_regenerate_selected_questions_fact_check_disabled() -> None:
+    """Verify regenerate_selected_questions skips fact-checking when fact_check=False."""
+    service = ScriptService()
+    challenge = make_mock_challenge()
+
+    replacement_q2 = QuizItem(
+        question_number=2,
+        difficulty=DifficultyTier.EASY,
+        tier_index=1,
+        question_text="Brand New Question 2?",
+        correct_answer="New Answer 2",
+        fun_fact="New Fact 2",
+    )
+
+    with (
+        patch.object(
+            service,
+            "_call_gemini_regenerate",
+            new=AsyncMock(return_value=[replacement_q2]),
+        ),
+        patch.object(service, "_resolve_preview_images", new=AsyncMock()),
+        patch.object(service, "_verify_and_refine_facts", new=AsyncMock()) as mock_verifier,
+    ):
+        await service.regenerate_selected_questions(
+            challenge=challenge,
+            question_numbers=[2],
+            fact_check=False,
+        )
+        mock_verifier.assert_not_called()
 
 
 def test_regenerate_system_prompt_constraints() -> None:
