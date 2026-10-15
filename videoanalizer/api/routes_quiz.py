@@ -587,6 +587,8 @@ async def list_available_backgrounds() -> list[BackgroundInfo]:
                 friendly_name = "Subway Surfers"
             elif "earth" in lower or "space" in lower:
                 friendly_name = "Земля из космоса (Earth Night)"
+            elif "pink" in lower or "lightning" in lower:
+                friendly_name = "Розовые молнии (Pink Lightning)"
             elif "default" in lower:
                 friendly_name = "Стандартный фон (Default)"
             else:

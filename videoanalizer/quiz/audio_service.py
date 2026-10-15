@@ -7,6 +7,7 @@ import re
 import shutil
 import struct
 import subprocess
+import sys
 import wave
 from pathlib import Path
 
@@ -28,6 +29,18 @@ from videoanalizer.quiz.models import (
 from videoanalizer.quiz.workspace import QuizWorkspace
 
 logger = logging.getLogger(__name__)
+
+
+def ensure_latest_edge_tts() -> None:
+    """Ensure edge_tts is upgraded to >=7.3.1 in sys.modules to prevent 403 handshake errors."""
+    global edge_tts
+    if getattr(edge_tts, "__version__", "") < "7.3.1":
+        for mod_name in list(sys.modules.keys()):
+            if mod_name.startswith("edge_tts"):
+                del sys.modules[mod_name]
+        import edge_tts as _reloaded_edge_tts
+
+        edge_tts = _reloaded_edge_tts
 
 
 def probe_audio_duration_ms(audio_path: Path) -> int:
@@ -401,6 +414,8 @@ class AudioService:
         tts_text = text.replace(":", " ").replace("—", " ").replace("-", " ")
         tts_text = " ".join(tts_text.split())
 
+        ensure_latest_edge_tts()
+
         for v in voices_to_try:
             max_attempts = 2 if len(voices_to_try) > 1 else 3
             for attempt in range(max_attempts):
@@ -431,6 +446,8 @@ class AudioService:
                         synthesized_successfully = True
                         break
                 except Exception as e:
+                    if "403" in str(e) or "Handshake" in str(e):
+                        ensure_latest_edge_tts()
                     logger.info(
                         "Voice %s attempt %d/%d note for '%s': %s (retrying)",
                         v,
