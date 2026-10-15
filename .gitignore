@@ -77,6 +77,8 @@ assets/music/
 !assets/backgrounds/peach_butterflies.mp4
 !assets/backgrounds/sky_clouds.mp4
 !assets/backgrounds/buttercup_daisies.mp4
+!assets/backgrounds/pastel/
+!assets/backgrounds/pastel/*.mp4
 
 # Large ML / Voice model checkpoints
 assets/models/

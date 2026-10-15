@@ -628,17 +628,38 @@
             <div class="flex items-center justify-between">
               <label class="block text-xs font-medium text-slate-300 flex items-center space-x-1.5">
                 <i data-lucide="film" class="w-3.5 h-3.5 text-emerald-400"></i>
-                <span>Фоновое видео (геймплей / космос)</span>
+                <span>Фоновое видео (геймплей / пастель / папки)</span>
               </label>
-              <span class="text-[11px] text-slate-400 font-mono">1080x1920 (9:16)</span>
+              <div class="flex items-center space-x-2">
+                <button 
+                  type="button" 
+                  onclick="openBackgroundsFolder()" 
+                  title="Открыть папку с фонами в проводнике Windows"
+                  class="text-[11px] text-emerald-400 hover:text-emerald-300 hover:underline flex items-center space-x-1 cursor-pointer transition-colors"
+                >
+                  <i data-lucide="folder" class="w-3 h-3"></i>
+                  <span>📂 Открыть папку</span>
+                </button>
+                <button 
+                  type="button" 
+                  onclick="loadBackgrounds()" 
+                  title="Обновить список фонов"
+                  class="text-[11px] text-slate-400 hover:text-white flex items-center space-x-1 cursor-pointer transition-colors"
+                >
+                  <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                  <span>Обновить</span>
+                </button>
+              </div>
             </div>
-            <select id="background-select" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all">
-              <option value="random" selected>🎲 Случайный фон из папки (Random)</option>
+            <select id="background-select" onchange="onBackgroundSelectChange()" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all">
+              <option value="random" selected>🎲 Случайный из всех фонов (Random)</option>
               <option value="minecraft_parkour_1.mp4">⛏️ Minecraft Parkour</option>
               <option value="gta5_mega_ramp_vertical.mp4">🏎️ GTA 5 Mega Ramp</option>
               <option value="subway_surfers_vertical.mp4">🏃 Subway Surfers</option>
               <option value="earth_space_night.mp4">🌍 Земля из космоса (Space Earth)</option>
             </select>
+            <div id="bg-folder-hint" class="hidden text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1.5 mt-1 flex items-center space-x-1.5">
+            </div>
 
             <!-- Background Playback Mode: Loop vs Random Switch -->
             <div class="mt-2.5 p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
@@ -2077,6 +2098,54 @@
       saveSettings();
     }
 
+    function getBgIcon(filename) {
+      const lower = filename.toLowerCase();
+      if (lower.includes('minecraft')) return '⛏️';
+      if (lower.includes('gta')) return '🏎️';
+      if (lower.includes('subway')) return '🏃';
+      if (lower.includes('earth') || lower.includes('space')) return '🌍';
+      if (lower.includes('pink') || lower.includes('lightning')) return '⚡';
+      if (lower.includes('mint') || lower.includes('star')) return '✨';
+      if (lower.includes('lavender') || lower.includes('heart')) return '💜';
+      if (lower.includes('peach') || lower.includes('butterfl')) return '🦋';
+      if (lower.includes('cloud') || lower.includes('sky')) return '☁️';
+      if (lower.includes('dais') || lower.includes('buttercup')) return '🌼';
+      if (lower.includes('gameplay') || lower.includes('videoplayback')) return '🎮';
+      return '🎥';
+    }
+
+    function onBackgroundSelectChange() {
+      const select = document.getElementById('background-select');
+      const val = select ? select.value : '';
+      const hintEl = document.getElementById('bg-folder-hint');
+      if (val && val.startsWith('folder:')) {
+        const folderName = val.replace('folder:', '');
+        if (hintEl) {
+          hintEl.classList.remove('hidden');
+          hintEl.innerHTML = `<i data-lucide="folder-check" class="w-3.5 h-3.5 text-emerald-400 inline-block mr-1"></i><span><b>Выбрана вся папка:</b> видео будут случайно чередоваться из папки <i>${folderName}</i> при окончании клипа.</span>`;
+          if (window.lucide) lucide.createIcons();
+        }
+        setBackgroundMode('random_switch');
+      } else {
+        if (hintEl) hintEl.classList.add('hidden');
+      }
+      saveSettings();
+    }
+
+    async function openBackgroundsFolder() {
+      try {
+        const resp = await fetch('/api/v1/quiz/backgrounds/open-folder', { method: 'POST' });
+        const data = await resp.json();
+        if (data.status === 'ok') {
+          console.log('Opened backgrounds folder in Explorer:', data.path);
+        } else {
+          alert('Папка с фонами: ' + data.path);
+        }
+      } catch (e) {
+        console.warn('Failed to open backgrounds folder:', e);
+      }
+    }
+
     async function loadBackgrounds() {
       try {
         const resp = await fetch('/api/v1/quiz/backgrounds');
@@ -2085,25 +2154,65 @@
         if (list && list.length > 0) {
           const select = document.getElementById('background-select');
           const current = select.value;
-          select.innerHTML = '<option value="random">🎲 Случайный фон из папки (Random)</option>';
-          list.forEach(bg => {
-            const opt = document.createElement('option');
-            opt.value = bg.filename;
-            let icon = '🎥';
-            const lower = bg.filename.toLowerCase();
-            if (lower.includes('minecraft')) icon = '⛏️';
-            else if (lower.includes('gta')) icon = '🏎️';
-            else if (lower.includes('subway')) icon = '🏃';
-            else if (lower.includes('earth') || lower.includes('space')) icon = '🌍';
-            else if (lower.includes('pink') || lower.includes('lightning')) icon = '⚡';
-            else if (lower.includes('mint') || lower.includes('star')) icon = '✨';
-            else if (lower.includes('lavender') || lower.includes('heart')) icon = '💜';
-            else if (lower.includes('peach') || lower.includes('butterfl')) icon = '🦋';
-            else if (lower.includes('cloud') || lower.includes('sky')) icon = '☁️';
-            else if (lower.includes('dais') || lower.includes('buttercup')) icon = '🌼';
-            opt.textContent = `${icon} ${bg.name}`;
-            select.appendChild(opt);
+          select.innerHTML = '';
+
+          // 1. Random option
+          const randomGroup = document.createElement('optgroup');
+          randomGroup.label = '🎲 Случайный выбор';
+          const randomOpt = document.createElement('option');
+          randomOpt.value = 'random';
+          randomOpt.textContent = '🎲 Случайный из всех фонов (Random All)';
+          randomGroup.appendChild(randomOpt);
+          select.appendChild(randomGroup);
+
+          // 2. Folders group (for whole folder random switching)
+          const folders = list.filter(b => b.is_folder);
+          if (folders.length > 0) {
+            const folderGroup = document.createElement('optgroup');
+            folderGroup.label = '📁 Выбор папки (случайная смена внутри папки)';
+            folders.forEach(f => {
+              const opt = document.createElement('option');
+              opt.value = f.filename; // e.g. "folder:pastel"
+              opt.textContent = `📁 ${f.name} [рандомная смена]`;
+              folderGroup.appendChild(opt);
+            });
+            select.appendChild(folderGroup);
+          }
+
+          // 3. Subfolder files grouped by folder
+          const subfolderNames = [...new Set(folders.map(f => f.folder))];
+          subfolderNames.forEach(fName => {
+            const filesInFolder = list.filter(b => !b.is_folder && b.folder === fName);
+            if (filesInFolder.length > 0) {
+              const grp = document.createElement('optgroup');
+              const folderTitle = fName.charAt(0).toUpperCase() + fName.slice(1);
+              grp.label = `📂 Папка: ${folderTitle}`;
+              filesInFolder.forEach(bg => {
+                const opt = document.createElement('option');
+                opt.value = bg.filename;
+                let icon = getBgIcon(bg.filename);
+                opt.textContent = `${icon} ${bg.name}`;
+                grp.appendChild(opt);
+              });
+              select.appendChild(grp);
+            }
           });
+
+          // 4. Root files
+          const rootFiles = list.filter(b => !b.is_folder && !b.folder);
+          if (rootFiles.length > 0) {
+            const rootGroup = document.createElement('optgroup');
+            rootGroup.label = '🎥 Общие фоны (Корень)';
+            rootFiles.forEach(bg => {
+              const opt = document.createElement('option');
+              opt.value = bg.filename;
+              let icon = getBgIcon(bg.filename);
+              opt.textContent = `${icon} ${bg.name}`;
+              rootGroup.appendChild(opt);
+            });
+            select.appendChild(rootGroup);
+          }
+
           const saved = getStoredSettings();
           if (saved && saved.background) {
             select.value = saved.background;
@@ -2113,6 +2222,8 @@
           if (saved && saved.background_mode) {
             setBackgroundMode(saved.background_mode);
           }
+          onBackgroundSelectChange();
+          if (window.lucide) lucide.createIcons();
         }
       } catch (e) {
         console.warn('Failed to load backgrounds list:', e);
@@ -2133,7 +2244,7 @@
     document.getElementById('intro-hook-input')?.addEventListener('input', saveSettings);
     document.getElementById('language-select')?.addEventListener('change', handleLanguageChange);
     document.getElementById('voice-select')?.addEventListener('change', saveSettings);
-    document.getElementById('background-select')?.addEventListener('change', saveSettings);
+    document.getElementById('background-select')?.addEventListener('change', () => { onBackgroundSelectChange(); saveSettings(); });
     document.getElementById('banner-toggle')?.addEventListener('change', () => { toggleBannerSection(); saveSettings(); });
     document.getElementById('music-toggle')?.addEventListener('change', () => { toggleMusicSection(); saveSettings(); });
     document.getElementById('music-volume-slider')?.addEventListener('input', saveSettings);

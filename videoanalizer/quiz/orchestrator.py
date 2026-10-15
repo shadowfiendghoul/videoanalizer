@@ -59,72 +59,104 @@ class QuizOrchestrator:
         self.audio_service = AudioService(config=self.config)
         self.image_service = ImageService()
 
+    def _pick_from_candidates(
+        self,
+        candidates: list[Path],
+        exclude_paths: list[Path | str] | None = None,
+    ) -> Path:
+        """Pick a background from candidates adhering to exclusion and recent usage history."""
+        if not candidates:
+            raise FileNotFoundError("Candidate list is empty")
+        if len(candidates) == 1:
+            return candidates[0]
+
+        excluded_set: set[Path] = set()
+        if exclude_paths:
+            for ep in exclude_paths:
+                p_ep = Path(ep)
+                excluded_set.add(p_ep)
+                excluded_set.add(p_ep.resolve())
+                excluded_set.add(self.config.backgrounds_dir / p_ep.name)
+
+        recent = QuizOrchestrator._recent_random_backgrounds
+        fresh = [f for f in candidates if f not in excluded_set and f not in recent]
+        if not fresh:
+            fresh = [f for f in candidates if f not in excluded_set]
+        if not fresh:
+            fresh = candidates
+
+        if len(fresh) > 1 and recent:
+            last_used = recent[-1]
+            non_last = [f for f in fresh if f != last_used]
+            if non_last:
+                fresh = non_last
+
+        picked = secrets.choice(fresh)
+        QuizOrchestrator._recent_random_backgrounds.append(picked)
+        max_history = max(1, len(candidates) - 1)
+        while len(QuizOrchestrator._recent_random_backgrounds) > max_history:
+            QuizOrchestrator._recent_random_backgrounds.pop(0)
+
+        return picked
+
     def select_background(
         self,
         explicit_path: Path | str | None = None,
         exclude_paths: list[Path | str] | None = None,
     ) -> Path:
-        """Select a vertical background video, either specific or randomly chosen."""
+        """Select a vertical background video, either specific, from a chosen folder, or random."""
+        bg_dir = self.config.backgrounds_dir
+
+        # Case 1: Explicit folder selected (e.g. "folder:pastel" or "folder:gameplay")
+        if explicit_path and str(explicit_path).strip().lower().startswith("folder:"):
+            folder_name = str(explicit_path).strip()[7:].strip()
+            target_folder = bg_dir / folder_name
+            if target_folder.exists() and target_folder.is_dir():
+                folder_candidates = [
+                    f for f in target_folder.glob("*.mp4")
+                    if not f.name.startswith(".") and f.is_file()
+                ]
+                if folder_candidates:
+                    return self._pick_from_candidates(folder_candidates, exclude_paths)
+            logger.warning(
+                "Explicit background folder '%s' not found or empty, falling back to random background",
+                folder_name,
+            )
+
+        # Case 2: Explicit specific file path (e.g. "pastel/mint_stars.mp4" or "minecraft_parkour_1.mp4")
         if explicit_path and str(explicit_path).strip().lower() != "random":
             p = Path(explicit_path)
             if p.exists() and p.is_file():
                 return p
-            p_in_bg = self.config.backgrounds_dir / explicit_path
+            p_in_bg = bg_dir / explicit_path
             if p_in_bg.exists() and p_in_bg.is_file():
                 return p_in_bg
+            # If path points directly to a directory
+            if p_in_bg.exists() and p_in_bg.is_dir():
+                dir_candidates = [
+                    f for f in p_in_bg.glob("*.mp4")
+                    if not f.name.startswith(".") and f.is_file()
+                ]
+                if dir_candidates:
+                    return self._pick_from_candidates(dir_candidates, exclude_paths)
             logger.warning(
                 "Explicit background '%s' not found, falling back to random background",
                 explicit_path,
             )
 
-        bg_dir = self.config.backgrounds_dir
+        # Case 3: Random selection from entire collection (root + subfolders)
         if bg_dir.exists():
-            mp4_candidates = [
+            all_candidates = [
                 f for f in bg_dir.glob("*.mp4")
                 if not f.name.startswith(".") and f.is_file()
             ]
-            if mp4_candidates:
-                if len(mp4_candidates) == 1:
-                    return mp4_candidates[0]
-
-                excluded_set: set[Path] = set()
-                if exclude_paths:
-                    for ep in exclude_paths:
-                        p_ep = Path(ep)
-                        excluded_set.add(p_ep)
-                        excluded_set.add(bg_dir / p_ep.name)
-
-                # Prioritize candidates not excluded and not recently used
-                recent = QuizOrchestrator._recent_random_backgrounds
-                fresh_candidates = [
-                    f for f in mp4_candidates
-                    if f not in excluded_set and f not in recent
+            if not all_candidates:
+                all_candidates = [
+                    f for f in bg_dir.rglob("*.mp4")
+                    if not f.name.startswith(".") and f.is_file()
                 ]
-
-                # If all available were recently used, relax recent history
-                if not fresh_candidates:
-                    fresh_candidates = [
-                        f for f in mp4_candidates
-                        if f not in excluded_set
-                    ]
-
-                if not fresh_candidates:
-                    fresh_candidates = mp4_candidates
-
-                # Avoid repeating the immediate last picked background if multiple choices exist
-                if len(fresh_candidates) > 1 and QuizOrchestrator._recent_random_backgrounds:
-                    last_used = QuizOrchestrator._recent_random_backgrounds[-1]
-                    non_last = [f for f in fresh_candidates if f != last_used]
-                    if non_last:
-                        fresh_candidates = non_last
-
-                picked = secrets.choice(fresh_candidates)
-                QuizOrchestrator._recent_random_backgrounds.append(picked)
-                max_history = max(1, len(mp4_candidates) - 1)
-                while len(QuizOrchestrator._recent_random_backgrounds) > max_history:
-                    QuizOrchestrator._recent_random_backgrounds.pop(0)
-
-                return picked
+            if all_candidates:
+                return self._pick_from_candidates(all_candidates, exclude_paths)
 
         default_bg = bg_dir / "default_bg.mp4"
         if default_bg.exists():
@@ -201,6 +233,7 @@ class QuizOrchestrator:
         target_bg: Path,
         duration_sec: float = 120.0,
         background_mode: str = "loop",
+        folder_scope: str | Path | None = None,
     ) -> str:
         """Stage background video into public dir.
 
@@ -208,7 +241,7 @@ class QuizOrchestrator:
             Loops the selected background video cleanly for the entire duration_sec using -stream_loop -1.
         If background_mode == "random_switch":
             When the background video ends (or if single clip is too long, every 12-15s),
-            smoothly switches to another random background video from backgrounds_dir.
+            smoothly switches to another random background video from the chosen folder or library.
         """
         ensure_system_paths()
         ffmpeg_bin = shutil.which("ffmpeg")
@@ -246,15 +279,40 @@ class QuizOrchestrator:
             # If the source video is very long (e.g. 5-minute gameplay), slice first segment to ~12s
             # so the random switch actually triggers within the short video!
             dur_initial = 12.0
+
         bg_dir = self.config.backgrounds_dir
-        all_candidates = (
-            [
-                p for p in bg_dir.glob("*.mp4")
+        # Scope candidates strictly to chosen folder if specified, or to parent folder of bg_source
+        cand_dir: Path | None = None
+        if folder_scope and str(folder_scope).strip().lower().startswith("folder:"):
+            folder_name = str(folder_scope).strip()[7:].strip()
+            folder_path = bg_dir / folder_name
+            if folder_path.exists() and folder_path.is_dir():
+                cand_dir = folder_path
+        elif folder_scope and (bg_dir / str(folder_scope)).is_dir():
+            cand_dir = bg_dir / str(folder_scope)
+        elif bg_source.parent.resolve() != bg_dir.resolve():
+            cand_dir = bg_source.parent
+
+        if cand_dir and cand_dir.exists():
+            all_candidates = [
+                p for p in cand_dir.glob("*.mp4")
                 if not p.name.startswith(".") and p.is_file()
             ]
-            if bg_dir.exists()
-            else []
-        )
+        else:
+            all_candidates = (
+                [
+                    p for p in bg_dir.glob("*.mp4")
+                    if not p.name.startswith(".") and p.is_file()
+                ]
+                if bg_dir.exists()
+                else []
+            )
+            if not all_candidates and bg_dir.exists():
+                all_candidates = [
+                    p for p in bg_dir.rglob("*.mp4")
+                    if not p.name.startswith(".") and p.is_file()
+                ]
+
         if not all_candidates:
             all_candidates = [bg_source]
 
@@ -886,7 +944,12 @@ class QuizOrchestrator:
                 images_dir=images_dir,
             )
             task_bg = asyncio.to_thread(
-                self._prepare_background, bg_source, target_bg, 120.0, background_mode
+                self._prepare_background,
+                bg_source,
+                target_bg,
+                120.0,
+                background_mode,
+                background_video,
             )
             task_banner = asyncio.to_thread(self._prepare_banner, banner_video, public_dir)
             task_music = asyncio.to_thread(self._prepare_music, background_music, public_dir)
@@ -1051,7 +1114,12 @@ class QuizOrchestrator:
                 bg_source = self.select_background(background_video)
                 target_bg = public_dir / "background.mp4"
                 await asyncio.to_thread(
-                    self._prepare_background, bg_source, target_bg, 120.0, background_mode
+                    self._prepare_background,
+                    bg_source,
+                    target_bg,
+                    120.0,
+                    background_mode,
+                    background_video,
                 )
 
                 # 2. Stage images into public/images/

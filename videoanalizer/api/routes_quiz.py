@@ -1,7 +1,10 @@
 """FastAPI REST routes for Quiz Shorts Generator background jobs and video download."""
 
 import logging
+import os
 import shutil
+import subprocess
+import sys
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -263,11 +266,14 @@ class VisualQuizRenderResponse(BaseModel):
 
 
 class BackgroundInfo(BaseModel):
-    """Available background video metadata."""
+    """Available background video or folder metadata."""
 
     id: str
     name: str
     filename: str
+    folder: str | None = None
+    is_folder: bool = False
+    count: int = 1
 
 
 class QuizGenerateResponse(BaseModel):
@@ -592,50 +598,114 @@ async def list_available_music() -> list[dict[str, str | float]]:
     return results
 
 
+def _format_bg_friendly_name(stem: str) -> str:
+    lower = stem.lower()
+    if "minecraft" in lower:
+        return "Minecraft Parkour"
+    elif "gta" in lower:
+        return "GTA 5 Mega Ramp"
+    elif "subway" in lower:
+        return "Subway Surfers"
+    elif "earth" in lower or "space" in lower:
+        return "Земля из космоса (Earth Night)"
+    elif "pink" in lower or "lightning" in lower:
+        return "Розовые молнии (Pink Lightning)"
+    elif "mint" in lower or "star" in lower:
+        return "Мятные звёздочки (Mint Stars)"
+    elif "lavender" in lower or "heart" in lower:
+        return "Лавандовые сердца (Lavender Hearts)"
+    elif "peach" in lower or "butterfl" in lower:
+        return "Персиковые бабочки (Peach Butterflies)"
+    elif "cloud" in lower or "sky" in lower:
+        return "Небесные облака (Sky Clouds)"
+    elif "dais" in lower or "buttercup" in lower:
+        return "Сливочные ромашки (Buttercup Daisies)"
+    elif "default" in lower:
+        return "Стандартный фон (Default)"
+    elif lower.startswith("videoplayback"):
+        num = "".join(ch for ch in stem if ch.isdigit())
+        return f"Геймплей клип #{num}" if num else "Геймплей клип"
+    else:
+        return stem.replace("_", " ").title()
+
+
 @router.get("/backgrounds", response_model=list[BackgroundInfo])
 async def list_available_backgrounds() -> list[BackgroundInfo]:
-    """List available background video loop files."""
+    """List available background video files and subfolders."""
     orchestrator = QuizOrchestrator()
     bg_dir = orchestrator.config.backgrounds_dir
     results: list[BackgroundInfo] = []
-    if bg_dir.exists():
-        for p in sorted(bg_dir.glob("*.mp4")):
-            if p.name.startswith("."):
-                continue
-            lower = p.name.lower()
-            if "minecraft" in lower:
-                friendly_name = "Minecraft Parkour"
-            elif "gta" in lower:
-                friendly_name = "GTA 5 Mega Ramp"
-            elif "subway" in lower:
-                friendly_name = "Subway Surfers"
-            elif "earth" in lower or "space" in lower:
-                friendly_name = "Земля из космоса (Earth Night)"
-            elif "pink" in lower or "lightning" in lower:
-                friendly_name = "Розовые молнии (Pink Lightning)"
-            elif "mint" in lower or "star" in lower:
-                friendly_name = "Мятные звёздочки (Mint Stars)"
-            elif "lavender" in lower or "heart" in lower:
-                friendly_name = "Лавандовые сердца (Lavender Hearts)"
-            elif "peach" in lower or "butterfl" in lower:
-                friendly_name = "Персиковые бабочки (Peach Butterflies)"
-            elif "cloud" in lower or "sky" in lower:
-                friendly_name = "Небесные облака (Sky Clouds)"
-            elif "dais" in lower or "buttercup" in lower:
-                friendly_name = "Сливочные ромашки (Buttercup Daisies)"
-            elif "default" in lower:
-                friendly_name = "Стандартный фон (Default)"
-            else:
-                friendly_name = p.stem.replace("_", " ").title()
+    if not bg_dir.exists():
+        return results
 
+    # 1. Discover subfolders containing .mp4 files
+    subdirs = [d for d in bg_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
+    for sub in sorted(subdirs, key=lambda d: d.name.lower()):
+        mp4s = [p for p in sub.glob("*.mp4") if not p.name.startswith(".") and p.is_file()]
+        if not mp4s:
+            continue
+        folder_friendly = sub.name.replace("_", " ").title()
+        # Add folder item (for random switching strictly within folder)
+        results.append(
+            BackgroundInfo(
+                id=f"folder:{sub.name}",
+                name=f"Папка: {folder_friendly} ({len(mp4s)} видео)",
+                filename=f"folder:{sub.name}",
+                folder=sub.name,
+                is_folder=True,
+                count=len(mp4s),
+            )
+        )
+        # Add individual files within subfolder
+        for p in sorted(mp4s, key=lambda f: f.name.lower()):
+            rel_name = f"{sub.name}/{p.name}"
             results.append(
                 BackgroundInfo(
-                    id=p.name,
-                    name=friendly_name,
-                    filename=p.name,
+                    id=rel_name,
+                    name=_format_bg_friendly_name(p.stem),
+                    filename=rel_name,
+                    folder=sub.name,
+                    is_folder=False,
+                    count=1,
                 )
             )
+
+    # 2. Discover root .mp4 files
+    for p in sorted(bg_dir.glob("*.mp4"), key=lambda f: f.name.lower()):
+        if p.name.startswith(".") or not p.is_file():
+            continue
+        results.append(
+            BackgroundInfo(
+                id=p.name,
+                name=_format_bg_friendly_name(p.stem),
+                filename=p.name,
+                folder=None,
+                is_folder=False,
+                count=1,
+            )
+        )
+
     return results
+
+
+@router.post("/backgrounds/open-folder")
+async def open_backgrounds_folder() -> dict[str, str]:
+    """Open backgrounds directory in local file manager (Explorer on Windows)."""
+    orchestrator = QuizOrchestrator()
+    bg_dir = orchestrator.config.backgrounds_dir
+    bg_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        resolved = str(bg_dir.resolve())
+        if sys.platform == "win32":
+            os.startfile(resolved)  # noqa: S606
+        elif sys.platform == "darwin":
+            subprocess.run(["open", resolved], check=False)
+        else:
+            subprocess.run(["xdg-open", resolved], check=False)
+        return {"status": "ok", "path": resolved}
+    except Exception as exc:
+        logger.warning("Failed to open backgrounds folder: %s", exc)
+        return {"status": "error", "message": str(exc), "path": str(bg_dir.resolve())}
 
 
 @router.post("/generate", response_model=QuizGenerateResponse, status_code=status.HTTP_202_ACCEPTED)
