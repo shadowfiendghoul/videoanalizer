@@ -845,7 +845,7 @@ class VisualDifficulty(StrEnum):
 class VisualQuizItem(BaseModel):
     """Single question specification for Visual Image Quiz."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     id: int = Field(..., ge=1, le=10, description="Question number 1..10")
     difficulty: VisualDifficulty = Field(..., description="Difficulty level")
@@ -868,7 +868,7 @@ class VisualQuizInterstitialType(StrEnum):
 class VisualQuizInterstitial(BaseModel):
     """Interstitial bait cue."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     after_question: int = Field(..., ge=1, le=9, description="Question number after which interstitial displays")
     type: VisualQuizInterstitialType = Field(..., description="Type of bait activity")
@@ -879,7 +879,7 @@ class VisualQuizInterstitial(BaseModel):
 class VisualQuizDataset(BaseModel):
     """Complete dataset for Visual Image Quiz."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     mode: Literal["visual_image_quiz"] = Field(default="visual_image_quiz", description="Mode identifier")
     theme: str = Field(..., min_length=2, max_length=100, description="Quiz theme")
