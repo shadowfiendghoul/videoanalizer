@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import math
+import re
 import shutil
 import struct
 import subprocess
@@ -18,6 +19,9 @@ from videoanalizer.quiz.models import (
     QuizChallenge,
     QuizRetentionConfig,
     SfxPaths,
+    VisualQuizDataset,
+    VisualQuizTimingSlot,
+    VisualQuizWordTiming,
     VoiceConfig,
     WordCue,
 )
@@ -208,6 +212,23 @@ def ensure_default_sfx(sfx_dir: Path) -> None:
                     0.8 * math.sin(2 * math.pi * freq * t)
                     + 0.2 * math.sin(2 * math.pi * (freq * 3) * t)
                 ) * env * 31000
+                data.extend(struct.pack("<h", int(max(-32767, min(32767, val)))))
+            f.writeframes(data)
+
+    card_flip_path = sfx_dir / "card_flip_rapid.wav"
+    if not card_flip_path.exists():
+        # Rapid clicking card flip sound (3.5s)
+        n_samples = int(sample_rate * 3.5)
+        with wave.open(str(card_flip_path), "w") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(sample_rate)
+            data = bytearray()
+            for i in range(n_samples):
+                t = i / sample_rate
+                phase = (t % 0.12)
+                click_env = math.exp(-phase * 120.0) if phase < 0.04 else 0.0
+                val = math.sin(2 * math.pi * 1800.0 * t) * click_env * 24000
                 data.extend(struct.pack("<h", int(max(-32767, min(32767, val)))))
             f.writeframes(data)
 
@@ -584,6 +605,8 @@ class AudioService:
                 raise ValueError("Either output_dir or workspace must be provided.")
 
             # Format spoken question text matching viral quiz pacing
+            # First question starts immediately without prefix ("вопрос номер 1"),
+            # while subsequent questions (2-9) are announced explicitly.
             if challenge.language == "ru":
                 num_words_ru = {
                     1: "один",
@@ -597,11 +620,22 @@ class AudioService:
                     9: "девять",
                 }
                 n_str = num_words_ru.get(q_num, str(q_num))
-                q_speech = (
-                    q.question_text
-                    if q.question_text.lower().startswith("вопрос")
-                    else f"Вопрос номер {n_str}, {q.question_text}"
-                )
+                if q_num == 1:
+                    clean_text = re.sub(
+                        r"^(?:вопрос\s*(?:номер)?\s*(?:1|один)[\s,:—–-]+)",
+                        "",
+                        q.question_text,
+                        flags=re.IGNORECASE,
+                    ).strip()
+                    if clean_text:
+                        clean_text = clean_text[0].upper() + clean_text[1:]
+                    q_speech = clean_text or q.question_text
+                else:
+                    q_speech = (
+                        q.question_text
+                        if q.question_text.lower().startswith("вопрос")
+                        else f"Вопрос номер {n_str}, {q.question_text}"
+                    )
                 a_speech = (
                     q.correct_answer
                     if q.correct_answer.lower().startswith("ответ")
@@ -620,11 +654,22 @@ class AudioService:
                     9: "nine",
                 }
                 n_str = num_words_en.get(q_num, str(q_num))
-                q_speech = (
-                    q.question_text
-                    if q.question_text.lower().startswith("question")
-                    else f"Question number {n_str}, {q.question_text}"
-                )
+                if q_num == 1:
+                    clean_text = re.sub(
+                        r"^(?:question\s*(?:number)?\s*(?:1|one)[\s,:—–-]+)",
+                        "",
+                        q.question_text,
+                        flags=re.IGNORECASE,
+                    ).strip()
+                    if clean_text:
+                        clean_text = clean_text[0].upper() + clean_text[1:]
+                    q_speech = clean_text or q.question_text
+                else:
+                    q_speech = (
+                        q.question_text
+                        if q.question_text.lower().startswith("question")
+                        else f"Question number {n_str}, {q.question_text}"
+                    )
                 a_speech = (
                     q.correct_answer
                     if q.correct_answer.lower().startswith("answer")
@@ -700,3 +745,209 @@ class AudioService:
 
     # Alias for orchestrator interface
     synthesize_cue_sheet = generate_challenge_audio
+
+    async def generate_visual_quiz_audio(
+        self,
+        dataset: VisualQuizDataset,
+        workspace: QuizWorkspace,
+        voice: str | None = None,
+        voice_config: VoiceConfig | None = None,
+    ) -> tuple[Path, list[VisualQuizTimingSlot], list[dict], int, int]:
+        """Synthesize all speech cues and assemble master AudioCueSheet & timing slots for VisualImageQuiz.
+
+        Returns:
+            (master_audio_path, timing_slots, subtitles, total_duration_frames, hook_end_frame)
+        """
+        ensure_default_sfx(self.config.sfx_dir)
+        selected_voice = voice or "ru-RU-DmitryNeural"
+        fps = self.config.fps
+
+        timing_slots: list[VisualQuizTimingSlot] = []
+        subtitles: list[dict] = []
+        audio_events: list[tuple[Path, float, float]] = []  # (path, start_time_sec, volume_db)
+
+        # 1. Synthesize Intro Hook
+        hook_audio_path = workspace.get_audio_path("visual_hook.mp3")
+        hook_dur_ms, hook_words = await self.synthesize_speech_with_cues(
+            dataset.hook_tts,
+            selected_voice,
+            hook_audio_path,
+            voice_config=voice_config,
+        )
+        hook_end_frame = max(180, int(hook_dur_ms * fps / 1000) + 12)  # At least 3.0s
+        audio_events.append((hook_audio_path, 0.0, 0.0))
+
+        # Add Rapid Card Flip SFX during intro
+        card_flip_sfx = self.config.sfx_dir / "card_flip_rapid.wav"
+        if card_flip_sfx.exists():
+            audio_events.append((card_flip_sfx, 0.0, -4.0))
+
+        # Add hook words to subtitles
+        for w in hook_words:
+            subtitles.append({
+                "word": w.word,
+                "start_frame": max(0, int(w.start_ms * fps / 1000)),
+                "end_frame": max(1, int(w.end_ms * fps / 1000)),
+            })
+
+        current_frame = hook_end_frame
+        ding_sfx = self.config.sfx_dir / "reveal_ding.wav"
+        timer_sfx = self.config.sfx_dir / "timer_tick.wav"
+        cliff_sfx = self.config.sfx_dir / "heartbeat_panic.wav"
+
+        # Interstitial lookup by question number
+        interstitials_map = {
+            it.after_question: it for it in (dataset.interstitials or [])
+        }
+
+        # 2. Iterate Questions 1..10
+        for item in dataset.items:
+            q_id = item.id
+            q_prompt_path = workspace.get_audio_path(f"visual_q_{q_id}_prompt.mp3")
+            q_ans_path = workspace.get_audio_path(f"visual_q_{q_id}_answer.mp3")
+
+            p_dur_ms, p_words = await self.synthesize_speech_with_cues(
+                item.prompt_tts,
+                selected_voice,
+                q_prompt_path,
+                voice_config=voice_config,
+            )
+            a_dur_ms, a_words = await self.synthesize_speech_with_cues(
+                item.answer_tts,
+                selected_voice,
+                q_ans_path,
+                voice_config=voice_config,
+            )
+
+            start_frame = current_frame
+            timer_start_frame = start_frame
+            timer_duration_frames = int(dataset.timer_duration_sec * fps)
+            reveal_frame = timer_start_frame + timer_duration_frames
+            answer_audio_start_frame = reveal_frame
+
+            ans_frames = max(1, int(a_dur_ms * fps / 1000))
+            end_frame = reveal_frame + ans_frames + 20
+
+            slot = VisualQuizTimingSlot(
+                question_id=q_id,
+                start_frame=start_frame,
+                prompt_audio_start_frame=start_frame,
+                timer_start_frame=timer_start_frame,
+                timer_duration_frames=timer_duration_frames,
+                answer_audio_start_frame=answer_audio_start_frame,
+                reveal_frame=reveal_frame,
+                end_frame=end_frame,
+            )
+            timing_slots.append(slot)
+
+            audio_events.append((q_prompt_path, start_frame / fps, 0.0))
+            if timer_sfx.exists():
+                audio_events.append((timer_sfx, timer_start_frame / fps, -6.0))
+
+            if q_id == 10 and cliff_sfx.exists():
+                audio_events.append((cliff_sfx, reveal_frame / fps, -3.0))
+            elif ding_sfx.exists():
+                audio_events.append((ding_sfx, reveal_frame / fps, -4.0))
+
+            audio_events.append((q_ans_path, answer_audio_start_frame / fps, 0.0))
+
+            for w in p_words:
+                subtitles.append({
+                    "word": w.word,
+                    "start_frame": start_frame + int(w.start_ms * fps / 1000),
+                    "end_frame": start_frame + int(w.end_ms * fps / 1000),
+                })
+            for w in a_words:
+                subtitles.append({
+                    "word": w.word,
+                    "start_frame": answer_audio_start_frame + int(w.start_ms * fps / 1000),
+                    "end_frame": answer_audio_start_frame + int(w.end_ms * fps / 1000),
+                })
+
+            current_frame = end_frame + 6
+
+            # Check interstitial
+            if q_id in interstitials_map:
+                inter = interstitials_map[q_id]
+                inter_path = workspace.get_audio_path(f"visual_interstitial_{q_id}.mp3")
+                i_dur_ms, i_words = await self.synthesize_speech_with_cues(
+                    inter.tts_text,
+                    selected_voice,
+                    inter_path,
+                    voice_config=voice_config,
+                )
+                inter_start_frame = current_frame
+                audio_events.append((inter_path, inter_start_frame / fps, 0.0))
+                for w in i_words:
+                    subtitles.append({
+                        "word": w.word,
+                        "start_frame": inter_start_frame + int(w.start_ms * fps / 1000),
+                        "end_frame": inter_start_frame + int(w.end_ms * fps / 1000),
+                    })
+                inter_frames = max(int(inter.duration_sec * fps), int(i_dur_ms * fps / 1000) + 12)
+                current_frame += inter_frames
+
+        total_duration_frames = current_frame
+        master_audio_path = workspace.get_audio_path("visual_quiz_master_mix.wav")
+
+        await self._render_audio_events_mix(audio_events, master_audio_path, total_duration_frames / fps)
+
+        return (
+            master_audio_path,
+            timing_slots,
+            subtitles,
+            total_duration_frames,
+            hook_end_frame,
+        )
+
+    async def _render_audio_events_mix(
+        self,
+        events: list[tuple[Path, float, float]],
+        output_path: Path,
+        total_duration_sec: float,
+    ) -> None:
+        """Mix multiple audio files at given timestamps and volumes into a single WAV via FFmpeg."""
+        valid_events = [(p, t, vol) for p, t, vol in events if p.exists()]
+        if not valid_events:
+            cmd = [
+                "ffmpeg", "-y", "-f", "lavfi",
+                "-i", "anullsrc=r=44100:cl=stereo",
+                "-t", str(max(1.0, total_duration_sec)),
+                str(output_path),
+            ]
+            await asyncio.to_thread(subprocess.run, cmd, capture_output=True, check=True)
+            return
+
+        inputs = []
+        filter_parts = []
+        for idx, (path, start_sec, vol_db) in enumerate(valid_events):
+            inputs.extend(["-i", str(path)])
+            delay_ms = int(max(0.0, start_sec) * 1000)
+            vol_factor = 10.0 ** (vol_db / 20.0)
+            filter_parts.append(
+                f"[{idx}:a]adelay={delay_ms}|{delay_ms},volume={vol_factor:.2f}[a{idx}];"
+            )
+
+        amix_inputs = "".join(f"[a{i}]" for i in range(len(valid_events)))
+        filter_complex = "".join(filter_parts) + f"{amix_inputs}amix=inputs={len(valid_events)}:dropout_transition=0,volume=1.0[outa]"
+
+        cmd = [
+            "ffmpeg", "-y",
+            *inputs,
+            "-filter_complex", filter_complex,
+            "-map", "[outa]",
+            "-ac", "2",
+            "-ar", "44100",
+            "-t", str(total_duration_sec),
+            str(output_path),
+        ]
+
+        def _run_ffmpeg():
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode != 0:
+                logger.warning("FFmpeg audio mix failed: %s. Using simple copy fallback.", res.stderr)
+                if valid_events:
+                    shutil.copy2(valid_events[0][0], output_path)
+
+        await asyncio.to_thread(_run_ffmpeg)
+

@@ -31,6 +31,7 @@ from videoanalizer.quiz.models import (
     RvcModelListResponse,
     SingleTopicSuggestRequest,
     TopicSuggestion,
+    VisualQuizDataset,
     VoiceConfig,
     VoicePreviewRequest,
     VoicePreviewResponse,
@@ -206,6 +207,36 @@ class MusicUploadResponse(BaseModel):
     filename: str
     saved_filename: str
     duration_seconds: float
+
+
+class VisualQuizGenerateRequest(BaseModel):
+    """Payload to generate Visual Image Quiz script and candidates."""
+
+    theme: str | None = Field(default=None, description="Optional topic for visual quiz")
+    language: Literal["ru", "en"] = Field(default="ru", description="Voice and UI language")
+    auto_search_images: bool = Field(default=True, description="Automatically search candidate images on web")
+    temperature: float | None = Field(default=None, ge=0.0, le=2.0, description="Sampling temperature")
+
+
+class VisualQuizRenderRequest(BaseModel):
+    """Payload to render approved Visual Image Quiz into MP4."""
+
+    dataset: VisualQuizDataset = Field(..., description="Approved visual quiz dataset")
+    background_video: str | None = Field(default=None, description="Optional background video file or path")
+    background_music: str | None = Field(default=None, description="Optional background music file or path")
+    background_music_volume: float = Field(default=0.18, ge=0.0, le=1.0, description="Music volume")
+    voice: str | None = Field(default=None, description="Edge-TTS voice name")
+    voice_config: VoiceConfig | None = Field(default=None, description="Voice pipeline config")
+    render_profile: RenderProfile | None = Field(default=None, description="Render profile (e.g. gpu_fast, cpu_safe)")
+
+
+class VisualQuizRenderResponse(BaseModel):
+    """Result of Visual Image Quiz video rendering."""
+
+    video_path: str = Field(..., description="Local path to generated MP4 video")
+    download_url: str = Field(..., description="API endpoint to download or stream MP4")
+    duration_sec: float | None = Field(default=None, description="Video duration in seconds")
+    status: str = Field(default="completed", description="Render status")
 
 
 class BackgroundInfo(BaseModel):
@@ -834,6 +865,95 @@ async def download_history_video(item_id: str) -> FileResponse:
         status_code=status.HTTP_404_NOT_FOUND,
         detail=f"Видео '{item_id}' не найдено в истории генераций.",
     )
+
+
+# ==============================================================================
+# Visual Image Quiz Endpoints (007-visual-image-quiz)
+# ==============================================================================
+
+
+@router.post("/visual/generate", response_model=VisualQuizDataset)
+async def generate_visual_quiz(request: VisualQuizGenerateRequest) -> VisualQuizDataset:
+    """Generate a complete Visual Image Quiz script and candidate images."""
+    orchestrator = QuizOrchestrator()
+    try:
+        return await orchestrator.script_service.generate_visual_quiz_dataset(
+            theme=request.theme,
+            language=request.language,
+            auto_search_images=request.auto_search_images,
+            temperature=request.temperature,
+        )
+    except Exception as exc:
+        logger.error("Failed to generate visual quiz: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Не удалось сгенерировать визуальную викторину: {exc}",
+        ) from exc
+
+
+@router.post("/visual/render", response_model=VisualQuizRenderResponse)
+async def render_visual_quiz(request: VisualQuizRenderRequest) -> VisualQuizRenderResponse:
+    """Render finalized Visual Image Quiz into MP4 via Remotion."""
+    orchestrator = QuizOrchestrator()
+    job_id = f"vis_{uuid.uuid4().hex[:10]}"
+    try:
+        out_path = await orchestrator.render_visual_quiz(
+            dataset=request.dataset,
+            background_video=request.background_video,
+            background_music=request.background_music,
+            background_music_volume=request.background_music_volume,
+            voice=request.voice,
+            voice_config=request.voice_config,
+            render_profile=request.render_profile,
+        )
+        download_url = f"/api/v1/quiz/jobs/{job_id}/download"
+        duration_sec = float(len(request.dataset.items) * 4.5 + 4.0)
+
+        # Store in in-memory jobs cache
+        quiz_jobs[job_id] = {
+            "job_id": job_id,
+            "status": "completed",
+            "stage": "finished",
+            "progress_percent": 100,
+            "topic": request.dataset.theme,
+            "created_at": datetime.now(UTC).isoformat(),
+            "video_path": str(out_path),
+            "download_url": download_url,
+            "challenge_summary": {
+                "topic": request.dataset.theme,
+                "total_questions": len(request.dataset.items),
+                "duration_seconds": duration_sec,
+            },
+        }
+
+        # Store in persistent history
+        try:
+            manager = get_batch_queue_manager()
+            manager.record_history(
+                BatchQueueItem(
+                    item_id=job_id,
+                    index=1,
+                    topic=f"[Visual Quiz] {request.dataset.theme}",
+                    status=BatchQueueItemStatus.COMPLETED,
+                    video_path=str(out_path),
+                    download_url=download_url,
+                )
+            )
+        except Exception as err:
+            logger.warning("Failed to record visual quiz to history: %s", err)
+
+        return VisualQuizRenderResponse(
+            video_path=str(out_path),
+            download_url=download_url,
+            duration_sec=duration_sec,
+            status="completed",
+        )
+    except Exception as exc:
+        logger.error("Failed to render visual quiz: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка рендеринга визуальной викторины: {exc}",
+        ) from exc
 
 
 # ==============================================================================

@@ -1,7 +1,8 @@
 import React from "react";
 import { Composition } from "remotion";
 import { QuizChallengeComp } from "./QuizChallenge";
-import { RemotionRenderProps } from "./types";
+import { VisualImageQuizComp } from "./VisualImageQuiz";
+import { RemotionRenderProps, VisualQuizRenderProps } from "./types";
 import "./style.css";
 
 const defaultProps: RemotionRenderProps = {
@@ -213,6 +214,42 @@ export const Root: React.FC = () => {
           };
         }}
       />
+
+      <Composition<any, VisualQuizRenderProps>
+        id="VisualImageQuiz"
+        component={VisualImageQuizComp}
+        durationInFrames={3000}
+        fps={60}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          dataset: {
+            mode: "visual_image_quiz",
+            theme: "Пример викторины",
+            hook_tts: "Угадай все эти предметы!",
+            rapid_flip_duration_ms: 120,
+            timer_duration_sec: 2.0,
+            items: [],
+          },
+          fps: 60,
+          width: 1080,
+          height: 1920,
+          total_duration_frames: 3000,
+          hook_end_frame: 210,
+          timing_slots: [],
+          subtitles: [],
+          audio_mix_path: "",
+        }}
+        calculateMetadata={({ props }) => {
+          return {
+            durationInFrames: props.total_duration_frames || 3000,
+            fps: props.fps || 60,
+            width: props.width || 1080,
+            height: props.height || 1920,
+          };
+        }}
+      />
     </>
   );
 };
+

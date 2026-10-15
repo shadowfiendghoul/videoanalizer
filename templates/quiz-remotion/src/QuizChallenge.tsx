@@ -26,6 +26,8 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
   banner_video_path,
   banner_start_frame,
   banner_duration_frames,
+  banner_width,
+  banner_height,
   background_music_path,
   background_music_volume,
 }) => {
@@ -234,6 +236,8 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
             <CenterBanner
               videoPath={banner_video_path}
               durationInFrames={banner_duration_frames}
+              videoWidth={banner_width}
+              videoHeight={banner_height}
             />
           </Sequence>
         )}

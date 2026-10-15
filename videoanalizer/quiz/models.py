@@ -489,6 +489,8 @@ class RemotionRenderProps(BaseModel):
     banner_video_path: str | None = Field(default=None)
     banner_start_frame: int | None = Field(default=None)
     banner_duration_frames: int | None = Field(default=None)
+    banner_width: int | None = Field(default=None)
+    banner_height: int | None = Field(default=None)
     background_music_path: str | None = Field(default=None)
     background_music_volume: float = Field(default=0.18, ge=0.0, le=1.0)
 
@@ -824,6 +826,111 @@ class VoicePreviewResponse(BaseModel):
     audio_url: str = Field(..., description="Streaming/download URL of preview audio")
     duration_ms: int = Field(..., ge=0, description="Sample duration in milliseconds")
     voice_mode_used: VoiceMode = Field(..., description="Mode applied during preview")
+
+
+# ==========================================
+# 007-visual-image-quiz Data Models
+# ==========================================
+
+
+class VisualDifficulty(StrEnum):
+    """Difficulty levels for Visual Image Quiz."""
+
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+    MASTER = "master"
+
+
+class VisualQuizItem(BaseModel):
+    """Single question specification for Visual Image Quiz."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: int = Field(..., ge=1, le=10, description="Question number 1..10")
+    difficulty: VisualDifficulty = Field(..., description="Difficulty level")
+    answer_text: str = Field(..., min_length=1, max_length=60, description="Item name for ladder")
+    image_query: str = Field(..., min_length=2, max_length=120, description="Web search query for image")
+    image_url: str | None = Field(default=None, description="Direct URL of image")
+    image_path: str | None = Field(default=None, description="Local cached path")
+    is_approved: bool = Field(default=False, description="Whether image was approved by user")
+    prompt_tts: str = Field(..., min_length=2, max_length=120, description="Announcer question text")
+    answer_tts: str = Field(..., min_length=2, max_length=140, description="Announcer answer/cliffhanger text")
+
+
+class VisualQuizInterstitialType(StrEnum):
+    """Types of engagement interstitials."""
+
+    COMMENT_BAIT = "comment_bait"
+    SHARE_BAIT = "share_bait"
+
+
+class VisualQuizInterstitial(BaseModel):
+    """Interstitial bait cue."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    after_question: int = Field(..., ge=1, le=9, description="Question number after which interstitial displays")
+    type: VisualQuizInterstitialType = Field(..., description="Type of bait activity")
+    tts_text: str = Field(..., min_length=3, max_length=140, description="Voice call to action")
+    duration_sec: float = Field(default=2.0, ge=1.0, le=4.0, description="Duration in seconds")
+
+
+class VisualQuizDataset(BaseModel):
+    """Complete dataset for Visual Image Quiz."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["visual_image_quiz"] = Field(default="visual_image_quiz", description="Mode identifier")
+    theme: str = Field(..., min_length=2, max_length=100, description="Quiz theme")
+    hook_tts: str = Field(..., min_length=5, max_length=250, description="Intro hook narration")
+    rapid_flip_duration_ms: int = Field(default=120, ge=80, le=200, description="Intro flip speed in ms")
+    timer_duration_sec: float = Field(default=2.0, ge=1.5, le=3.0, description="Question timer duration")
+    items: list[VisualQuizItem] = Field(..., min_length=10, max_length=10, description="Exactly 10 questions")
+    interstitials: list[VisualQuizInterstitial] = Field(default_factory=list, description="Engagement baits")
+
+
+class VisualQuizTimingSlot(BaseModel):
+    """Timing coordinates for each question round in Remotion."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    question_id: int
+    start_frame: int
+    prompt_audio_start_frame: int
+    timer_start_frame: int
+    timer_duration_frames: int
+    answer_audio_start_frame: int
+    reveal_frame: int
+    end_frame: int
+
+
+class VisualQuizWordTiming(BaseModel):
+    """Word boundary timing for karaoke captions."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    word: str
+    start_frame: int
+    end_frame: int
+
+
+class VisualQuizRenderProps(BaseModel):
+    """Props passed to Remotion VisualImageQuiz composition."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    dataset: VisualQuizDataset
+    fps: int = Field(default=60)
+    width: int = Field(default=1080)
+    height: int = Field(default=1920)
+    total_duration_frames: int
+    hook_end_frame: int
+    timing_slots: list[VisualQuizTimingSlot]
+    subtitles: list[dict[str, Any]] = Field(default_factory=list)
+    audio_mix_path: str
+    background_video_path: str | None = None
+
 
 
 

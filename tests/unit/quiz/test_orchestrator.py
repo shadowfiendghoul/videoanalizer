@@ -676,7 +676,7 @@ async def test_orchestrator_generate_with_custom_rvc_voice(tmp_path: Path) -> No
         ) as mock_audio,
         patch.object(orchestrator, "_render_remotion", side_effect=fake_render),
         patch.object(orchestrator, "_prepare_background", return_value="background.mp4"),
-        patch.object(orchestrator, "_prepare_banner", return_value=(None, 0)),
+        patch.object(orchestrator, "_prepare_banner", return_value=(None, 0, None, None)),
         patch.object(orchestrator, "_prepare_music", return_value=None),
         patch.object(orchestrator, "_prepare_challenge_images", new_callable=AsyncMock),
     ):

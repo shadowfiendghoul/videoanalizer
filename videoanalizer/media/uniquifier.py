@@ -168,24 +168,87 @@ def build_uniquifier_filterchains(
     # Audio micro-tempo shift to disrupt acoustic fingerprinting
     audio_filter = f"atempo={t:.4f}" if t != 1.0 else "anull"
 
-    # Metadata spoofing
-    rand_uuid = uuid.uuid4().hex
+    # 100% sterile anti-detection metadata flags
     metadata_args = [
         "-map_metadata",
         "-1",
+        "-map_chapters",
+        "-1",
+        "-fflags",
+        "+bitexact",
+        "-flags:v",
+        "+bitexact",
+        "-flags:a",
+        "+bitexact",
         "-metadata",
-        f"title=Short_{rand_uuid[:10]}",
+        "title=",
         "-metadata",
-        "artist=VideoAnalyzer Studio",
+        "comment=",
         "-metadata",
-        f"comment=Render_{rand_uuid[:8]}",
+        "artist=",
         "-metadata:s:v:0",
-        f"handler_name=VideoHandler_{rand_uuid[:6]}",
+        "handler_name=VideoHandler",
         "-metadata:s:a:0",
-        f"handler_name=AudioHandler_{rand_uuid[:6]}",
+        "handler_name=SoundHandler",
     ]
 
     return video_filter, audio_filter, metadata_args
+
+
+def strip_video_metadata(input_path: Path, output_path: Path) -> Path:
+    """Fast stream-copy metadata purge removing Remotion stamps, encoder tags, and container markers."""
+    if not input_path.exists():
+        raise MediaProcessingError(f"Input video for metadata purge not found: {input_path}")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    ffmpeg_bin = shutil.which("ffmpeg") or "ffmpeg"
+    temp_target = (
+        output_path.with_name(f"clean_meta_{uuid.uuid4().hex[:8]}.mp4")
+        if input_path.resolve() == output_path.resolve()
+        else output_path
+    )
+    cmd = [
+        ffmpeg_bin,
+        "-y",
+        "-i",
+        str(input_path),
+        "-c",
+        "copy",
+        "-map_metadata",
+        "-1",
+        "-map_chapters",
+        "-1",
+        "-fflags",
+        "+bitexact",
+        "-flags:v",
+        "+bitexact",
+        "-flags:a",
+        "+bitexact",
+        "-metadata",
+        "title=",
+        "-metadata",
+        "comment=",
+        "-metadata",
+        "artist=",
+        "-metadata:s:v:0",
+        "handler_name=VideoHandler",
+        "-metadata:s:a:0",
+        "handler_name=SoundHandler",
+        "-movflags",
+        "+faststart",
+        str(temp_target),
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if proc.returncode == 0 and temp_target.exists() and temp_target.stat().st_size > 0:
+        if temp_target != output_path:
+            shutil.move(temp_target, output_path)
+        return output_path
+
+    if temp_target.exists() and temp_target != output_path:
+        temp_target.unlink(missing_ok=True)
+    if input_path.resolve() != output_path.resolve():
+        shutil.copy2(input_path, output_path)
+    return output_path
 
 
 def apply_video_uniquifier(
@@ -215,6 +278,9 @@ def apply_video_uniquifier(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not config or not config.enabled:
+        strip = config.strip_metadata if config else True
+        if strip:
+            return strip_video_metadata(input_path, output_path)
         if input_path.resolve() != output_path.resolve():
             shutil.copy2(input_path, output_path)
         return output_path

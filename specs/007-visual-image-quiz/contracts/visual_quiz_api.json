@@ -1,0 +1,114 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Visual Image Quiz API",
+    "version": "1.0.0",
+    "description": "API endpoints for generating, reviewing images, and rendering Visual Image Quiz videos"
+  },
+  "paths": {
+    "/api/v1/quiz/visual/generate": {
+      "post": {
+        "summary": "Generate a new Visual Image Quiz script via Gemini REST API",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "theme": { "type": "string", "example": "Суперкары мира" },
+                  "auto_search_images": { "type": "boolean", "default": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully generated quiz script with candidate image queries",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/VisualQuizDataset" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quiz/visual/render": {
+      "post": {
+        "summary": "Render finalized Visual Image Quiz into MP4 via Remotion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["dataset"],
+                "properties": {
+                  "dataset": { "$ref": "#/components/schemas/VisualQuizDataset" },
+                  "background_video": { "type": "string", "nullable": true },
+                  "background_music": { "type": "string", "nullable": true },
+                  "background_music_volume": { "type": "number", "default": 0.18 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Render job completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "video_path": { "type": "string" },
+                    "duration_sec": { "type": "number" },
+                    "status": { "type": "string", "example": "completed" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "VisualQuizItem": {
+        "type": "object",
+        "required": ["id", "difficulty", "answer_text", "image_query", "prompt_tts", "answer_tts"],
+        "properties": {
+          "id": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "difficulty": { "type": "string", "enum": ["easy", "medium", "hard", "master"] },
+          "answer_text": { "type": "string" },
+          "image_query": { "type": "string" },
+          "image_url": { "type": "string", "nullable": true },
+          "image_path": { "type": "string", "nullable": true },
+          "is_approved": { "type": "boolean", "default": false },
+          "prompt_tts": { "type": "string" },
+          "answer_tts": { "type": "string" }
+        }
+      },
+      "VisualQuizDataset": {
+        "type": "object",
+        "required": ["mode", "theme", "hook_tts", "rapid_flip_duration_ms", "timer_duration_sec", "items"],
+        "properties": {
+          "mode": { "type": "string", "enum": ["visual_image_quiz"] },
+          "theme": { "type": "string" },
+          "hook_tts": { "type": "string" },
+          "rapid_flip_duration_ms": { "type": "integer", "default": 120 },
+          "timer_duration_sec": { "type": "number", "default": 2.0 },
+          "items": {
+            "type": "array",
+            "minItems": 10,
+            "maxItems": 10,
+            "items": { "$ref": "#/components/schemas/VisualQuizItem" }
+          }
+        }
+      }
+    }
+  }
+}

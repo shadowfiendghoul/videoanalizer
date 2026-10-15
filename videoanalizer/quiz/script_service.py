@@ -22,6 +22,11 @@ from videoanalizer.quiz.models import (
     QuizItem,
     RegeneratedQuestionsPayload,
     TopicSuggestion,
+    VisualDifficulty,
+    VisualQuizDataset,
+    VisualQuizInterstitial,
+    VisualQuizInterstitialType,
+    VisualQuizItem,
 )
 from videoanalizer.quiz.rate_limiter import get_gemini_rate_limiter
 from videoanalizer.quiz.workspace import QuizWorkspace
@@ -218,10 +223,51 @@ REGENERATE_QUESTIONS_SYSTEM_PROMPT = """Ты — элитный сценарис
    - 'question_text': strictly <= 65 characters (never exceed 80 characters).
    - 'correct_answer': 1-3 слова, strictly <= 25 characters (never exceed 35 characters).
    - 'fun_fact': strictly <= 90 characters.
-   - 'image_query': конкретный запрос на английском языке (2-5 слов), иллюстрирующий правильный ответ.
+   - 'image_query': конкретный запрос на английском языке (2-5 слов), иллюстрирующий правильный ответ."""
 
-4. Формат вывода:
-   - Верни строго валидный JSON по схеме RegeneratedQuestionsPayload."""
+
+RANDOM_VISUAL_QUIZ_THEMES = [
+    "Суперкары и легендарные автомобили",
+    "Культовые логотипы мировых брендов",
+    "Флаги необычных стран и территорий",
+    "Оружие и предметы из культовых видеоигр",
+    "Породы собак и редкие животные",
+    "Архитектурные шедевры и памятники мира",
+    "Космические корабли и техника из кино",
+    "Персонажи ретро-игр 90-х и 2000-х",
+    "Музыкальные инструменты народов мира",
+    "Эмблемы мировых футбольных клубов",
+    "Символы супергероев Marvel и DC",
+    "Культовые кроссовки в истории сникер-культуры",
+]
+
+VISUAL_QUIZ_SYSTEM_PROMPT = """Ты — креативный сценарист вирусных вертикальных викторин в формате «Visual Image Quiz» (Shorts, TikTok, Reels).
+Зритель смотрит на быстро сменяющиеся картинки, а затем последовательно угадывает 10 предметов по фото/логотипам с нарастающей сложностью.
+
+СТРУКТУРА СЦЕНАРИЯ:
+1. Ровно 10 предметов:
+   - Предметы 1..3: difficulty="easy" (максимально узнаваемые предметы или силуэты).
+   - Предметы 4..6: difficulty="medium" (предметы, знакомые любителям темы).
+   - Предметы 7..9: difficulty="hard" (сложные предметы для экспертов).
+   - Предмет 10: difficulty="master" (редкий или спорный предмет — коммент-ловушка).
+
+2. ТРЕБОВАНИЯ К ОЗВУЧКЕ ДИКТОРА (TTS):
+   - Вопрос 1: диктор СРАЗУ задает вопрос БЕЗ слов «Вопрос номер один» (например: «Что это?», «Узнаешь модель?», «Что за логотип?»).
+   - Вопросы 2..9: диктор объявляет номер (например: «Номер два, что это?», «Вопрос три, как называется?»).
+   - Вопрос 10: правильный ответ намеренно скрывается. В поле 'answer_text' строго пиши: "Пиши в коммы". В поле 'answer_tts' диктор интригующе призывает зрителей писать свои догадки в комментариях (например: «А это самый сложный! Напиши свой ответ в комментариях!»).
+   - Все реплики диктора должны быть краткими, энергичными и без лишней воды (до 15 слов на реплику).
+
+3. ПОИСКОВЫЕ ЗАПРОСЫ КАРТИНОК ('image_query'):
+   - Для каждого предмета составь точный поисковый запрос (лучше на английском с ключевыми словами isolated, transparent logo, front view, icon) для нахождения четкого изображения без фона или на чистом фоне.
+
+4. ИНТРО-ХУК ('hook_tts'):
+   - Энергичная интригующая фраза на 3-3.5 секунды, представляющая тему и бросающая вызов зрителю (например: «Угадай все эти суперкары! На десятый ответят только настоящие знатоки. Погнали, что это?»).
+
+5. ВСТАВКИ ('interstitials'):
+   - после вопроса 3: type="comment_bait", tts_text="Зажми кнопку комментариев и отправь свой смайлик!"
+   - после вопроса 6: type="share_bait", tts_text="Перешли это видео другу, который шарит так же!"
+
+Верни строго валидный JSON по схеме VisualQuizDataset."""
 
 
 class ScriptService:
@@ -619,3 +665,73 @@ class ScriptService:
             len(new_items_by_num),
         )
         return challenge
+
+    async def generate_visual_quiz_dataset(
+        self,
+        theme: str | None = None,
+        language: str = "ru",
+        auto_search_images: bool = True,
+        temperature: float | None = None,
+    ) -> VisualQuizDataset:
+        """Generate a complete Visual Image Quiz dataset with 10 questions and optional image search."""
+        chosen_theme = theme.strip() if theme and theme.strip() else random.choice(RANDOM_VISUAL_QUIZ_THEMES)
+
+        prompt = (
+            f"Тема визуальной викторины: «{chosen_theme}».\n"
+            f"Язык озвучки и интерфейса: {language}.\n"
+            f"Сгенерируй вирусный сценарий из 10 предметов с нарастающей сложностью (3 easy, 3 medium, 3 hard, 1 master-ловушка). "
+            f"Для вопроса 1 диктор сразу задает вопрос без фразы 'Вопрос 1'. Для вопроса 10 ответ скрыт с призывом писать в комментарии."
+        )
+
+        dataset = await self._generate_structured(
+            prompt=prompt,
+            system_instruction=VISUAL_QUIZ_SYSTEM_PROMPT,
+            response_schema=VisualQuizDataset,
+            temperature=temperature,
+        )
+
+        # Force structural integrity
+        dataset.theme = chosen_theme
+        dataset.mode = "visual_image_quiz"
+
+        # Sanitize question 1 to ensure no "Вопрос номер один" prefix
+        if dataset.items:
+            q1_prompt = dataset.items[0].prompt_tts
+            for prefix in ("Вопрос номер один,", "Вопрос номер 1,", "Вопрос 1,", "Вопрос один,"):
+                if q1_prompt.startswith(prefix):
+                    dataset.items[0].prompt_tts = q1_prompt[len(prefix):].strip()
+
+        # Sanitize question 10 cliffhanger
+        if len(dataset.items) >= 10:
+            dataset.items[9].answer_text = "Пиши в коммы"
+            dataset.items[9].difficulty = VisualDifficulty.MASTER
+
+        # Search candidate images if requested
+        if auto_search_images:
+            await self._resolve_visual_quiz_images(dataset)
+
+        logger.info(
+            "Successfully generated VisualQuizDataset for theme '%s' with %d items.",
+            chosen_theme,
+            len(dataset.items),
+        )
+        return dataset
+
+    async def _resolve_visual_quiz_images(self, dataset: VisualQuizDataset) -> None:
+        """Find candidate image URLs for visual quiz items via ImageService."""
+        async def _fetch_item_image(item: VisualQuizItem) -> None:
+            if item.image_url:
+                return
+            try:
+                candidates = await self.image_service._search_image_urls(item.image_query, max_results=3)
+                if candidates:
+                    for cand in candidates:
+                        url = cand.get("image") or cand.get("thumbnail")
+                        if url:
+                            item.image_url = url
+                            break
+            except Exception as err:
+                logger.warning("Failed to auto-search image for '%s': %s", item.image_query, err)
+
+        await asyncio.gather(*[_fetch_item_image(it) for it in dataset.items])
+

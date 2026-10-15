@@ -96,6 +96,34 @@ async def test_generate_challenge_audio(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_question_one_immediate_speech_pacing() -> None:
+    """Verify that Question 1 is spoken immediately without 'Вопрос номер 1' prefix, while Q2+ are announced."""
+    challenge = make_mock_challenge()
+    service = AudioService()
+
+    with QuizWorkspace(job_id="test_q1_pacing_job") as ws:
+        mock_cues = (1000, [WordCue(word="Test", start_ms=0, end_ms=1000)])
+        mock_synth = AsyncMock(return_value=mock_cues)
+        with patch.object(service, "synthesize_speech_with_cues", new=mock_synth):
+            await service.generate_challenge_audio(challenge, ws)
+
+            # mock_synth is called twice per question: prompt then answer
+            # Call 0: Q1 prompt -> should NOT have "Вопрос номер"
+            q1_prompt_text = mock_synth.call_args_list[0].args[0]
+            assert not q1_prompt_text.lower().startswith("вопрос номер")
+            assert q1_prompt_text == "Question text 1?"
+
+            # Call 2: Q2 prompt -> SHOULD announce "Вопрос номер два"
+            q2_prompt_text = mock_synth.call_args_list[2].args[0]
+            assert q2_prompt_text.startswith("Вопрос номер два, ")
+            assert "Question text 2?" in q2_prompt_text
+
+            # Call 4: Q3 prompt -> SHOULD announce "Вопрос номер три"
+            q3_prompt_text = mock_synth.call_args_list[4].args[0]
+            assert q3_prompt_text.startswith("Вопрос номер три, ")
+
+
+@pytest.mark.asyncio
 async def test_generate_challenge_audio_with_retention_config(tmp_path: Path) -> None:
     """Verify AudioService applies explicit QuizRetentionConfig stress tiers."""
     from videoanalizer.quiz.models import QuizRetentionConfig, StressTimerTier

@@ -125,7 +125,75 @@ export interface RemotionRenderProps extends Record<string, unknown> {
   banner_video_path?: string | null;
   banner_start_frame?: number | null;
   banner_duration_frames?: number | null;
+  banner_width?: number | null;
+  banner_height?: number | null;
   background_music_path?: string | null;
   background_music_volume?: number | null;
 }
 
+// ==========================================
+// 007-visual-image-quiz Type Contracts
+// ==========================================
+
+export type VisualDifficulty = "easy" | "medium" | "hard" | "master";
+
+export interface VisualQuizItem {
+  id: number;
+  difficulty: VisualDifficulty;
+  answer_text: string;
+  image_query: string;
+  image_url?: string | null;
+  image_path?: string | null;
+  is_approved: boolean;
+  prompt_tts: string;
+  answer_tts: string;
+}
+
+export type VisualQuizInterstitialType = "comment_bait" | "share_bait";
+
+export interface VisualQuizInterstitial {
+  after_question: number;
+  type: VisualQuizInterstitialType;
+  tts_text: string;
+  duration_sec: number;
+}
+
+export interface VisualQuizDataset {
+  mode: "visual_image_quiz";
+  theme: string;
+  hook_tts: string;
+  rapid_flip_duration_ms: number;
+  timer_duration_sec: number;
+  items: VisualQuizItem[];
+  interstitials?: VisualQuizInterstitial[];
+}
+
+export interface VisualQuizTimingSlot {
+  question_id: number;
+  start_frame: number;
+  prompt_audio_start_frame: number;
+  timer_start_frame: number;
+  timer_duration_frames: number;
+  answer_audio_start_frame: number;
+  reveal_frame: number;
+  end_frame: number;
+}
+
+export interface VisualQuizWordTiming {
+  word: string;
+  start_frame: number;
+  end_frame: number;
+}
+
+export interface VisualQuizRenderProps extends Record<string, unknown> {
+  dataset: VisualQuizDataset;
+  fps: number;
+  width: number;
+  height: number;
+  total_duration_frames: number;
+  hook_end_frame: number;
+  timing_slots: VisualQuizTimingSlot[];
+  subtitles: VisualQuizWordTiming[];
+  audio_mix_path: string;
+  background_video_path?: string | null;
+}

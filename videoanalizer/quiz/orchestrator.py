@@ -12,6 +12,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from datetime import UTC, datetime
 from videoanalizer.media.uniquifier import VideoUniquifierConfig, apply_video_uniquifier
 from videoanalizer.quiz.audio_service import AudioService
 from videoanalizer.quiz.config import QuizConfig, ensure_system_paths, get_quiz_config
@@ -22,6 +23,8 @@ from videoanalizer.quiz.models import (
     RemotionRenderProps,
     RenderProfile,
     SfxPaths,
+    VisualQuizDataset,
+    VisualQuizRenderProps,
     VoiceConfig,
 )
 from videoanalizer.quiz.script_service import ScriptService
@@ -162,6 +165,35 @@ class QuizOrchestrator:
         if dur_sec <= 0.0:
             return fps * 5
         return max(1, int(dur_sec * fps))
+
+    def _probe_video_dimensions(self, video_path: Path) -> tuple[int, int]:
+        """Probe video width and height in pixels using ffprobe."""
+        ensure_system_paths()
+        ffprobe_bin = shutil.which("ffprobe")
+        if not ffprobe_bin:
+            return 0, 0
+        try:
+            cmd = [
+                ffprobe_bin,
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "json",
+                str(video_path),
+            ]
+            res = subprocess.run(cmd, capture_output=True, text=True, check=True)  # noqa: S603
+            data = json.loads(res.stdout)
+            streams = data.get("streams", [])
+            if streams and "width" in streams[0] and "height" in streams[0]:
+                return int(streams[0]["width"]), int(streams[0]["height"])
+            return 0, 0
+        except Exception as exc:
+            logger.debug("Could not probe video dimensions for %s: %s", video_path, exc)
+            return 0, 0
 
     def _prepare_background(
         self, bg_source: Path, target_bg: Path, duration_sec: float = 120.0
@@ -371,10 +403,10 @@ class QuizOrchestrator:
 
     def _prepare_banner(
         self, banner_video: Path | str | None, public_dir: Path
-    ) -> tuple[str | None, int | None]:
-        """Stage optional promo banner and probe frame duration."""
+    ) -> tuple[str | None, int | None, int | None, int | None]:
+        """Stage optional promo banner and probe frame duration and dimensions."""
         if not banner_video:
-            return None, None
+            return None, None, None, None
 
         banner_path = Path(banner_video)
         if not banner_path.is_file():
@@ -384,7 +416,7 @@ class QuizOrchestrator:
 
         if not banner_path.is_file():
             logger.warning("Banner video '%s' not found, skipping banner", banner_video)
-            return None, None
+            return None, None, None, None
 
         banner_ext = banner_path.suffix.lower() or ".mp4"
         staged_banner_name = f"banner{banner_ext}"
@@ -394,7 +426,13 @@ class QuizOrchestrator:
         banner_dur_frames = self._probe_video_duration_frames(
             banner_path, fps=self.config.fps
         )
-        return staged_banner_name, banner_dur_frames
+        b_width, b_height = self._probe_video_dimensions(banner_path)
+        return (
+            staged_banner_name,
+            banner_dur_frames,
+            (b_width if b_width > 0 else None),
+            (b_height if b_height > 0 else None),
+        )
 
     def _prepare_music(
         self, background_music: Path | str | None, public_dir: Path
@@ -504,6 +542,7 @@ class QuizOrchestrator:
         public_dir: Path,
         output_path: Path,
         profile: RenderProfile | None = None,
+        composition_id: str = "QuizChallenge",
     ) -> list[str]:
         """Construct the Remotion CLI rendering command."""
         node_bin = self._resolve_node_binary()
@@ -524,7 +563,7 @@ class QuizOrchestrator:
         args = [
             "render",
             "src/index.ts",
-            "QuizChallenge",
+            composition_id,
             str(abs_output),
             f"--props={abs_props}",
             f"--public-dir={abs_public}",
@@ -556,6 +595,7 @@ class QuizOrchestrator:
         output_path: Path,
         progress_callback: Callable[[int, str], None] | None = None,
         profile: RenderProfile | None = None,
+        composition_id: str = "QuizChallenge",
     ) -> None:
         """Execute Remotion CLI subprocess to render MP4 with real-time streaming."""
         ensure_system_paths()
@@ -565,6 +605,7 @@ class QuizOrchestrator:
             public_dir=public_dir,
             output_path=output_path,
             profile=effective_profile,
+            composition_id=composition_id,
         )
 
         caps = get_hardware_capabilities()
@@ -842,7 +883,7 @@ class QuizOrchestrator:
                 cue_sheet,
                 _,
                 staged_bg_name,
-                (staged_banner_name, banner_dur_frames),
+                (staged_banner_name, banner_dur_frames, banner_width, banner_height),
                 staged_music_name,
             ) = await asyncio.gather(
                 task_audio,
@@ -904,6 +945,8 @@ class QuizOrchestrator:
                 banner_video_path=staged_banner_name,
                 banner_start_frame=banner_start_frame,
                 banner_duration_frames=banner_duration_frames,
+                banner_width=banner_width,
+                banner_height=banner_height,
                 background_music_path=staged_music_name,
                 background_music_volume=background_music_volume,
             )
@@ -931,7 +974,7 @@ class QuizOrchestrator:
                 f"Output video file was not generated or is empty: {final_output_path}"
             )
 
-        # 9. Apply Video Uniquifier post-processing if enabled
+        # 9. Apply Video Uniquifier post-processing if enabled, or ensure 100% sterile metadata
         if uniquifier and uniquifier.enabled:
             if progress_callback:
                 progress_callback(93, "Уникализация видео (Anti-Content ID)...")
@@ -944,6 +987,11 @@ class QuizOrchestrator:
                 height=self.config.height,
                 render_profile=render_profile or self.config.render_profile,
             )
+        else:
+            from videoanalizer.media.uniquifier import strip_video_metadata
+
+            logger.info("Purging Remotion container metadata from %s", final_output_path)
+            strip_video_metadata(final_output_path, final_output_path)
 
         if progress_callback:
             progress_callback(100, "Видео успешно создано!")
@@ -954,3 +1002,118 @@ class QuizOrchestrator:
             final_output_path.stat().st_size,
         )
         return final_output_path
+
+    async def render_visual_quiz(
+        self,
+        dataset: VisualQuizDataset,
+        output_path: Path | str | None = None,
+        background_video: Path | str | None = None,
+        background_music: Path | str | None = None,
+        background_music_volume: float = 0.18,
+        voice: str | None = None,
+        voice_config: VoiceConfig | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
+        render_profile: RenderProfile | None = None,
+    ) -> Path:
+        """Render VisualImageQuiz dataset into 1080x1920 60fps MP4 video via Remotion."""
+        ensure_system_paths()
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        final_output = (
+            Path(output_path)
+            if output_path
+            else self.config.output_dir / f"visual_quiz_{timestamp}_{secrets.token_hex(3)}.mp4"
+        )
+        final_output.parent.mkdir(parents=True, exist_ok=True)
+
+        async with get_render_semaphore():
+            with QuizWorkspace(base_dir=self.config.temp_dir) as ws:
+                public_dir = ws.public_dir
+                public_dir.mkdir(parents=True, exist_ok=True)
+
+                if progress_callback:
+                    progress_callback(5, "Подготовка фонового видео...")
+
+                # 1. Background video
+                bg_source = self.select_background(background_video)
+                target_bg = public_dir / "background.mp4"
+                await asyncio.to_thread(self._prepare_background, bg_source, target_bg, 120.0)
+
+                # 2. Stage images into public/images/
+                images_dir = public_dir / "images"
+                images_dir.mkdir(parents=True, exist_ok=True)
+                for item in dataset.items:
+                    img_filename = f"item_{item.id}.png"
+                    dest_img_path = images_dir / img_filename
+                    if item.image_path and Path(item.image_path).exists():
+                        shutil.copy2(item.image_path, dest_img_path)
+                        item.image_path = f"images/{img_filename}"
+                    elif item.image_url:
+                        downloaded = await self.image_service.search_and_download(item.image_query, dest_img_path)
+                        if downloaded:
+                            item.image_path = f"images/{img_filename}"
+                        else:
+                            item.image_path = None
+                    else:
+                        item.image_path = None
+
+                if progress_callback:
+                    progress_callback(20, "Синтез дикторской речи и звуковых эффектов...")
+
+                # 3. Audio synthesis
+                (
+                    master_audio_path,
+                    timing_slots,
+                    subtitles,
+                    total_duration_frames,
+                    hook_end_frame,
+                ) = await self.audio_service.generate_visual_quiz_audio(
+                    dataset=dataset,
+                    workspace=ws,
+                    voice=voice,
+                    voice_config=voice_config,
+                )
+
+                public_audio = public_dir / "audio" / "visual_quiz_master_mix.wav"
+                public_audio.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(master_audio_path, public_audio)
+
+                # 4. Prepare Remotion props
+                props = VisualQuizRenderProps(
+                    dataset=dataset,
+                    fps=self.config.fps,
+                    width=1080,
+                    height=1920,
+                    total_duration_frames=total_duration_frames,
+                    hook_end_frame=hook_end_frame,
+                    timing_slots=timing_slots,
+                    subtitles=subtitles,
+                    audio_mix_path="audio/visual_quiz_master_mix.wav",
+                    background_video_path="background.mp4",
+                )
+
+                props_file = ws.path / "remotion-props.json"
+                props_file.write_text(props.model_dump_json(indent=2), encoding="utf-8")
+
+                if progress_callback:
+                    progress_callback(40, "Рендер видео через Remotion 60fps...")
+
+                # 5. Render Remotion
+                await self._render_remotion(
+                    props_path=props_file,
+                    public_dir=public_dir,
+                    output_path=final_output,
+                    progress_callback=progress_callback,
+                    profile=render_profile or self.config.render_profile,
+                    composition_id="VisualImageQuiz",
+                )
+
+                # 6. Metadata cleanup
+                from videoanalizer.media.uniquifier import strip_video_metadata
+                strip_video_metadata(final_output, final_output)
+
+                if progress_callback:
+                    progress_callback(100, "Видео успешно создано!")
+
+                logger.info("VisualImageQuiz rendered successfully to %s", final_output)
+                return final_output
+
