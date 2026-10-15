@@ -29,6 +29,7 @@ from videoanalizer.quiz.models import (
     VisualQuizItem,
     VisualTopicSuggestion,
 )
+from videoanalizer.quiz.exclusions_service import QuizExclusionsManager
 from videoanalizer.quiz.rate_limiter import get_gemini_rate_limiter
 from videoanalizer.quiz.workspace import QuizWorkspace
 
@@ -294,6 +295,7 @@ class ScriptService:
     ) -> None:
         self.config = config or get_quiz_config()
         self.image_service = image_service or ImageService()
+        self.exclusions_manager = QuizExclusionsManager()
         if client is not None:
             self._client = client
         else:
@@ -445,6 +447,13 @@ class ScriptService:
             ]
             prompt_lines.append(f"Вектор для вдохновения: «{random.choice(angles)}».")
 
+        exclusions = self.exclusions_manager.load()
+        if exclusions.get("topics"):
+            recent_topics = exclusions["topics"][-25:]
+            prompt_lines.append(
+                f"СТРОГО ЗАПРЕЩЕНО повторять или дублировать ранее использованные темы: {', '.join(f'«{t}»' for t in recent_topics)}."
+            )
+
         prompt = "\n".join(prompt_lines)
         temp = temperature if temperature is not None else 1.05
         return await self._generate_structured(
@@ -583,6 +592,9 @@ class ScriptService:
                         item.local_image_path = str(res)
                     else:
                         item.local_image_path = None
+
+        # Record topic into persistent exclusions
+        self.exclusions_manager.add_exclusions(topic=topic)
 
         logger.info(
             "Quiz challenge generated successfully with %d questions.",
@@ -726,12 +738,17 @@ class ScriptService:
         """Generate a complete Visual Image Quiz dataset with 10 questions and optional image search."""
         chosen_theme = theme.strip() if theme and theme.strip() else random.choice(RANDOM_VISUAL_QUIZ_THEMES)
 
-        prompt = (
-            f"Тема визуальной викторины: «{chosen_theme}».\n"
-            f"Язык озвучки и интерфейса: {language}.\n"
-            f"Сгенерируй вирусный сценарий из 10 предметов с нарастающей сложностью (3 easy, 3 medium, 3 hard, 1 master-ловушка). "
-            f"Для вопроса 1 диктор сразу задает вопрос без фразы 'Вопрос 1'. Для вопроса 10 ответ скрыт с призывом писать в комментарии."
-        )
+        exclusion_clause = self.exclusions_manager.get_prompt_exclusion_clause(max_items=80)
+        prompt_parts = [
+            f"Тема визуальной викторины: «{chosen_theme}».",
+            f"Язык озвучки и интерфейса: {language}.",
+            "Сгенерируй вирусный сценарий из 10 предметов с нарастающей сложностью (3 easy, 3 medium, 3 hard, 1 master-ловушка). "
+            "Для вопроса 1 диктор сразу задает вопрос без фразы 'Вопрос 1'. Для вопроса 10 ответ скрыт с призывом писать в комментарии.",
+        ]
+        if exclusion_clause:
+            prompt_parts.append(exclusion_clause)
+
+        prompt = "\n".join(prompt_parts)
 
         dataset = await self._generate_structured(
             prompt=prompt,
@@ -760,8 +777,16 @@ class ScriptService:
         if auto_search_images:
             await self._resolve_visual_quiz_images(dataset)
 
+        # Record newly generated items and theme to exclusions file to prevent future repetition
+        new_items = [
+            it.answer_text
+            for it in dataset.items
+            if it.answer_text and it.answer_text != "Пиши в коммы"
+        ]
+        self.exclusions_manager.add_exclusions(topic=chosen_theme, items=new_items)
+
         logger.info(
-            "Successfully generated VisualQuizDataset for theme '%s' with %d items.",
+            "Successfully generated VisualQuizDataset for theme '%s' with %d items (saved to exclusions).",
             chosen_theme,
             len(dataset.items),
         )

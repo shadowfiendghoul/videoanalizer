@@ -355,6 +355,34 @@
                   <span class="text-cyan-400 font-bold shrink-0">🎯 Флип-хук интро:</span>
                   <span id="visual-hook-preview-text" class="text-slate-200 italic"></span>
                 </div>
+
+                <!-- Exclusions & Anti-Repeat Control Bar -->
+                <div class="flex items-center justify-between p-2 rounded-xl bg-purple-950/20 border border-purple-500/20 text-xs text-slate-300">
+                  <div class="flex items-center space-x-2">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-purple-400"></i>
+                    <span>Защита от повторов: <b id="exclusions-stats" class="text-purple-300">0 тем, 0 брендов</b></span>
+                  </div>
+                  <div class="flex items-center space-x-1.5">
+                    <button 
+                      type="button" 
+                      onclick="openExclusionsFile()" 
+                      class="px-2.5 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.12] text-[11px] text-purple-200 hover:text-white transition-all flex items-center space-x-1 cursor-pointer"
+                      title="Открыть data/quiz_exclusions.json в Блокноте"
+                    >
+                      <i data-lucide="file-edit" class="w-3 h-3"></i>
+                      <span>Открыть файл</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      onclick="clearExclusions()" 
+                      class="px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 text-[11px] text-red-300 transition-all flex items-center space-x-1 cursor-pointer"
+                      title="Очистить список исключений"
+                    >
+                      <i data-lucide="trash-2" class="w-3 h-3"></i>
+                      <span>Очистить</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <!-- Quick Theme chips -->
@@ -2231,6 +2259,7 @@
     }
     loadBackgrounds();
     loadRvcModels();
+    loadExclusionsStats();
 
     let activeJobId = null;
     let pollInterval = null;
@@ -3231,6 +3260,46 @@
       }
     }
 
+    async function loadExclusionsStats() {
+      try {
+        const res = await fetch('/api/v1/quiz/exclusions');
+        if (!res.ok) return;
+        const data = await res.json();
+        const statEl = document.getElementById('exclusions-stats');
+        if (statEl) {
+          statEl.textContent = `${data.count_topics} тем, ${data.count_items} брендов`;
+        }
+      } catch (e) {
+        console.warn('Failed to load exclusions stats:', e);
+      }
+    }
+
+    async function openExclusionsFile() {
+      try {
+        const res = await fetch('/api/v1/quiz/exclusions/open-file', { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          console.log('Opened exclusions file in editor:', data.path);
+        } else {
+          alert('Файл исключений: ' + data.path);
+        }
+      } catch (e) {
+        console.warn('Failed to open exclusions file:', e);
+      }
+    }
+
+    async function clearExclusions() {
+      if (!confirm('Вы уверены, что хотите очистить файл исключений тем и брендов?')) return;
+      try {
+        const res = await fetch('/api/v1/quiz/exclusions/clear', { method: 'POST' });
+        if (res.ok) {
+          await loadExclusionsStats();
+        }
+      } catch (e) {
+        console.warn('Failed to clear exclusions:', e);
+      }
+    }
+
     function setVisualTopic(topic) {
       const input = document.getElementById('visual-topic-input');
       if (input) input.value = topic;
@@ -3328,6 +3397,7 @@
         const dataset = await res.json();
         currentVisualDataset = dataset;
         renderVisualQuizCards(dataset);
+        loadExclusionsStats();
 
         const visualCardsPanel = document.getElementById('visual-cards-panel');
         if (visualCardsPanel) {

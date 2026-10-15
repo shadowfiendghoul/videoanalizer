@@ -40,6 +40,7 @@ from videoanalizer.quiz.models import (
     VoicePreviewRequest,
     VoicePreviewResponse,
 )
+from videoanalizer.quiz.exclusions_service import QuizExclusionsManager
 from videoanalizer.quiz.orchestrator import QuizOrchestrator
 from videoanalizer.quiz.voice_service import RvcModelRegistry, VoiceService
 from videoanalizer.utils.hardware import get_hardware_capabilities
@@ -706,6 +707,67 @@ async def open_backgrounds_folder() -> dict[str, str]:
     except Exception as exc:
         logger.warning("Failed to open backgrounds folder: %s", exc)
         return {"status": "error", "message": str(exc), "path": str(bg_dir.resolve())}
+
+
+class ExclusionsAddRequest(BaseModel):
+    """Payload to add custom topic and/or items to exclusions."""
+
+    topic: str | None = Field(default=None, description="Topic to exclude")
+    items: list[str] | None = Field(default=None, description="List of items/brands to exclude")
+
+
+@router.get("/exclusions")
+async def get_quiz_exclusions():
+    """Retrieve currently stored topics and items to be excluded from quiz generation."""
+    manager = QuizExclusionsManager()
+    data = manager.load()
+    return {
+        "status": "ok",
+        "file_path": str(manager.file_path.resolve()),
+        "topics": data.get("topics", []),
+        "items": data.get("items", []),
+        "count_topics": len(data.get("topics", [])),
+        "count_items": len(data.get("items", [])),
+    }
+
+
+@router.post("/exclusions/add")
+async def add_quiz_exclusions(request: ExclusionsAddRequest):
+    """Add a topic and/or list of items/brands to exclusions."""
+    manager = QuizExclusionsManager()
+    res = manager.add_exclusions(topic=request.topic, items=request.items)
+    return {
+        "status": "ok",
+        "total_topics": res["total_topics"],
+        "total_items": res["total_items"],
+    }
+
+
+@router.post("/exclusions/clear")
+async def clear_quiz_exclusions():
+    """Clear all stored exclusions."""
+    manager = QuizExclusionsManager()
+    manager.clear()
+    return {"status": "ok", "message": "Исключения успешно очищены"}
+
+
+@router.post("/exclusions/open-file")
+async def open_quiz_exclusions_file() -> dict[str, str]:
+    """Open exclusions JSON file in system default editor (e.g. Notepad on Windows)."""
+    manager = QuizExclusionsManager()
+    manager.ensure_file()
+    try:
+        resolved = str(manager.file_path.resolve())
+        if sys.platform == "win32":
+            os.startfile(resolved)  # noqa: S606
+        elif sys.platform == "darwin":
+            subprocess.run(["open", resolved], check=False)
+        else:
+            subprocess.run(["xdg-open", resolved], check=False)
+        return {"status": "ok", "path": resolved}
+    except Exception as exc:
+        logger.warning("Failed to open exclusions file: %s", exc)
+        return {"status": "error", "message": str(exc), "path": str(manager.file_path.resolve())}
 
 
 @router.post("/generate", response_model=QuizGenerateResponse, status_code=status.HTTP_202_ACCEPTED)
