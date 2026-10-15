@@ -1129,7 +1129,8 @@ class QuizOrchestrator:
                     img_filename = f"item_{item.id}.png"
                     dest_img_path = images_dir / img_filename
                     if item.image_path and Path(item.image_path).exists():
-                        shutil.copy2(item.image_path, dest_img_path)
+                        if Path(item.image_path).resolve() != dest_img_path.resolve():
+                            shutil.copy2(item.image_path, dest_img_path)
                         item.image_path = f"images/{img_filename}"
                     elif item.image_url:
                         downloaded = await self.image_service.search_and_download(item.image_query, dest_img_path)
@@ -1159,7 +1160,8 @@ class QuizOrchestrator:
 
                 public_audio = public_dir / "audio" / "visual_quiz_master_mix.wav"
                 public_audio.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(master_audio_path, public_audio)
+                if master_audio_path.resolve() != public_audio.resolve():
+                    shutil.copy2(master_audio_path, public_audio)
 
                 # 4. Prepare Remotion props
                 props = VisualQuizRenderProps(
