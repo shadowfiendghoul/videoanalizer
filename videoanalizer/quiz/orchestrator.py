@@ -196,13 +196,19 @@ class QuizOrchestrator:
             return 0, 0
 
     def _prepare_background(
-        self, bg_source: Path, target_bg: Path, duration_sec: float = 120.0
+        self,
+        bg_source: Path,
+        target_bg: Path,
+        duration_sec: float = 120.0,
+        background_mode: str = "loop",
     ) -> str:
         """Stage background video into public dir.
 
-        If the initial background video is shorter than duration_sec, picks additional
-        random background videos from backgrounds_dir so that when one ends, another
-        random video takes over instead of repeating the same clip.
+        If background_mode == "loop" (default):
+            Loops the selected background video cleanly for the entire duration_sec using -stream_loop -1.
+        If background_mode == "random_switch":
+            When the background video ends (or if single clip is too long, every 12-15s),
+            smoothly switches to another random background video from backgrounds_dir.
         """
         ensure_system_paths()
         ffmpeg_bin = shutil.which("ffmpeg")
@@ -212,8 +218,8 @@ class QuizOrchestrator:
 
         dur_initial = self._probe_video_duration_sec(bg_source)
 
-        # If duration cannot be probed or initial video is already long enough:
-        if dur_initial >= duration_sec or dur_initial <= 0.0:
+        # Mode A: "loop" (Зацикливание одного фона)
+        if background_mode != "random_switch":
             try:
                 cmd_loop = [
                     ffmpeg_bin,
@@ -235,7 +241,11 @@ class QuizOrchestrator:
                 shutil.copy2(bg_source, target_bg)
                 return target_bg.name
 
-        # Initial background video is shorter than duration_sec: chain multiple random clips
+        # Mode B: "random_switch" (Случайная смена при конце)
+        if dur_initial > 15.0:
+            # If the source video is very long (e.g. 5-minute gameplay), slice first segment to ~12s
+            # so the random switch actually triggers within the short video!
+            dur_initial = 12.0
         bg_dir = self.config.backgrounds_dir
         all_candidates = (
             [
@@ -754,6 +764,7 @@ class QuizOrchestrator:
         render_profile: RenderProfile | None = None,
         progress_callback: Callable[[int, str], None] | None = None,
         voice_config: VoiceConfig | None = None,
+        background_mode: str = "loop",
     ) -> Path:
         """Run the full end-to-end quiz short generation pipeline."""
         if progress_callback:
@@ -874,7 +885,9 @@ class QuizOrchestrator:
                 workspace=workspace,
                 images_dir=images_dir,
             )
-            task_bg = asyncio.to_thread(self._prepare_background, bg_source, target_bg, 120.0)
+            task_bg = asyncio.to_thread(
+                self._prepare_background, bg_source, target_bg, 120.0, background_mode
+            )
             task_banner = asyncio.to_thread(self._prepare_banner, banner_video, public_dir)
             task_music = asyncio.to_thread(self._prepare_music, background_music, public_dir)
 
@@ -1014,6 +1027,7 @@ class QuizOrchestrator:
         voice_config: VoiceConfig | None = None,
         progress_callback: Callable[[int, str], None] | None = None,
         render_profile: RenderProfile | None = None,
+        background_mode: str = "loop",
     ) -> Path:
         """Render VisualImageQuiz dataset into 1080x1920 60fps MP4 video via Remotion."""
         ensure_system_paths()
@@ -1036,7 +1050,9 @@ class QuizOrchestrator:
                 # 1. Background video
                 bg_source = self.select_background(background_video)
                 target_bg = public_dir / "background.mp4"
-                await asyncio.to_thread(self._prepare_background, bg_source, target_bg, 120.0)
+                await asyncio.to_thread(
+                    self._prepare_background, bg_source, target_bg, 120.0, background_mode
+                )
 
                 # 2. Stage images into public/images/
                 images_dir = public_dir / "images"

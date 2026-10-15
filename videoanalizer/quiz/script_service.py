@@ -27,6 +27,7 @@ from videoanalizer.quiz.models import (
     VisualQuizInterstitial,
     VisualQuizInterstitialType,
     VisualQuizItem,
+    VisualTopicSuggestion,
 )
 from videoanalizer.quiz.rate_limiter import get_gemini_rate_limiter
 from videoanalizer.quiz.workspace import QuizWorkspace
@@ -270,6 +271,18 @@ VISUAL_QUIZ_SYSTEM_PROMPT = """Ты — креативный сценарист 
 Верни строго валидный JSON по схеме VisualQuizDataset."""
 
 
+VISUAL_TOPIC_SYSTEM_PROMPT = """Ты — креативный продюсер вирусных визуальных видео-викторин для TikTok, YouTube Shorts и Reels.
+Формат: зритель видит картинку/логотип/объект и за 3 секунды угадывает ответ, а в первые 3 секунды диктор произносит интригующий хук пока в центре быстро мелькают карточки (rapid center flip).
+
+Твоя цель: придумать вирусную тему для ВИЗУАЛЬНОЙ викторины из 10 картинок и цепляющий флип-хук.
+
+Требования:
+1. Тема ДОЛЖНА быть чисто визуальной (логотипы, суперкары, флаги, персонажи аниме/кино, бренды, животные, ретро-игры, достопримечательности).
+2. flip_hook должен содержать интригу или вызов (например: "Угадай все 10 логотипов! На 9-м ошибаются 98% людей!", "Назови 10 суперкаров по фарам! На последнем споткнется даже эксперт!").
+3. sample_items: укажи 3-5 узнаваемых предметов по этой теме.
+Верни строго валидный JSON по схеме VisualTopicSuggestion."""
+
+
 class ScriptService:
     """Service responsible for generating quiz trivia content using Gemini REST API."""
 
@@ -401,6 +414,43 @@ class ScriptService:
             prompt=prompt,
             system_instruction=SINGLE_TOPIC_SYSTEM_PROMPT,
             response_schema=TopicSuggestion,
+            temperature=temp,
+        )
+
+    async def suggest_visual_topic(
+        self,
+        category_hint: str | None = None,
+        language: str = "ru",
+        temperature: float | None = None,
+    ) -> VisualTopicSuggestion:
+        """Suggest a viral visual quiz topic with catchy rapid-flip hook using Gemini."""
+        prompt_lines = [
+            f"Язык: {language}.",
+            "Придумай 1 вирусную тему для визуальной викторины с карточками-картинками и флип-хуком.",
+        ]
+        if category_hint and category_hint.strip():
+            prompt_lines.append(f"Пожелание/направление от пользователя: «{category_hint.strip()}».")
+        else:
+            angles = [
+                "Логотипы культовых брендов и тайные детали",
+                "Суперкары и спорткары по оптике/силуэту",
+                "Угадай популярный фильм по одному кадру",
+                "Персонажи аниме по силуэтам или глазам",
+                "Флаги государств мира с подвохом",
+                "Известные мировые достопримечательности",
+                "Культовые видеоигры 2000-х по скриншоту",
+                "Породы собак и редкие кошачьи",
+                "Символы супергероев Marvel и DC",
+                "Культовые кроссовки в истории сникер-культуры",
+            ]
+            prompt_lines.append(f"Вектор для вдохновения: «{random.choice(angles)}».")
+
+        prompt = "\n".join(prompt_lines)
+        temp = temperature if temperature is not None else 1.05
+        return await self._generate_structured(
+            prompt=prompt,
+            system_instruction=VISUAL_TOPIC_SYSTEM_PROMPT,
+            response_schema=VisualTopicSuggestion,
             temperature=temp,
         )
 

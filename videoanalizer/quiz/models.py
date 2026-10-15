@@ -512,6 +512,17 @@ class TopicSuggestion(BaseModel):
     )
 
 
+class VisualTopicSuggestion(BaseModel):
+    """Viral visual quiz topic with catchy rapid-flip hook."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    topic: str = Field(..., min_length=3, max_length=80, description="Short visual quiz theme title")
+    category: str = Field(..., min_length=2, max_length=40, description="Category/niche")
+    flip_hook: str = Field(..., min_length=5, max_length=140, description="Catchy rapid-flip hook spoken at intro")
+    sample_items: list[str] = Field(default_factory=list, description="Sample recognizable visual items")
+
+
 class BatchTopicList(BaseModel):
     """Collection of N diverse topics generated in a single Gemini API request."""
 

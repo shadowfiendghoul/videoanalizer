@@ -32,6 +32,7 @@ from videoanalizer.quiz.models import (
     SingleTopicSuggestRequest,
     TopicSuggestion,
     VisualQuizDataset,
+    VisualTopicSuggestion,
     VoiceConfig,
     VoicePreviewRequest,
     VoicePreviewResponse,
@@ -118,6 +119,10 @@ class QuizGenerateRequest(BaseModel):
     )
     background_video: str | None = Field(
         default=None, description="Optional custom background video filename or path, or 'random'."
+    )
+    background_mode: Literal["loop", "random_switch"] = Field(
+        default="loop",
+        description="Background video playback mode: 'loop' (single seamless loop) or 'random_switch' (random change upon ending).",
     )
     voice: str | None = Field(default=None, description="Optional edge-tts voice override.")
     voice_config: VoiceConfig | None = Field(
@@ -223,11 +228,29 @@ class VisualQuizRenderRequest(BaseModel):
 
     dataset: VisualQuizDataset = Field(..., description="Approved visual quiz dataset")
     background_video: str | None = Field(default=None, description="Optional background video file or path")
+    background_mode: Literal["loop", "random_switch"] = Field(
+        default="loop",
+        description="Background video playback mode: 'loop' or 'random_switch'",
+    )
     background_music: str | None = Field(default=None, description="Optional background music file or path")
     background_music_volume: float = Field(default=0.18, ge=0.0, le=1.0, description="Music volume")
     voice: str | None = Field(default=None, description="Edge-TTS voice name")
     voice_config: VoiceConfig | None = Field(default=None, description="Voice pipeline config")
     render_profile: RenderProfile | None = Field(default=None, description="Render profile (e.g. gpu_fast, cpu_safe)")
+
+
+class VisualTopicSuggestRequest(BaseModel):
+    """Payload to request an AI visual quiz topic suggestion with rapid-flip hook."""
+
+    category_hint: str | None = Field(
+        default=None, max_length=300, description="Optional theme or category guidance"
+    )
+    language: Literal["ru", "en"] = Field(
+        default="ru", description="Output language (ru or en)"
+    )
+    temperature: float | None = Field(
+        default=None, ge=0.0, le=2.0, description="Sampling temperature (0.0-2.0, default 1.05)"
+    )
 
 
 class VisualQuizRenderResponse(BaseModel):
@@ -321,6 +344,7 @@ async def _run_quiz_job(job_id: str, request: QuizGenerateRequest) -> None:
             render_profile=request.render_profile,
             progress_callback=on_progress,
             voice_config=request.voice_config,
+            background_mode=request.background_mode,
         )
 
         job["status"] = "completed"
@@ -589,6 +613,16 @@ async def list_available_backgrounds() -> list[BackgroundInfo]:
                 friendly_name = "Земля из космоса (Earth Night)"
             elif "pink" in lower or "lightning" in lower:
                 friendly_name = "Розовые молнии (Pink Lightning)"
+            elif "mint" in lower or "star" in lower:
+                friendly_name = "Мятные звёздочки (Mint Stars)"
+            elif "lavender" in lower or "heart" in lower:
+                friendly_name = "Лавандовые сердца (Lavender Hearts)"
+            elif "peach" in lower or "butterfl" in lower:
+                friendly_name = "Персиковые бабочки (Peach Butterflies)"
+            elif "cloud" in lower or "sky" in lower:
+                friendly_name = "Небесные облака (Sky Clouds)"
+            elif "dais" in lower or "buttercup" in lower:
+                friendly_name = "Сливочные ромашки (Buttercup Daisies)"
             elif "default" in lower:
                 friendly_name = "Стандартный фон (Default)"
             else:
@@ -893,6 +927,29 @@ async def generate_visual_quiz(request: VisualQuizGenerateRequest) -> VisualQuiz
         ) from exc
 
 
+@router.post("/visual/suggest-topic", response_model=VisualTopicSuggestion)
+async def suggest_visual_topic(request: VisualTopicSuggestRequest) -> VisualTopicSuggestion:
+    """Suggest a viral visual quiz topic with catchy rapid-flip hook via Gemini."""
+    orchestrator = QuizOrchestrator()
+    try:
+        return await orchestrator.script_service.suggest_visual_topic(
+            category_hint=request.category_hint,
+            language=request.language,
+            temperature=request.temperature,
+        )
+    except Exception as exc:
+        logger.error("Failed to suggest visual topic: %s", exc, exc_info=True)
+        status_code = (
+            status.HTTP_429_TOO_MANY_REQUESTS
+            if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc)
+            else status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=f"Не удалось сгенерировать визуальную тему: {exc}",
+        ) from exc
+
+
 @router.post("/visual/render", response_model=VisualQuizRenderResponse)
 async def render_visual_quiz(request: VisualQuizRenderRequest) -> VisualQuizRenderResponse:
     """Render finalized Visual Image Quiz into MP4 via Remotion."""
@@ -907,6 +964,7 @@ async def render_visual_quiz(request: VisualQuizRenderRequest) -> VisualQuizRend
             voice=request.voice,
             voice_config=request.voice_config,
             render_profile=request.render_profile,
+            background_mode=request.background_mode,
         )
         download_url = f"/api/v1/quiz/jobs/{job_id}/download"
         duration_sec = float(len(request.dataset.items) * 4.5 + 4.0)

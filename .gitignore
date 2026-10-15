@@ -70,6 +70,13 @@ assets/music/
 *.mkv
 *.webm
 *.avi
+# Lightweight aesthetic quiz backgrounds (under 1MB each)
+!assets/backgrounds/pink_lightning.mp4
+!assets/backgrounds/mint_stars.mp4
+!assets/backgrounds/lavender_hearts.mp4
+!assets/backgrounds/peach_butterflies.mp4
+!assets/backgrounds/sky_clouds.mp4
+!assets/backgrounds/buttercup_daisies.mp4
 
 # Large ML / Voice model checkpoints
 assets/models/
