@@ -1102,104 +1102,103 @@ class QuizOrchestrator:
         )
         final_output.parent.mkdir(parents=True, exist_ok=True)
 
-        async with get_render_semaphore():
-            with QuizWorkspace(base_dir=self.config.temp_dir) as ws:
-                public_dir = ws.public_dir
-                public_dir.mkdir(parents=True, exist_ok=True)
+        with QuizWorkspace(base_dir=self.config.temp_dir) as ws:
+            public_dir = ws.public_dir
+            public_dir.mkdir(parents=True, exist_ok=True)
 
-                if progress_callback:
-                    progress_callback(5, "Подготовка фонового видео...")
+            if progress_callback:
+                progress_callback(5, "Подготовка фонового видео...")
 
-                # 1. Background video
-                bg_source = self.select_background(background_video)
-                target_bg = public_dir / "background.mp4"
-                await asyncio.to_thread(
-                    self._prepare_background,
-                    bg_source,
-                    target_bg,
-                    120.0,
-                    background_mode,
-                    background_video,
-                )
+            # 1. Background video
+            bg_source = self.select_background(background_video)
+            target_bg = public_dir / "background.mp4"
+            await asyncio.to_thread(
+                self._prepare_background,
+                bg_source,
+                target_bg,
+                120.0,
+                background_mode,
+                background_video,
+            )
 
-                # 2. Stage images into public/images/
-                images_dir = public_dir / "images"
-                images_dir.mkdir(parents=True, exist_ok=True)
-                for item in dataset.items:
-                    img_filename = f"item_{item.id}.png"
-                    dest_img_path = images_dir / img_filename
-                    if item.image_path and Path(item.image_path).exists():
-                        if Path(item.image_path).resolve() != dest_img_path.resolve():
-                            shutil.copy2(item.image_path, dest_img_path)
+            # 2. Stage images into public/images/
+            images_dir = public_dir / "images"
+            images_dir.mkdir(parents=True, exist_ok=True)
+            for item in dataset.items:
+                img_filename = f"item_{item.id}.png"
+                dest_img_path = images_dir / img_filename
+                if item.image_path and Path(item.image_path).exists():
+                    if Path(item.image_path).resolve() != dest_img_path.resolve():
+                        shutil.copy2(item.image_path, dest_img_path)
+                    item.image_path = f"images/{img_filename}"
+                elif item.image_url:
+                    downloaded = await self.image_service.search_and_download(item.image_query, dest_img_path)
+                    if downloaded:
                         item.image_path = f"images/{img_filename}"
-                    elif item.image_url:
-                        downloaded = await self.image_service.search_and_download(item.image_query, dest_img_path)
-                        if downloaded:
-                            item.image_path = f"images/{img_filename}"
-                        else:
-                            item.image_path = None
                     else:
                         item.image_path = None
+                else:
+                    item.image_path = None
 
-                if progress_callback:
-                    progress_callback(20, "Синтез дикторской речи и звуковых эффектов...")
+            if progress_callback:
+                progress_callback(20, "Синтез дикторской речи и звуковых эффектов...")
 
-                # 3. Audio synthesis
-                (
-                    master_audio_path,
-                    timing_slots,
-                    subtitles,
-                    total_duration_frames,
-                    hook_end_frame,
-                ) = await self.audio_service.generate_visual_quiz_audio(
-                    dataset=dataset,
-                    workspace=ws,
-                    voice=voice,
-                    voice_config=voice_config,
-                )
+            # 3. Audio synthesis
+            (
+                master_audio_path,
+                timing_slots,
+                subtitles,
+                total_duration_frames,
+                hook_end_frame,
+            ) = await self.audio_service.generate_visual_quiz_audio(
+                dataset=dataset,
+                workspace=ws,
+                voice=voice,
+                voice_config=voice_config,
+            )
 
-                public_audio = public_dir / "audio" / "visual_quiz_master_mix.wav"
-                public_audio.parent.mkdir(parents=True, exist_ok=True)
-                if master_audio_path.resolve() != public_audio.resolve():
-                    shutil.copy2(master_audio_path, public_audio)
+            public_audio = public_dir / "audio" / "visual_quiz_master_mix.wav"
+            public_audio.parent.mkdir(parents=True, exist_ok=True)
+            if master_audio_path.resolve() != public_audio.resolve():
+                shutil.copy2(master_audio_path, public_audio)
 
-                # 4. Prepare Remotion props
-                props = VisualQuizRenderProps(
-                    dataset=dataset,
-                    fps=self.config.fps,
-                    width=1080,
-                    height=1920,
-                    total_duration_frames=total_duration_frames,
-                    hook_end_frame=hook_end_frame,
-                    timing_slots=timing_slots,
-                    subtitles=subtitles,
-                    audio_mix_path="audio/visual_quiz_master_mix.wav",
-                    background_video_path="background.mp4",
-                )
+            # 4. Prepare Remotion props
+            props = VisualQuizRenderProps(
+                dataset=dataset,
+                fps=self.config.fps,
+                width=1080,
+                height=1920,
+                total_duration_frames=total_duration_frames,
+                hook_end_frame=hook_end_frame,
+                timing_slots=timing_slots,
+                subtitles=subtitles,
+                audio_mix_path="audio/visual_quiz_master_mix.wav",
+                background_video_path="background.mp4",
+            )
 
-                props_file = ws.path / "remotion-props.json"
-                props_file.write_text(props.model_dump_json(indent=2), encoding="utf-8")
+            props_file = ws.path / "remotion-props.json"
+            props_file.write_text(props.model_dump_json(indent=2), encoding="utf-8")
 
-                if progress_callback:
-                    progress_callback(40, "Рендер видео через Remotion 60fps...")
+            if progress_callback:
+                progress_callback(40, "Рендер видео через Remotion 60fps...")
 
-                # 5. Render Remotion
-                await self._render_remotion(
-                    props_path=props_file,
-                    public_dir=public_dir,
-                    output_path=final_output,
-                    progress_callback=progress_callback,
-                    profile=render_profile or self.config.render_profile,
-                    composition_id="VisualImageQuiz",
-                )
+            # 5. Render Remotion
+            await self._render_remotion(
+                props_path=props_file,
+                public_dir=public_dir,
+                output_path=final_output,
+                progress_callback=progress_callback,
+                profile=render_profile or self.config.render_profile,
+                composition_id="VisualImageQuiz",
+            )
 
-                # 6. Metadata cleanup
-                from videoanalizer.media.uniquifier import strip_video_metadata
-                strip_video_metadata(final_output, final_output)
+            # 6. Metadata cleanup
+            from videoanalizer.media.uniquifier import strip_video_metadata
+            strip_video_metadata(final_output, final_output)
 
-                if progress_callback:
-                    progress_callback(100, "Видео успешно создано!")
+            if progress_callback:
+                progress_callback(100, "Видео успешно создано!")
 
-                logger.info("VisualImageQuiz rendered successfully to %s", final_output)
-                return final_output
+            logger.info("VisualImageQuiz rendered successfully to %s", final_output)
+            return final_output
 
