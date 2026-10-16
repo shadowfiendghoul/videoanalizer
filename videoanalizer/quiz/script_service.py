@@ -5,6 +5,7 @@ import io
 import json
 import logging
 import random
+import re
 from pathlib import Path
 from typing import TypeVar
 
@@ -270,7 +271,8 @@ VISUAL_QUIZ_SYSTEM_PROMPT = """Ты — креативный сценарист 
    - Запрещено использовать общие слова вроде "photo", "car", "building", если тема про логотипы/эмблемы.
 
 4. ИНТРО-ХУК ('hook_tts'):
-   - Энергичная интригующая фраза на 3-3.5 секунды, представляющая тему и бросающая вызов зрителю (например: «Угадай все эти суперкары! На десятый ответят только настоящие знатоки. Погнали, что это?»).
+   - Энергичная интригующая фраза ровно на 3.0 секунды, представляющая тему и бросающая вызов зрителю (например: «Угадай все эти логотипы! На десятый ответят только знатоки. Погнали!» или «Сможешь назвать все бренды? Дойди до конца!»).
+   - ВНИМАНИЕ: В хуке СТРОГО ЗАПРЕЩЕНО говорить вопросы вроде «Что это?», «Что это за бренд?», «Погнали, что это?» или спрашивать название предметов! Хук ТОЛЬКО бросает вызов и объявляет тему. Вопрос «Что это?» задается только в первом раунде игры.
 
 5. ВСТАВКИ ('interstitials'):
    - после вопроса 3: type="comment_bait", tts_text="Зажми кнопку комментариев и отправь свой смайлик!"
@@ -767,6 +769,16 @@ class ScriptService:
         # Force structural integrity
         dataset.theme = chosen_theme
         dataset.mode = "visual_image_quiz"
+
+        # Sanitize hook_tts to ensure narrator never asks "Что это?" in intro hook
+        if dataset.hook_tts:
+            cleaned_hook = dataset.hook_tts
+            cleaned_hook = re.sub(r'[, -]*\b(погнали[, -]*)?что это(\s+за\s+[^.!?]+)?\??', '', cleaned_hook, flags=re.IGNORECASE).strip()
+            if not cleaned_hook:
+                cleaned_hook = f"Угадай все {chosen_theme}! На десятый ответят только знатоки. Погнали!"
+            elif not cleaned_hook.endswith(('.', '!', '?')):
+                cleaned_hook += '!'
+            dataset.hook_tts = cleaned_hook
 
         # Sanitize question 1 to ensure no "Вопрос номер один" prefix
         if dataset.items:

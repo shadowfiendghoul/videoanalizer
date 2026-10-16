@@ -19,8 +19,8 @@ export const RapidCenterFlip: React.FC<RapidCenterFlipProps> = ({
     return null;
   }
 
-  // Pace flips so ~7 logos flash over the 3.0-3.2s hook window (0.42s per logo)
-  const framesPerFlip = Math.max(1, Math.round(60 * 0.42));
+  // Rapid fire flips: exactly 0.15s per logo (9 frames at 60fps), cycling in a continuous circle
+  const framesPerFlip = Math.max(1, Math.round(60 * 0.15));
   const activeIndex = Math.floor(frame / framesPerFlip) % items.length;
   const currentItem = items[activeIndex];
 

@@ -786,8 +786,15 @@ class AudioService:
 
         # 1. Synthesize Intro Hook (Strictly 3.0–3.2 seconds duration)
         hook_audio_path = workspace.get_audio_path("visual_hook.mp3")
+        hook_text = dataset.hook_tts
+        cleaned_hook = re.sub(r'[, -]*\b(погнали[, -]*)?что это(\s+за\s+[^.!?]+)?\??', '', hook_text, flags=re.IGNORECASE).strip()
+        if cleaned_hook:
+            if not cleaned_hook.endswith(('.', '!', '?')):
+                cleaned_hook += '!'
+            hook_text = cleaned_hook
+
         hook_dur_ms, hook_words = await self.synthesize_speech_with_cues(
-            dataset.hook_tts,
+            hook_text,
             selected_voice,
             hook_audio_path,
             voice_config=voice_config,

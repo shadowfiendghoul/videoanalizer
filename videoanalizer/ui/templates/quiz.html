@@ -1249,6 +1249,21 @@
             </div>
           </div>
 
+          <!-- Intro Hook Bar -->
+          <div class="p-3 rounded-xl bg-black/40 border border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div class="flex items-center space-x-2 shrink-0">
+              <i data-lucide="sparkles" class="w-4 h-4 text-cyan-400"></i>
+              <span class="text-xs font-semibold text-slate-300">Вступительный хук (0.0s – 3.2s):</span>
+            </div>
+            <input 
+              type="text" 
+              id="visual-hook-input" 
+              class="flex-1 bg-black/60 border border-white/[0.1] focus:border-cyan-400 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none"
+              placeholder="Фраза вступительного хука..."
+              oninput="if(currentVisualDataset) currentVisualDataset.hook_tts = this.value"
+            />
+          </div>
+
           <!-- Cards Grid (10 items) -->
           <div id="visual-cards-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[660px] overflow-y-auto pr-1">
             <!-- Dynamic items rendered here -->
@@ -3419,6 +3434,8 @@
       const grid = document.getElementById('visual-cards-grid');
       const themeBadge = document.getElementById('visual-theme-badge');
       if (themeBadge) themeBadge.textContent = dataset.theme;
+      const hookInput = document.getElementById('visual-hook-input');
+      if (hookInput) hookInput.value = dataset.hook_tts || '';
       if (!grid) return;
 
       const difficultyBadges = {
@@ -3765,6 +3782,11 @@
         if (aInput && aInput.value.trim()) it.answer_text = aInput.value.trim();
         if (pInput && pInput.value.trim()) it.prompt_tts = pInput.value.trim();
       });
+
+      const vHookInput = document.getElementById('visual-hook-input');
+      if (vHookInput && vHookInput.value.trim()) {
+        currentVisualDataset.hook_tts = vHookInput.value.trim();
+      }
 
       const bgVideoSelect = document.getElementById('background-select');
       const bgVideo = bgVideoSelect ? bgVideoSelect.value : null;
