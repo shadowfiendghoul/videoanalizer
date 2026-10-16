@@ -41,6 +41,7 @@ from videoanalizer.quiz.models import (
     VoicePreviewResponse,
 )
 from videoanalizer.quiz.exclusions_service import QuizExclusionsManager
+from videoanalizer.quiz.image_service import ImageService
 from videoanalizer.quiz.orchestrator import QuizOrchestrator
 from videoanalizer.quiz.voice_service import RvcModelRegistry, VoiceService
 from videoanalizer.utils.hardware import get_hardware_capabilities
