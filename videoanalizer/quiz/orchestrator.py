@@ -796,6 +796,7 @@ class QuizOrchestrator:
                     output_path=output_path,
                     progress_callback=progress_callback,
                     profile=RenderProfile.CPU_SAFE,
+                    composition_id=composition_id,
                 )
             raise RuntimeError(
                 f"Remotion render failed (code {process.returncode}):\n{err_msg}\n{out_msg}"
@@ -1127,18 +1128,31 @@ class QuizOrchestrator:
             for item in dataset.items:
                 img_filename = f"item_{item.id}.png"
                 dest_img_path = images_dir / img_filename
+                downloaded_path = None
+
+                # Check if item.image_path is already a valid local file
                 if item.image_path and Path(item.image_path).exists():
                     if Path(item.image_path).resolve() != dest_img_path.resolve():
                         shutil.copy2(item.image_path, dest_img_path)
-                    item.image_path = f"images/{img_filename}"
+                    downloaded_path = dest_img_path
                 elif item.image_url:
-                    downloaded = await self.image_service.search_and_download(item.image_query, dest_img_path)
-                    if downloaded:
-                        item.image_path = f"images/{img_filename}"
-                    else:
-                        item.image_path = None
+                    # Direct download from provided URL
+                    downloaded_path = await self.image_service.download_from_url(item.image_url, dest_img_path)
+                    if not downloaded_path:
+                        # Fallback to web search by query
+                        downloaded_path = await self.image_service.search_and_download(item.image_query, dest_img_path)
+                elif item.image_query:
+                    downloaded_path = await self.image_service.search_and_download(item.image_query, dest_img_path)
+
+                if downloaded_path and downloaded_path.exists():
+                    item.image_path = f"images/{img_filename}"
                 else:
-                    item.image_path = None
+                    # Guaranteed fallback: generate a clean placeholder image with Pillow
+                    self.image_service.create_placeholder(dest_img_path, item.prompt_title or item.answer_text or "?")
+                    item.image_path = f"images/{img_filename}"
+
+                # Ensure image_url is stripped from render props to prevent Remotion from attempting external network fetches
+                item.image_url = None
 
             if progress_callback:
                 progress_callback(20, "Синтез дикторской речи и звуковых эффектов...")

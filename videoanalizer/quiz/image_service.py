@@ -82,6 +82,43 @@ class ImageService:
             logger.warning(f"Failed to download image from {url}: {e}")
         return None
 
+    async def download_from_url(self, url: str, dest_path: Path) -> Path | None:
+        """Download image from direct URL, validate with Pillow, and save as PNG."""
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        content = await self._download_bytes(url)
+        if not content:
+            return None
+        try:
+            img = Image.open(io.BytesIO(content))
+            img.verify()
+            img = Image.open(io.BytesIO(content))
+            if img.mode not in ("RGB", "RGBA"):
+                img = img.convert("RGBA")
+            img.save(dest_path)
+            logger.info("Successfully downloaded and cached image from URL at %s", dest_path)
+            return dest_path
+        except Exception as e:
+            logger.warning("Image verification failed for direct URL %s: %s", url, e)
+            return None
+
+    def create_placeholder(self, dest_path: Path, label: str = "?") -> Path:
+        """Create a clean placeholder PNG when no image is available, ensuring Remotion never crashes."""
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            from PIL import ImageDraw
+            img = Image.new("RGBA", (512, 512), (15, 23, 42, 240))
+            draw = ImageDraw.Draw(img)
+            draw.rectangle([12, 12, 499, 499], outline=(56, 189, 248, 220), width=6)
+            display_text = label[:20] if label else "?"
+            draw.text((256, 256), display_text, fill=(255, 255, 255, 240), anchor="mm")
+            img.save(dest_path)
+            return dest_path
+        except Exception as e:
+            logger.warning("Failed to create placeholder image: %s", e)
+            img = Image.new("RGBA", (64, 64), (20, 20, 30, 255))
+            img.save(dest_path)
+            return dest_path
+
     async def search_and_download(self, query: str, dest_path: Path) -> Path | None:
         """Search image by query, validate and save to dest_path.
 

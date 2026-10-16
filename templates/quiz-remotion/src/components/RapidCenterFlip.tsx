@@ -43,6 +43,9 @@ export const RapidCenterFlip: React.FC<RapidCenterFlipProps> = ({
         <Img
           src={imageSrc}
           className="w-full h-full object-contain"
+          onError={(e) => {
+            console.warn("Failed to load rapid flip image:", imageSrc, e);
+          }}
         />
       ) : (
         <span className="text-6xl font-black text-cyan-400">?</span>

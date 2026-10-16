@@ -60,6 +60,9 @@ export const SpringImageCard: React.FC<SpringImageCardProps> = ({
         <Img
           src={imageSrc}
           className="w-full h-full object-contain drop-shadow-md"
+          onError={(e) => {
+            console.warn("Failed to load spring image card:", imageSrc, e);
+          }}
         />
       ) : (
         <span className="text-7xl font-black text-emerald-400">?</span>
