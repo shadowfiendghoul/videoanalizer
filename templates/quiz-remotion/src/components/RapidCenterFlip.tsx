@@ -32,23 +32,35 @@ export const RapidCenterFlip: React.FC<RapidCenterFlipProps> = ({
     <div
       style={{
         position: "absolute",
-        left: 560,
-        top: 260,
-        width: 380,
-        height: 380,
+        left: 550,
+        top: 220,
+        width: 440,
+        height: 440,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        filter: "drop-shadow(0 12px 24px rgba(0,0,0,0.65))",
       }}
-      className="rounded-3xl border-4 border-cyan-400/80 bg-slate-900/90 shadow-[0_0_35px_rgba(6,182,212,0.4)] flex items-center justify-center overflow-hidden p-3 z-20"
+      className="z-20 pointer-events-none select-none"
     >
       {imageSrc ? (
         <Img
           src={imageSrc}
-          className="w-full h-full object-contain"
+          className="max-w-full max-h-full object-contain"
           onError={(e) => {
             console.warn("Failed to load rapid flip image:", imageSrc, e);
           }}
         />
       ) : (
-        <span className="text-6xl font-black text-cyan-400">?</span>
+        <span
+          className="text-8xl font-black text-white"
+          style={{
+            WebkitTextStroke: "3px black",
+            textShadow: "3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000",
+          }}
+        >
+          ?
+        </span>
       )}
     </div>
   );

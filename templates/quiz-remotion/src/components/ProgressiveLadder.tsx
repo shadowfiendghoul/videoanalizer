@@ -9,10 +9,10 @@ interface ProgressiveLadderProps {
 }
 
 const TIER_COLORS = {
-  easy: "#22C55E",
-  medium: "#FACC15",
-  hard: "#EF4444",
-  master: "#EC4899",
+  easy: "#00E676",    // Bright vibrant TikTok green
+  medium: "#FFEB3B",  // Bright vibrant TikTok yellow
+  hard: "#FF1744",    // Bright vibrant TikTok red
+  master: "#FF4081",  // Bright vibrant TikTok pink/magenta
 };
 
 export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
@@ -26,11 +26,11 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
     return null;
   }
 
-  // Groups
+  // Groups matching reference video
   const groups = [
-    { title: "Легкий уровень", color: TIER_COLORS.easy, ids: [1, 2, 3] },
-    { title: "Средний уровень", color: TIER_COLORS.medium, ids: [4, 5, 6] },
-    { title: "Эксперт", color: TIER_COLORS.hard, ids: [7, 8, 9] },
+    { title: "Лёгкий", color: TIER_COLORS.easy, ids: [1, 2, 3] },
+    { title: "Средний", color: TIER_COLORS.medium, ids: [4, 5, 6] },
+    { title: "Сложный", color: TIER_COLORS.hard, ids: [7, 8, 9] },
     { title: "Мастер", color: TIER_COLORS.master, ids: [10] },
   ];
 
@@ -39,69 +39,60 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
       style={{
         position: "absolute",
         left: 80,
-        top: 380,
-        width: 460,
-        height: 870,
+        top: 220,
+        width: 480,
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
       }}
-      className="flex flex-col justify-between py-2 z-20"
+      className="z-20 pointer-events-none select-none font-sans"
     >
       {groups.map((grp, gIdx) => (
-        <div key={gIdx} className="space-y-1.5">
+        <div key={gIdx} className="flex flex-col gap-1">
+          {/* Category Header */}
           <div
-            className="text-[20px] font-black uppercase tracking-wider flex items-center gap-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
-            style={{ color: grp.color }}
+            className="text-[42px] font-black tracking-tight"
+            style={{
+              color: grp.color,
+              WebkitTextStroke: "3px #000000",
+              textShadow:
+                "3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 3px 0 #000, 3px 0 0 #000, 0 -3px 0 #000, -3px 0 0 #000, 0 4px 8px rgba(0,0,0,0.8)",
+            }}
           >
-            <span
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: grp.color, boxShadow: `0 0 10px ${grp.color}` }}
-            />
             {grp.title}
           </div>
 
-          <div className="space-y-1">
+          {/* Items: Clean typography without dark pill containers */}
+          <div className="flex flex-col gap-0.5">
             {grp.ids.map((id) => {
               const item = items.find((it) => it.id === id);
               const slot = timingSlots.find((s) => s.question_id === id);
               const isRevealed = slot && frame >= slot.reveal_frame;
               const isActive = slot && frame >= slot.start_frame && frame <= slot.end_frame;
 
-              let text = "";
-              if (id === 10) {
-                text = isRevealed ? "Пиши в коммы" : "???";
-              } else {
-                text = isRevealed ? item?.answer_text || "" : "???";
+              let label = `${id}.`;
+              if (isRevealed) {
+                if (id === 10) {
+                  label = `${id}. Пиши в коммы`;
+                } else if (item?.answer_text) {
+                  label = `${id}. ${item.answer_text}`;
+                }
               }
 
               return (
                 <div
                   key={id}
-                  className={`flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
-                    isActive
-                      ? "bg-white/20 border-white/40 shadow-lg scale-[1.02]"
-                      : "bg-slate-900/60 border-white/10"
-                  }`}
+                  className="text-[38px] font-black tracking-tight transition-transform duration-150"
+                  style={{
+                    color: grp.color,
+                    WebkitTextStroke: "2.5px #000000",
+                    textShadow:
+                      "3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 3px 0 #000, 3px 0 0 #000, 0 -3px 0 #000, -3px 0 0 #000, 0 4px 6px rgba(0,0,0,0.8)",
+                    transform: isActive ? "scale(1.05)" : "scale(1)",
+                    transformOrigin: "left center",
+                  }}
                 >
-                  <span
-                    className="font-black text-lg w-7 h-7 flex items-center justify-center rounded-lg"
-                    style={{
-                      backgroundColor: `${grp.color}22`,
-                      color: grp.color,
-                      border: `1px solid ${grp.color}44`,
-                    }}
-                  >
-                    {id}
-                  </span>
-                  <span
-                    className={`font-black text-xl tracking-wide truncate ${
-                      isRevealed ? "text-white" : "text-slate-500"
-                    }`}
-                    style={{
-                      textShadow:
-                        "2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 0 #000, 2px 0 0 #000, 0 -2px 0 #000, -2px 0 0 #000",
-                    }}
-                  >
-                    {text}
-                  </span>
+                  {label}
                 </div>
               );
             })}

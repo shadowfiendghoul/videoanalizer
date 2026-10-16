@@ -48,24 +48,36 @@ export const SpringImageCard: React.FC<SpringImageCardProps> = ({
     <div
       style={{
         position: "absolute",
-        left: 560,
-        top: 260,
-        width: 380,
-        height: 380,
+        left: 550,
+        top: 220,
+        width: 440,
+        height: 440,
         transform: `scale(${scale})`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        filter: "drop-shadow(0 12px 24px rgba(0,0,0,0.65))",
       }}
-      className="rounded-3xl border-4 border-emerald-400/80 bg-slate-900/90 shadow-[0_0_40px_rgba(34,197,94,0.4)] flex items-center justify-center overflow-hidden p-4 z-20"
+      className="z-20 pointer-events-none select-none"
     >
       {imageSrc ? (
         <Img
           src={imageSrc}
-          className="w-full h-full object-contain drop-shadow-md"
+          className="max-w-full max-h-full object-contain"
           onError={(e) => {
             console.warn("Failed to load spring image card:", imageSrc, e);
           }}
         />
       ) : (
-        <span className="text-7xl font-black text-emerald-400">?</span>
+        <span
+          className="text-8xl font-black text-white"
+          style={{
+            WebkitTextStroke: "3px black",
+            textShadow: "3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000",
+          }}
+        >
+          ?
+        </span>
       )}
     </div>
   );

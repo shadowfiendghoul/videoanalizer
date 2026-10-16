@@ -46,13 +46,13 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
   }
 
   return (
-    <div className="absolute bottom-[450px] left-0 right-0 flex items-center justify-center px-12 z-30 pointer-events-none">
+    <div className="absolute bottom-[400px] left-0 right-0 flex items-center justify-center px-12 z-30 pointer-events-none select-none">
       <span
-        className="text-5xl md:text-6xl font-black tracking-widest uppercase text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)]"
+        className="text-6xl md:text-7xl font-black tracking-wide text-white uppercase text-center"
         style={{
           textShadow:
-            "0 4px 10px #000000, 0 2px 4px #000000, 0 0 16px rgba(0,0,0,0.9)",
-          WebkitTextStroke: "2px #000000",
+            "3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 3px 0 #000, 3px 0 0 #000, 0 -3px 0 #000, -3px 0 0 #000, 0 8px 16px rgba(0,0,0,0.9)",
+          WebkitTextStroke: "3px #000000",
         }}
       >
         {activeWord.word.trim()}

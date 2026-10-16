@@ -1,10 +1,9 @@
 import React from "react";
-import { AbsoluteFill, Audio, staticFile } from "remotion";
+import { AbsoluteFill, Audio, Loop, OffthreadVideo, staticFile } from "remotion";
 import { VisualQuizRenderProps } from "./types";
 import { RapidCenterFlip } from "./components/RapidCenterFlip";
 import { SpringImageCard } from "./components/SpringImageCard";
 import { ProgressiveLadder } from "./components/ProgressiveLadder";
-import { SyncHorizontalTimer } from "./components/SyncHorizontalTimer";
 import { EngagementOverlay } from "./components/EngagementOverlay";
 import { KaraokeCaptions } from "./components/KaraokeCaptions";
 
@@ -18,32 +17,33 @@ export const VisualImageQuizComp: React.FC<VisualQuizRenderProps> = ({
   background_video_path,
 }) => {
   return (
-    <AbsoluteFill className="bg-slate-950 text-white overflow-hidden font-sans">
-      {/* Background Layer */}
+    <AbsoluteFill className="overflow-hidden font-sans">
+      {/* Background Layer: 100% full brightness and smooth looped animation */}
       {background_video_path && (
-        <AbsoluteFill className="opacity-40">
-          <video
-            src={staticFile(background_video_path)}
-            className="w-full h-full object-cover"
-            muted
-            loop
-          />
+        <AbsoluteFill>
+          <Loop durationInFrames={600}>
+            <OffthreadVideo
+              src={staticFile(background_video_path)}
+              className="w-full h-full object-cover"
+              muted
+            />
+          </Loop>
         </AbsoluteFill>
       )}
 
-      {/* Audio Track */}
+      {/* Master Audio Track */}
       {audio_mix_path && (
         <Audio src={staticFile(audio_mix_path)} />
       )}
 
-      {/* Left Progressive Ladder (Hidden during intro hook) */}
+      {/* Left Progressive Ladder (Clean text without dark boxes) */}
       <ProgressiveLadder
         items={dataset.items}
         timingSlots={timing_slots}
         hookEndFrame={hook_end_frame}
       />
 
-      {/* Center Mystery Box: Rapid Flip in Intro vs Spring Card in Gameplay */}
+      {/* Center Mystery Box: Rapid Flip in Intro vs Floating Spring Card in Gameplay */}
       <RapidCenterFlip
         items={dataset.items}
         hookEndFrame={hook_end_frame}
@@ -56,12 +56,6 @@ export const VisualImageQuizComp: React.FC<VisualQuizRenderProps> = ({
         hookEndFrame={hook_end_frame}
       />
 
-      {/* Horizontal Countdown Timer */}
-      <SyncHorizontalTimer
-        timingSlots={timing_slots}
-        hookEndFrame={hook_end_frame}
-      />
-
       {/* Engagement Interstitials (Bait Stickers) */}
       <EngagementOverlay
         interstitials={dataset.interstitials || []}
@@ -69,9 +63,7 @@ export const VisualImageQuizComp: React.FC<VisualQuizRenderProps> = ({
       />
 
       {/* Synchronized Karaoke Captions */}
-      <div className="absolute top-[1420px] left-0 right-0 h-[80px] flex items-center justify-center pointer-events-none z-30">
-        <KaraokeCaptions words={subtitles as any} />
-      </div>
+      <KaraokeCaptions words={subtitles as any} />
     </AbsoluteFill>
   );
 };

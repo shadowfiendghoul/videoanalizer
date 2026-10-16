@@ -82,8 +82,69 @@ class ImageService:
             logger.warning(f"Failed to download image from {url}: {e}")
         return None
 
+    @staticmethod
+    def clean_fake_background(img: Image.Image) -> Image.Image:
+        """Automatically detect and remove fake checkerboard and solid white backgrounds from logos."""
+        try:
+            import numpy as np
+            import scipy.ndimage as ndi
+        except ImportError:
+            return img
+
+        img_rgba = img.convert("RGBA")
+        arr = np.array(img_rgba)
+
+        # If already has alpha transparency (more than 5% transparent pixels), keep as is
+        if np.mean(arr[:, :, 3] < 200) > 0.05:
+            return img_rgba
+
+        r, g, b = arr[:, :, 0].astype(int), arr[:, :, 1].astype(int), arr[:, :, 2].astype(int)
+        max_c = np.maximum(np.maximum(r, g), b)
+        min_c = np.minimum(np.minimum(r, g), b)
+
+        # Neutral light pixels (white or light-grey checkerboard)
+        is_neutral_light = (min_c >= 170) & ((max_c - min_c) <= 25)
+
+        h, w = arr.shape[:2]
+        if h < 10 or w < 10:
+            return img_rgba
+
+        corners = [(0, 0), (0, w - 1), (h - 1, 0), (h - 1, w - 1)]
+        corner_count = sum(is_neutral_light[y, x] for y, x in corners)
+        if corner_count < 2:
+            return img_rgba
+
+        labeled, num_features = ndi.label(is_neutral_light)
+        if num_features == 0:
+            return img_rgba
+
+        # Background labels touching outer border
+        border_labels = np.unique(
+            np.concatenate([labeled[0, :], labeled[-1, :], labeled[:, 0], labeled[:, -1]])
+        )
+        border_labels = border_labels[border_labels > 0]
+        if len(border_labels) == 0:
+            return img_rgba
+
+        mask = np.isin(labeled, border_labels)
+        arr[mask, 3] = 0
+        return Image.fromarray(arr)
+
+    def clean_image_file(self, image_path: Path, dest_path: Path | None = None) -> Path:
+        """Clean fake background from an image file on disk and save as PNG."""
+        target = dest_path or image_path
+        try:
+            with Image.open(image_path) as img:
+                cleaned = self.clean_fake_background(img)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                cleaned.save(target, "PNG")
+                return target
+        except Exception as e:
+            logger.warning("Failed to clean background for %s: %s", image_path, e)
+            return image_path
+
     async def download_from_url(self, url: str, dest_path: Path) -> Path | None:
-        """Download image from direct URL, validate with Pillow, and save as PNG."""
+        """Download image from direct URL, validate with Pillow, clean fake background, and save as PNG."""
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         content = await self._download_bytes(url)
         if not content:
@@ -92,10 +153,9 @@ class ImageService:
             img = Image.open(io.BytesIO(content))
             img.verify()
             img = Image.open(io.BytesIO(content))
-            if img.mode not in ("RGB", "RGBA"):
-                img = img.convert("RGBA")
-            img.save(dest_path)
-            logger.info("Successfully downloaded and cached image from URL at %s", dest_path)
+            img = self.clean_fake_background(img)
+            img.save(dest_path, "PNG")
+            logger.info("Successfully downloaded, cleaned and cached image from URL at %s", dest_path)
             return dest_path
         except Exception as e:
             logger.warning("Image verification failed for direct URL %s: %s", url, e)
@@ -111,16 +171,16 @@ class ImageService:
             draw.rectangle([12, 12, 499, 499], outline=(56, 189, 248, 220), width=6)
             display_text = label[:20] if label else "?"
             draw.text((256, 256), display_text, fill=(255, 255, 255, 240), anchor="mm")
-            img.save(dest_path)
+            img.save(dest_path, "PNG")
             return dest_path
         except Exception as e:
             logger.warning("Failed to create placeholder image: %s", e)
             img = Image.new("RGBA", (64, 64), (20, 20, 30, 255))
-            img.save(dest_path)
+            img.save(dest_path, "PNG")
             return dest_path
 
     async def search_and_download(self, query: str, dest_path: Path) -> Path | None:
-        """Search image by query, validate and save to dest_path.
+        """Search image by query, validate, clean fake background, and save to dest_path.
 
         Returns:
             Path if download & verification succeeded, otherwise None (fallback).
@@ -143,10 +203,8 @@ class ImageService:
                 img.verify()
                 # Re-open for saving if valid
                 img = Image.open(io.BytesIO(content))
-                # Ensure RGBA or RGB
-                if img.mode not in ("RGB", "RGBA"):
-                    img = img.convert("RGBA")
-                img.save(dest_path)
+                img = self.clean_fake_background(img)
+                img.save(dest_path, "PNG")
                 logger.info(f"Successfully cached visual asset for '{query}' at {dest_path}")
                 return dest_path
             except Exception as e:

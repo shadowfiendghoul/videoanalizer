@@ -837,13 +837,16 @@ class AudioService:
             )
 
             start_frame = current_frame
-            timer_start_frame = start_frame
+            p_frames = max(0, int(p_dur_ms * fps / 1000)) if item.prompt_tts and item.prompt_tts.strip() else 0
+
+            # Timer starts strictly after prompt audio finishes (plus 6 frames breathing room)
+            timer_start_frame = start_frame + p_frames + (6 if p_frames > 0 else 0)
             timer_duration_frames = int(dataset.timer_duration_sec * fps)
             reveal_frame = timer_start_frame + timer_duration_frames
             answer_audio_start_frame = reveal_frame
 
             ans_frames = max(1, int(a_dur_ms * fps / 1000))
-            end_frame = reveal_frame + ans_frames + 20
+            end_frame = reveal_frame + ans_frames + 16
 
             slot = VisualQuizTimingSlot(
                 question_id=q_id,
@@ -946,7 +949,10 @@ class AudioService:
             )
 
         amix_inputs = "".join(f"[a{i}]" for i in range(len(valid_events)))
-        filter_complex = "".join(filter_parts) + f"{amix_inputs}amix=inputs={len(valid_events)}:dropout_transition=0,volume=1.0[outa]"
+        filter_complex = (
+            "".join(filter_parts)
+            + f"{amix_inputs}amix=inputs={len(valid_events)}:dropout_transition=0:normalize=0,alimiter=limit=0.95[outa]"
+        )
 
         cmd = [
             "ffmpeg", "-y",

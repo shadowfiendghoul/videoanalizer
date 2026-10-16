@@ -1134,6 +1134,7 @@ class QuizOrchestrator:
                 if item.image_path and Path(item.image_path).exists():
                     if Path(item.image_path).resolve() != dest_img_path.resolve():
                         shutil.copy2(item.image_path, dest_img_path)
+                    self.image_service.clean_image_file(dest_img_path)
                     downloaded_path = dest_img_path
                 elif item.image_url:
                     # Direct download from provided URL
@@ -1145,6 +1146,8 @@ class QuizOrchestrator:
                     downloaded_path = await self.image_service.search_and_download(item.image_query, dest_img_path)
 
                 if downloaded_path and downloaded_path.exists():
+                    # Run background cleaner to ensure transparent logo cutout
+                    self.image_service.clean_image_file(dest_img_path)
                     item.image_path = f"images/{img_filename}"
                 else:
                     # Guaranteed fallback: generate a clean placeholder image with Pillow
