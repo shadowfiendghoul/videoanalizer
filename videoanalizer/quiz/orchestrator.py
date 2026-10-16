@@ -1170,18 +1170,20 @@ class QuizOrchestrator:
             if progress_callback:
                 progress_callback(20, "Синтез дикторской речи и звуковых эффектов...")
 
-            # 3. Audio synthesis
+            # 3. Audio synthesis with banner pause offset
             (
                 master_audio_path,
                 timing_slots,
                 subtitles,
                 total_duration_frames,
                 hook_end_frame,
+                computed_banner_start,
             ) = await self.audio_service.generate_visual_quiz_audio(
                 dataset=dataset,
                 workspace=ws,
                 voice=voice,
                 voice_config=voice_config,
+                banner_duration_frames=banner_dur if (staged_banner and banner_dur) else None,
             )
 
             public_audio = public_dir / "audio" / "visual_quiz_master_mix.wav"
@@ -1190,12 +1192,7 @@ class QuizOrchestrator:
                 shutil.copy2(master_audio_path, public_audio)
 
             # 4. Prepare Remotion props
-            banner_start_frame = None
-            if staged_banner and banner_dur:
-                if len(timing_slots) >= 5:
-                    banner_start_frame = timing_slots[4].start_frame
-                else:
-                    banner_start_frame = int(total_duration_frames * 0.45)
+            banner_start_frame = computed_banner_start if (staged_banner and banner_dur) else None
 
             props = VisualQuizRenderProps(
                 dataset=dataset,

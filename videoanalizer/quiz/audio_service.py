@@ -769,11 +769,12 @@ class AudioService:
         workspace: QuizWorkspace,
         voice: str | None = None,
         voice_config: VoiceConfig | None = None,
-    ) -> tuple[Path, list[VisualQuizTimingSlot], list[dict], int, int]:
+        banner_duration_frames: int | None = None,
+    ) -> tuple[Path, list[VisualQuizTimingSlot], list[dict], int, int, int | None]:
         """Synthesize all speech cues and assemble master AudioCueSheet & timing slots for VisualImageQuiz.
 
         Returns:
-            (master_audio_path, timing_slots, subtitles, total_duration_frames, hook_end_frame)
+            (master_audio_path, timing_slots, subtitles, total_duration_frames, hook_end_frame, banner_start_frame)
         """
         ensure_default_sfx(self.config.sfx_dir)
         selected_voice = voice or "ru-RU-DmitryNeural"
@@ -853,8 +854,20 @@ class AudioService:
             it.after_question: it for it in (dataset.interstitials or [])
         }
 
+        insert_idx = max(1, len(dataset.items) // 2)
+        banner_start_frame: int | None = None
+
         # 2. Iterate Questions 1..10
-        for item in dataset.items:
+        for item_idx, item in enumerate(dataset.items):
+            # Pause video & gameplay timeline for optional promo banner mid-quiz
+            if (
+                item_idx == insert_idx
+                and banner_duration_frames
+                and banner_duration_frames > 0
+            ):
+                banner_start_frame = current_frame
+                current_frame += banner_duration_frames
+
             q_id = item.id
             q_prompt_path = workspace.get_audio_path(f"visual_q_{q_id}_prompt.mp3")
             q_ans_path = workspace.get_audio_path(f"visual_q_{q_id}_answer.mp3")
@@ -954,6 +967,7 @@ class AudioService:
             subtitles,
             total_duration_frames,
             hook_end_frame,
+            banner_start_frame,
         )
 
     async def _render_audio_events_mix(

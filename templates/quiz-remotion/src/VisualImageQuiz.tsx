@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Audio, Loop, OffthreadVideo, Sequence, staticFile } from "remotion";
+import { AbsoluteFill, Audio, Freeze, Loop, OffthreadVideo, Sequence, staticFile } from "remotion";
 import { VisualQuizRenderProps } from "./types";
 import { RapidCenterFlip } from "./components/RapidCenterFlip";
 import { SpringImageCard } from "./components/SpringImageCard";
@@ -24,10 +24,16 @@ export const VisualImageQuizComp: React.FC<VisualQuizRenderProps> = ({
   banner_duration_frames,
   banner_height,
 }) => {
+  const hasBannerPause =
+    Boolean(banner_video_path) &&
+    typeof banner_start_frame === "number" &&
+    typeof banner_duration_frames === "number" &&
+    banner_duration_frames > 0;
+
   return (
     <AbsoluteFill className="overflow-hidden font-sans">
-      {/* Background Layer: 100% full brightness and smooth looped animation */}
-      {background_video_path && (
+      {/* Background Layer: normal looping when no banner is active */}
+      {background_video_path && !hasBannerPause && (
         <AbsoluteFill>
           <Loop durationInFrames={600}>
             <OffthreadVideo
@@ -36,6 +42,41 @@ export const VisualImageQuizComp: React.FC<VisualQuizRenderProps> = ({
               muted
             />
           </Loop>
+        </AbsoluteFill>
+      )}
+
+      {/* Background Layer with Pause/Freeze during promo banner */}
+      {background_video_path && hasBannerPause && (
+        <AbsoluteFill>
+          {/* Phase 1: Before banner (normal playback) */}
+          <Sequence from={0} durationInFrames={banner_start_frame!}>
+            <OffthreadVideo
+              src={staticFile(background_video_path)}
+              className="w-full h-full object-cover"
+              muted
+            />
+          </Sequence>
+
+          {/* Phase 2: During banner (FROZEN / PAUSED on banner_start_frame) */}
+          <Sequence from={banner_start_frame!} durationInFrames={banner_duration_frames!}>
+            <Freeze frame={banner_start_frame!}>
+              <OffthreadVideo
+                src={staticFile(background_video_path)}
+                className="w-full h-full object-cover"
+                muted
+              />
+            </Freeze>
+          </Sequence>
+
+          {/* Phase 3: After banner (resumes playback from banner_start_frame onwards) */}
+          <Sequence from={banner_start_frame! + banner_duration_frames!}>
+            <OffthreadVideo
+              src={staticFile(background_video_path)}
+              startFrom={banner_start_frame!}
+              className="w-full h-full object-cover"
+              muted
+            />
+          </Sequence>
         </AbsoluteFill>
       )}
 
