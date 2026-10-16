@@ -50,9 +50,10 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
       <span
         className="text-6xl md:text-7xl font-black tracking-wide text-white uppercase text-center"
         style={{
+          fontFamily: "'Rubik', sans-serif",
           textShadow:
-            "3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 0 3px 0 #000, 3px 0 0 #000, 0 -3px 0 #000, -3px 0 0 #000, 0 8px 16px rgba(0,0,0,0.9)",
-          WebkitTextStroke: "3px #000000",
+            "2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 8px 16px rgba(0,0,0,0.8)",
+          WebkitTextStroke: "2px #000000",
         }}
       >
         {activeWord.word.trim()}
