@@ -1139,11 +1139,16 @@ class QuizOrchestrator:
                 elif item.image_url:
                     # Direct download from provided URL
                     downloaded_path = await self.image_service.download_from_url(item.image_url, dest_img_path)
-                    if not downloaded_path:
-                        # Fallback to web search by query
-                        downloaded_path = await self.image_service.search_and_download(item.image_query, dest_img_path)
+                    # If direct URL failed or resulted in a non-transparent opaque image, search for a transparent PNG
+                    if not downloaded_path or not self.image_service.is_transparent_file(dest_img_path):
+                        query_to_search = item.image_query or item.prompt_title or item.answer_text or ""
+                        search_path = await self.image_service.search_and_download(query_to_search, dest_img_path)
+                        if search_path:
+                            downloaded_path = search_path
                 elif item.image_query:
                     downloaded_path = await self.image_service.search_and_download(item.image_query, dest_img_path)
+                elif item.prompt_title or item.answer_text:
+                    downloaded_path = await self.image_service.search_and_download(item.prompt_title or item.answer_text, dest_img_path)
 
                 if downloaded_path and downloaded_path.exists():
                     # Run background cleaner to ensure transparent logo cutout

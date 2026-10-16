@@ -259,8 +259,15 @@ VISUAL_QUIZ_SYSTEM_PROMPT = """Ты — креативный сценарист 
    - Вопрос 10: правильный ответ намеренно скрывается. В поле 'answer_text' строго пиши: "Пиши в коммы". В поле 'answer_tts' диктор интригующе призывает зрителей писать свои догадки в комментариях (например: «А это самый сложный! Напиши свой ответ в комментариях!»).
    - Все реплики диктора должны быть краткими, энергичными и без лишней воды (до 15 слов на реплику).
 
-3. ПОИСКОВЫЕ ЗАПРОСЫ КАРТИНОК ('image_query'):
-   - Для каждого предмета составь точный поисковый запрос (лучше на английском с ключевыми словами isolated, transparent logo, front view, icon) для нахождения четкого изображения без фона или на чистом фоне.
+3. СТРОГИЕ ПОИСКОВЫЕ ЗАПРОСЫ КАРТИНОК ('image_query'):
+   - ИСКАТЬ ТОЛЬКО ЛОГОТИПЫ PNG БЕЗ ФОНА!
+   - Для каждого предмета составь точный поисковый запрос строго на английском языке, ОБЯЗАТЕЛЬНО включающий ключевые слова:
+     "<Название> vector logo transparent png isolated without background"
+   - Примеры:
+     "Apple vector logo transparent png isolated without background"
+     "Nike swoosh vector logo transparent png isolated without background"
+     "McDonald's golden arches vector logo transparent png isolated without background"
+   - Запрещено использовать общие слова вроде "photo", "car", "building", если тема про логотипы/эмблемы.
 
 4. ИНТРО-ХУК ('hook_tts'):
    - Энергичная интригующая фраза на 3-3.5 секунды, представляющая тему и бросающая вызов зрителю (например: «Угадай все эти суперкары! На десятый ответят только настоящие знатоки. Погнали, что это?»).
@@ -793,14 +800,18 @@ class ScriptService:
         return dataset
 
     async def _resolve_visual_quiz_images(self, dataset: VisualQuizDataset) -> None:
-        """Find candidate image URLs for visual quiz items via ImageService."""
+        """Find candidate image URLs for visual quiz items via ImageService, strictly prioritizing transparent PNGs."""
         async def _fetch_item_image(item: VisualQuizItem) -> None:
             if item.image_url:
                 return
             try:
-                candidates = await self.image_service._search_image_urls(item.image_query, max_results=3)
+                query_to_search = ImageService.format_transparent_query(
+                    item.image_query or item.prompt_title or item.answer_text
+                )
+                candidates = await self.image_service._search_image_urls(query_to_search, max_results=8)
                 if candidates:
-                    for cand in candidates:
+                    sorted_candidates = ImageService.sort_transparent_candidates(candidates)
+                    for cand in sorted_candidates:
                         url = cand.get("image") or cand.get("thumbnail")
                         if url:
                             item.image_url = url
@@ -809,4 +820,5 @@ class ScriptService:
                 logger.warning("Failed to auto-search image for '%s': %s", item.image_query, err)
 
         await asyncio.gather(*[_fetch_item_image(it) for it in dataset.items])
+
 

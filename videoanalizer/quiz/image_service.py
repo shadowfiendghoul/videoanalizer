@@ -42,7 +42,81 @@ class ImageService:
     def __init__(self, timeout_sec: float = 8.0) -> None:
         self.timeout_sec = timeout_sec
 
-    async def _search_image_urls(self, query: str, max_results: int = 3) -> list[dict[str, str]]:
+    @staticmethod
+    def format_transparent_query(query: str) -> str:
+        """Format and enforce transparent PNG search keywords for logo and icon queries."""
+        q = (query or "").strip()
+        lower = q.lower()
+        parts = [q] if q else ["logo"]
+        if "transparent" not in lower:
+            parts.append("transparent")
+        if "png" not in lower:
+            parts.append("png")
+        if "without background" not in lower and "no background" not in lower:
+            parts.append("without background")
+        return " ".join(parts)
+
+    @staticmethod
+    def sort_transparent_candidates(results: list[dict[str, str]]) -> list[dict[str, str]]:
+        """Sort search candidate URLs prioritizing verified .png extensions and transparent PNG repositories."""
+        trusted_png_domains = (
+            "pngimg.com",
+            "freepnglogos.com",
+            "cleanpng.com",
+            "stickpng.com",
+            "pngall.com",
+            "pngplay.com",
+            "citypng.com",
+            "pngwing.com",
+            "pngtree.com",
+            "wikimedia.org",
+            "wikipedia.org",
+        )
+
+        def _score(item: dict[str, str]) -> int:
+            url = (item.get("image") or item.get("thumbnail") or "").lower()
+            title = (item.get("title") or "").lower()
+            score = 0
+            if ".png" in url:
+                score += 50
+            if any(dom in url for dom in trusted_png_domains):
+                score += 30
+            if "transparent" in url or "transparent" in title:
+                score += 20
+            if "logo" in url or "logo" in title:
+                score += 10
+            # Penalize raster photos and formats without transparency
+            if url.endswith(".jpg") or url.endswith(".jpeg") or ".jpg?" in url or ".jpeg?" in url:
+                score -= 40
+            if "vecteezy.com" in url:
+                score -= 25
+            return score
+
+        return sorted(results, key=_score, reverse=True)
+
+    @staticmethod
+    def is_transparent_image(img: Image.Image) -> bool:
+        """Check if image has genuine alpha transparency."""
+        if img.mode != "RGBA":
+            return False
+        try:
+            import numpy as np
+
+            arr = np.array(img)
+            # More than 3% of pixels are transparent or semi-transparent (alpha < 220)
+            return bool(np.mean(arr[:, :, 3] < 220) > 0.03)
+        except Exception:
+            return False
+
+    def is_transparent_file(self, image_path: Path) -> bool:
+        """Check if an image file on disk has alpha transparency."""
+        try:
+            with Image.open(image_path) as img:
+                return self.is_transparent_image(img.convert("RGBA"))
+        except Exception:
+            return False
+
+    async def _search_image_urls(self, query: str, max_results: int = 8) -> list[dict[str, str]]:
         """Search image URLs using ddgs / duckduckgo_search or search API."""
         if DDGS is None:
             return []
@@ -84,7 +158,7 @@ class ImageService:
 
     @staticmethod
     def clean_fake_background(img: Image.Image) -> Image.Image:
-        """Automatically detect and remove fake checkerboard and solid white backgrounds from logos."""
+        """Automatically detect and remove fake checkerboard, solid white, and dark backgrounds from logos."""
         try:
             import numpy as np
             import scipy.ndimage as ndi
@@ -102,19 +176,27 @@ class ImageService:
         max_c = np.maximum(np.maximum(r, g), b)
         min_c = np.minimum(np.minimum(r, g), b)
 
-        # Neutral light pixels (white or light-grey checkerboard)
-        is_neutral_light = (min_c >= 170) & ((max_c - min_c) <= 25)
-
         h, w = arr.shape[:2]
         if h < 10 or w < 10:
             return img_rgba
 
+        # Neutral light pixels (white or light-grey checkerboard)
+        is_neutral_light = (min_c >= 150) & ((max_c - min_c) <= 30)
+        # Neutral dark pixels (solid black or dark grey border)
+        is_neutral_dark = (max_c <= 40) & ((max_c - min_c) <= 20)
+
         corners = [(0, 0), (0, w - 1), (h - 1, 0), (h - 1, w - 1)]
-        corner_count = sum(is_neutral_light[y, x] for y, x in corners)
-        if corner_count < 2:
+        corner_count_light = sum(is_neutral_light[y, x] for y, x in corners)
+        corner_count_dark = sum(is_neutral_dark[y, x] for y, x in corners)
+
+        if corner_count_light >= 2:
+            target_bg = is_neutral_light
+        elif corner_count_dark >= 2:
+            target_bg = is_neutral_dark
+        else:
             return img_rgba
 
-        labeled, num_features = ndi.label(is_neutral_light)
+        labeled, num_features = ndi.label(target_bg)
         if num_features == 0:
             return img_rgba
 
@@ -170,6 +252,7 @@ class ImageService:
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             from PIL import ImageDraw
+
             img = Image.new("RGBA", (512, 512), (15, 23, 42, 240))
             draw = ImageDraw.Draw(img)
             draw.rectangle([12, 12, 499, 499], outline=(56, 189, 248, 220), width=6)
@@ -186,13 +269,16 @@ class ImageService:
     async def search_and_download(self, query: str, dest_path: Path) -> Path | None:
         """Search image by query, validate, clean fake background, and save to dest_path.
 
-        Returns:
-            Path if download & verification succeeded, otherwise None (fallback).
+        Prioritizes verified transparent PNG candidates across search results.
         """
         dest_path.parent.mkdir(parents=True, exist_ok=True)
-        results = await self._search_image_urls(query)
+        sanitized_query = self.format_transparent_query(query)
+        results = await self._search_image_urls(sanitized_query, max_results=8)
+        sorted_results = self.sort_transparent_candidates(results)
 
-        for item in results:
+        fallback_candidate_img: Image.Image | None = None
+
+        for item in sorted_results:
             url = item.get("image") or item.get("thumbnail")
             if not url:
                 continue
@@ -205,17 +291,30 @@ class ImageService:
             try:
                 img = Image.open(io.BytesIO(content))
                 img.verify()
-                # Re-open for saving if valid
                 img = Image.open(io.BytesIO(content))
                 img = self.clean_fake_background(img)
-                img.save(dest_path, "PNG")
-                logger.info(f"Successfully cached visual asset for '{query}' at {dest_path}")
-                return dest_path
+
+                # If this candidate is genuinely transparent (or cleaned to transparent), accept immediately
+                if self.is_transparent_image(img):
+                    img.save(dest_path, "PNG")
+                    logger.info("Successfully cached transparent PNG asset for '%s' from %s at %s", query, url, dest_path)
+                    return dest_path
+
+                # If not transparent, save as fallback candidate in case no transparent candidate is found
+                if fallback_candidate_img is None:
+                    fallback_candidate_img = img
             except Exception as e:
-                logger.warning(f"Image verification failed for {url}: {e}")
+                logger.warning("Image verification failed for %s: %s", url, e)
                 continue
 
+        # If no strictly transparent image was found among all candidates, use best cleaned fallback
+        if fallback_candidate_img is not None:
+            fallback_candidate_img.save(dest_path, "PNG")
+            logger.info("Saved fallback cleaned visual asset for '%s' at %s", query, dest_path)
+            return dest_path
+
         logger.info(
-            f"No valid image could be downloaded for '{query}'; falling back to text/emoji."
+            "No valid image could be downloaded for '%s'; falling back to text/emoji.",
+            query,
         )
         return None

@@ -485,13 +485,15 @@ async def suggest_batch_topics(request: BatchTopicSuggestRequest) -> BatchTopicL
 
 @router.post("/search-image", response_model=ImageSearchResponse)
 async def search_image(request: ImageSearchRequest) -> ImageSearchResponse:
-    """Search candidates for visual trivia question preview."""
+    """Search candidates for visual trivia question preview, strictly transparent PNG prioritized."""
     orchestrator = QuizOrchestrator()
+    sanitized_query = ImageService.format_transparent_query(request.query)
     items = await orchestrator.image_service._search_image_urls(
-        request.query, max_results=request.max_results
+        sanitized_query, max_results=max(8, request.max_results)
     )
+    sorted_items = ImageService.sort_transparent_candidates(items)
     results: list[ImageSearchResultItem] = []
-    for it in items:
+    for it in sorted_items:
         img_url = it.get("image") or it.get("thumbnail")
         if img_url:
             results.append(
@@ -500,7 +502,7 @@ async def search_image(request: ImageSearchRequest) -> ImageSearchResponse:
                     thumbnail=it.get("thumbnail") or img_url,
                 )
             )
-    return ImageSearchResponse(images=results)
+    return ImageSearchResponse(images=results[: request.max_results])
 
 
 @router.post("/upload-banner", response_model=BannerUploadResponse)
