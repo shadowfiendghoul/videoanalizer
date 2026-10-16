@@ -39,24 +39,24 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
       style={{
         position: "absolute",
         left: 80,
-        top: 190,
+        top: 200,
         width: 480,
         display: "flex",
         flexDirection: "column",
-        gap: 22,
+        gap: 18,
         fontFamily: "'Rubik', sans-serif",
       }}
       className="z-20 pointer-events-none select-none"
     >
       {groups.map((grp, gIdx) => (
-        <div key={gIdx} className="flex flex-col gap-1">
+        <div key={gIdx} className="flex flex-col gap-0.5">
           {/* Category Header */}
           <div
-            className="text-[50px] font-black tracking-tight"
+            className="text-[45px] font-black tracking-tight"
             style={{
               color: grp.color,
               fontFamily: "'Rubik', sans-serif",
-              WebkitTextStroke: "1.8px #000000",
+              WebkitTextStroke: "1.6px #000000",
               textShadow:
                 "2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 3px 6px rgba(0,0,0,0.7)",
             }}
@@ -65,7 +65,7 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
           </div>
 
           {/* Items: Clean typography without dark pill containers */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             {grp.ids.map((id) => {
               const item = items.find((it) => it.id === id);
               const slot = timingSlots.find((s) => s.question_id === id);
@@ -84,11 +84,11 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
               return (
                 <div
                   key={id}
-                  className="text-[44px] font-black tracking-tight transition-transform duration-150"
+                  className="text-[40px] font-black tracking-tight transition-transform duration-150"
                   style={{
                     color: grp.color,
                     fontFamily: "'Rubik', sans-serif",
-                    WebkitTextStroke: "1.6px #000000",
+                    WebkitTextStroke: "1.5px #000000",
                     textShadow:
                       "2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 3px 6px rgba(0,0,0,0.6)",
                     transform: isActive ? "scale(1.05)" : "scale(1)",
