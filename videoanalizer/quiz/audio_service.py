@@ -783,7 +783,7 @@ class AudioService:
         subtitles: list[dict] = []
         audio_events: list[tuple[Path, float, float]] = []  # (path, start_time_sec, volume_db)
 
-        # 1. Synthesize Intro Hook
+        # 1. Synthesize Intro Hook (Strictly 3.0–3.2 seconds duration)
         hook_audio_path = workspace.get_audio_path("visual_hook.mp3")
         hook_dur_ms, hook_words = await self.synthesize_speech_with_cues(
             dataset.hook_tts,
@@ -791,13 +791,50 @@ class AudioService:
             hook_audio_path,
             voice_config=voice_config,
         )
-        hook_end_frame = max(180, int(hook_dur_ms * fps / 1000) + 12)  # At least 3.0s
+
+        # Ensure hook audio finishes cleanly within ~2.9-3.0s using FFmpeg atempo if needed
+        target_hook_ms = 3000
+        if hook_dur_ms > target_hook_ms and hook_audio_path.exists():
+            speed_ratio = hook_dur_ms / target_hook_ms
+            speed_ratio = min(2.2, max(1.05, speed_ratio))
+            sped_up_path = workspace.get_audio_path("visual_hook_fast.mp3")
+            ffmpeg_cmd = [
+                "ffmpeg", "-y", "-i", str(hook_audio_path),
+                "-filter:a", f"atempo={speed_ratio:.3f}",
+                "-vn", str(sped_up_path),
+            ]
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *ffmpeg_cmd,
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                await proc.wait()
+                if sped_up_path.exists() and proc.returncode == 0:
+                    shutil.move(str(sped_up_path), str(hook_audio_path))
+                    hook_dur_ms = probe_audio_duration_ms(hook_audio_path)
+                    scale = 1.0 / speed_ratio
+                    for w in hook_words:
+                        w.start_ms = int(w.start_ms * scale)
+                        w.end_ms = int(w.end_ms * scale)
+            except Exception as err:
+                logger.warning("Failed to accelerate hook audio: %s", err)
+
+        hook_end_frame = int(round(3.2 * fps))  # Strictly 3.2s transition
         audio_events.append((hook_audio_path, 0.0, 0.0))
 
         # Add Rapid Card Flip SFX during intro
         card_flip_sfx = self.config.sfx_dir / "card_flip_rapid.wav"
         if card_flip_sfx.exists():
             audio_events.append((card_flip_sfx, 0.0, -4.0))
+
+        # Add transition sound effect at 3.2s transition point
+        level_up_sfx = self.config.sfx_dir / "level_up.wav"
+        ding_sfx = self.config.sfx_dir / "reveal_ding.wav"
+        if level_up_sfx.exists():
+            audio_events.append((level_up_sfx, hook_end_frame / fps, -2.0))
+        elif ding_sfx.exists():
+            audio_events.append((ding_sfx, hook_end_frame / fps, -3.0))
 
         # Add hook words to subtitles
         for w in hook_words:
@@ -808,7 +845,6 @@ class AudioService:
             })
 
         current_frame = hook_end_frame
-        ding_sfx = self.config.sfx_dir / "reveal_ding.wav"
         timer_sfx = self.config.sfx_dir / "timer_tick.wav"
         cliff_sfx = self.config.sfx_dir / "heartbeat_panic.wav"
 

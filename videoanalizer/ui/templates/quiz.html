@@ -3768,12 +3768,27 @@
 
       const bgVideoSelect = document.getElementById('background-select');
       const bgVideo = bgVideoSelect ? bgVideoSelect.value : null;
-      const musicSelect = document.getElementById('music-select');
-      const bgMusic = musicSelect ? musicSelect.value : null;
       const musicVolSlider = document.getElementById('music-volume-slider');
       const musicVol = musicVolSlider ? parseFloat(musicVolSlider.value) : 0.18;
       const voiceSelect = document.getElementById('voice-select');
       const voice = voiceSelect ? voiceSelect.value : null;
+
+      const bannerToggle = document.getElementById('banner-toggle');
+      const bannerEnabled = bannerToggle ? bannerToggle.checked : false;
+      const musicToggle = document.getElementById('music-toggle');
+      const musicEnabled = musicToggle ? musicToggle.checked : false;
+
+      if (bannerEnabled && !uploadedBannerFile) {
+        alert('Вы включили вставку промо-баннера, но ещё не загрузили видео! Пожалуйста, выберите видео-файл баннера.');
+        return;
+      }
+      if (musicEnabled && !uploadedMusicFile) {
+        alert('Вы включили фоновую музыку, но ещё не загрузили аудио-файл! Пожалуйста, выберите MP3/WAV трек.');
+        return;
+      }
+
+      const voiceConfig = typeof getVoiceConfig === 'function' ? getVoiceConfig() : null;
+      const selectedVoice = (voiceConfig && voiceConfig.base_voice) ? voiceConfig.base_voice : voice;
 
       const progressCard = document.getElementById('progress-card');
       const progressTitle = document.getElementById('status-title');
@@ -3801,9 +3816,11 @@
             dataset: currentVisualDataset,
             background_video: bgVideo,
             background_mode: currentBackgroundMode,
-            background_music: bgMusic,
+            background_music: (musicEnabled && uploadedMusicFile) ? uploadedMusicFile : null,
             background_music_volume: musicVol,
-            voice: voice
+            voice: selectedVoice,
+            voice_config: voiceConfig,
+            banner_video: (bannerEnabled && uploadedBannerFile) ? uploadedBannerFile : null
           })
         });
 

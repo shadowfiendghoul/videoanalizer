@@ -1092,6 +1092,7 @@ class QuizOrchestrator:
         progress_callback: Callable[[int, str], None] | None = None,
         render_profile: RenderProfile | None = None,
         background_mode: str = "loop",
+        banner_video: Path | str | None = None,
     ) -> Path:
         """Render VisualImageQuiz dataset into 1080x1920 60fps MP4 video via Remotion."""
         ensure_system_paths()
@@ -1108,9 +1109,9 @@ class QuizOrchestrator:
             public_dir.mkdir(parents=True, exist_ok=True)
 
             if progress_callback:
-                progress_callback(5, "Подготовка фонового видео...")
+                progress_callback(5, "Подготовка фонового видео и медиа-ассетов...")
 
-            # 1. Background video
+            # 1. Background video, music, and banner staging
             bg_source = self.select_background(background_video)
             target_bg = public_dir / "background.mp4"
             await asyncio.to_thread(
@@ -1120,6 +1121,10 @@ class QuizOrchestrator:
                 120.0,
                 background_mode,
                 background_video,
+            )
+            staged_music = await asyncio.to_thread(self._prepare_music, background_music, public_dir)
+            staged_banner, banner_dur, b_width, b_height = await asyncio.to_thread(
+                self._prepare_banner, banner_video, public_dir
             )
 
             # 2. Stage images into public/images/
@@ -1185,6 +1190,13 @@ class QuizOrchestrator:
                 shutil.copy2(master_audio_path, public_audio)
 
             # 4. Prepare Remotion props
+            banner_start_frame = None
+            if staged_banner and banner_dur:
+                if len(timing_slots) >= 5:
+                    banner_start_frame = timing_slots[4].start_frame
+                else:
+                    banner_start_frame = int(total_duration_frames * 0.45)
+
             props = VisualQuizRenderProps(
                 dataset=dataset,
                 fps=self.config.fps,
@@ -1196,6 +1208,12 @@ class QuizOrchestrator:
                 subtitles=subtitles,
                 audio_mix_path="audio/visual_quiz_master_mix.wav",
                 background_video_path="background.mp4",
+                background_music_path=staged_music,
+                background_music_volume=background_music_volume,
+                banner_video_path=staged_banner,
+                banner_start_frame=banner_start_frame,
+                banner_duration_frames=banner_dur,
+                banner_height=b_height,
             )
 
             props_file = ws.path / "remotion-props.json"

@@ -38,20 +38,20 @@ export const SyncHorizontalTimer: React.FC<SyncHorizontalTimerProps> = ({
 
   const barColor = interpolateColors(
     progress,
-    [0, 0.4, 1],
-    ["#EF4444", "#FACC15", "#22C55E"]
+    [0, 0.35, 1],
+    ["#EF4444", "#FACC15", "#00E676"]
   );
 
   return (
     <div
       style={{
         position: "absolute",
-        left: 115,
+        left: 125,
         top: 1350,
-        width: 850,
-        height: 22,
+        width: 815,
+        height: 20,
       }}
-      className="rounded-full bg-slate-900/80 border-2 border-white/20 p-1 flex items-center shadow-lg z-20"
+      className="rounded-full bg-black/60 border-2 border-white/20 p-0.5 flex items-center shadow-lg z-20 pointer-events-none select-none"
     >
       <div
         className="h-full rounded-full transition-all"

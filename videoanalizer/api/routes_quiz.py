@@ -241,6 +241,7 @@ class VisualQuizRenderRequest(BaseModel):
     background_music_volume: float = Field(default=0.18, ge=0.0, le=1.0, description="Music volume")
     voice: str | None = Field(default=None, description="Edge-TTS voice name")
     voice_config: VoiceConfig | None = Field(default=None, description="Voice pipeline config")
+    banner_video: str | None = Field(default=None, description="Optional custom promo banner video filename or path")
     render_profile: RenderProfile | None = Field(default=None, description="Render profile (e.g. gpu_fast, cpu_safe)")
 
 
@@ -1100,6 +1101,7 @@ async def render_visual_quiz(request: VisualQuizRenderRequest) -> VisualQuizRend
             voice_config=request.voice_config,
             render_profile=request.render_profile,
             background_mode=request.background_mode,
+            banner_video=request.banner_video,
         )
         download_url = f"/api/v1/quiz/jobs/{job_id}/download"
         duration_sec = float(len(request.dataset.items) * 4.5 + 4.0)

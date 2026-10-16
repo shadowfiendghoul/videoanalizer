@@ -19,8 +19,8 @@ export const RapidCenterFlip: React.FC<RapidCenterFlipProps> = ({
     return null;
   }
 
-  // At 60fps, 120ms is ~7.2 frames
-  const framesPerFlip = Math.max(1, Math.round(60 * (flipIntervalMs / 1000)));
+  // Pace flips so ~7 logos flash over the 3.0-3.2s hook window (0.42s per logo)
+  const framesPerFlip = Math.max(1, Math.round(60 * 0.42));
   const activeIndex = Math.floor(frame / framesPerFlip) % items.length;
   const currentItem = items[activeIndex];
 
@@ -32,14 +32,15 @@ export const RapidCenterFlip: React.FC<RapidCenterFlipProps> = ({
     <div
       style={{
         position: "absolute",
-        left: 545,
-        top: 200,
-        width: 395,
-        height: 395,
+        left: "50%",
+        top: "44%",
+        transform: "translate(-50%, -50%)",
+        width: 580,
+        height: 580,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        filter: "drop-shadow(0 12px 24px rgba(0,0,0,0.65))",
+        filter: "drop-shadow(0 16px 36px rgba(0,0,0,0.8))",
       }}
       className="z-20 pointer-events-none select-none"
     >
@@ -53,10 +54,12 @@ export const RapidCenterFlip: React.FC<RapidCenterFlipProps> = ({
         />
       ) : (
         <span
-          className="text-8xl font-black text-white"
+          className="text-9xl font-black text-white"
           style={{
-            WebkitTextStroke: "3px black",
-            textShadow: "3px 3px 0 #000, -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000",
+            fontFamily: "'Rubik', sans-serif",
+            paintOrder: "stroke fill",
+            WebkitTextStroke: "4px black",
+            textShadow: "0 10px 20px rgba(0,0,0,0.8)",
           }}
         >
           ?

@@ -196,4 +196,11 @@ export interface VisualQuizRenderProps extends Record<string, unknown> {
   subtitles: VisualQuizWordTiming[];
   audio_mix_path: string;
   background_video_path?: string | null;
+  background_music_path?: string | null;
+  background_music_volume?: number;
+  banner_video_path?: string | null;
+  banner_start_frame?: number | null;
+  banner_duration_frames?: number | null;
+  banner_height?: number | null;
 }
+

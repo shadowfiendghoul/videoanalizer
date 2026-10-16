@@ -941,6 +941,12 @@ class VisualQuizRenderProps(BaseModel):
     subtitles: list[dict[str, Any]] = Field(default_factory=list)
     audio_mix_path: str
     background_video_path: str | None = None
+    background_music_path: str | None = None
+    background_music_volume: float = 0.18
+    banner_video_path: str | None = None
+    banner_start_frame: int | None = None
+    banner_duration_frames: int | None = None
+    banner_height: int | None = None
 
 
 
