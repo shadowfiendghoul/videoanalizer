@@ -127,6 +127,10 @@ class ImageService:
             return img_rgba
 
         mask = np.isin(labeled, border_labels)
+        # Safety check: if mask would erase more than 96% of the image, abort and keep original
+        if np.mean(mask) > 0.96:
+            return img_rgba
+
         arr[mask, 3] = 0
         return Image.fromarray(arr)
 
