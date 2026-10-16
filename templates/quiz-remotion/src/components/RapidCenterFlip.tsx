@@ -32,10 +32,10 @@ export const RapidCenterFlip: React.FC<RapidCenterFlipProps> = ({
     <div
       style={{
         position: "absolute",
-        left: 550,
-        top: 220,
-        width: 440,
-        height: 440,
+        left: 545,
+        top: 200,
+        width: 395,
+        height: 395,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

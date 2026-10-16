@@ -46,7 +46,7 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
   }
 
   return (
-    <div className="absolute bottom-[400px] left-0 right-0 flex items-center justify-center px-12 z-30 pointer-events-none select-none">
+    <div className="absolute bottom-[500px] left-[120px] right-[120px] flex items-center justify-center z-30 pointer-events-none select-none">
       <span
         className="text-6xl md:text-7xl font-black tracking-wide text-white uppercase text-center"
         style={{

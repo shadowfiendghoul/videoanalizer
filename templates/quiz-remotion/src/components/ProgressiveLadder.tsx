@@ -38,9 +38,9 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
     <div
       style={{
         position: "absolute",
-        left: 80,
+        left: 125,
         top: 200,
-        width: 480,
+        width: 400,
         display: "flex",
         flexDirection: "column",
         gap: 18,
