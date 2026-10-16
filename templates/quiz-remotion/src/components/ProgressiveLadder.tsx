@@ -56,9 +56,9 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
             style={{
               color: grp.color,
               fontFamily: "'Rubik', sans-serif",
-              WebkitTextStroke: "1.6px #000000",
-              textShadow:
-                "2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 3px 6px rgba(0,0,0,0.7)",
+              paintOrder: "stroke fill",
+              WebkitTextStroke: "3px #000000",
+              textShadow: "0 3px 6px rgba(0,0,0,0.7)",
             }}
           >
             {grp.title}
@@ -88,9 +88,9 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
                   style={{
                     color: grp.color,
                     fontFamily: "'Rubik', sans-serif",
-                    WebkitTextStroke: "1.5px #000000",
-                    textShadow:
-                      "2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 3px 6px rgba(0,0,0,0.6)",
+                    paintOrder: "stroke fill",
+                    WebkitTextStroke: "2.5px #000000",
+                    textShadow: "0 3px 6px rgba(0,0,0,0.6)",
                     transform: isActive ? "scale(1.05)" : "scale(1)",
                     transformOrigin: "left center",
                   }}
