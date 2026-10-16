@@ -258,9 +258,14 @@ class VoiceService:
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Sanitize punctuation that can crash edge-tts DmitryNeural
-        # while preserving expressive prosody
-        clean_text = text.replace(":", ", ").replace("—", ", ").replace(" - ", ", ")
-        clean_text = " ".join(clean_text.split())
+        # Replace em-dashes, en-dashes and word hyphens with spaces (e.g. 'Кока-Кола' -> 'Кока Кола')
+        clean_text = text.replace("—", " ").replace("–", " ").replace("-", " ")
+        clean_text = clean_text.replace(":", ", ").replace(";", ", ")
+        words_tokens = clean_text.split()
+        # Edge-TTS DmitryNeural frequently crashes on short 1-3 word answers with trailing '!' or '?'
+        if len(words_tokens) <= 3:
+            clean_text = clean_text.replace("!", "").replace("?", "").strip()
+        clean_text = " ".join(clean_text.split()).strip()
 
         # Calculate rate argument (+X% or -X%)
         pct = int(round((cfg.speech_rate - 1.0) * 100))
@@ -270,12 +275,21 @@ class VoiceService:
         words: list[WordTiming] = []
         last_err: Exception | None = None
 
-        # Retry up to 8 times to handle sporadic websocket handshakes
+        # Candidate voices: if DmitryNeural fails on Latin brands, fallback to SvetlanaNeural
+        candidate_voice = cfg.base_voice
+        fallback_voice = (
+            "ru-RU-SvetlanaNeural"
+            if "dmitry" in (cfg.base_voice or "").lower()
+            else "ru-RU-DmitryNeural"
+        )
+
+        # Retry up to 8 times to handle sporadic websocket handshakes or voice incompatibility
         for attempt in range(8):
             try:
                 audio_bytes.clear()
                 words.clear()
-                communicate = edge_tts.Communicate(clean_text, cfg.base_voice, rate=rate_arg)
+                active_voice = candidate_voice if attempt < 4 else fallback_voice
+                communicate = edge_tts.Communicate(clean_text, active_voice, rate=rate_arg)
                 async for chunk in communicate.stream():
                     if chunk["type"] == "audio":
                         audio_bytes.extend(chunk["data"])
@@ -299,9 +313,12 @@ class VoiceService:
                 await asyncio.sleep(0.35 * (attempt + 1))
 
         if not audio_bytes:
-            raise RuntimeError(
-                f"Edge-TTS returned no audio data for: '{clean_text}' ({last_err})"
+            logger.warning(
+                "Edge-TTS returned no audio data for '%s' (%s). Falling back to offline fallback.",
+                clean_text,
+                last_err,
             )
+            return self._synthesize_offline_fallback(text, output_path, cfg)
 
         # Save raw output (edge-tts generates MP3)
         temp_mp3 = output_path.with_suffix(".temp.mp3")
