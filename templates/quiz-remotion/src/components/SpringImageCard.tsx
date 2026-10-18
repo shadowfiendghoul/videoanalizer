@@ -48,15 +48,15 @@ export const SpringImageCard: React.FC<SpringImageCardProps> = ({
     <div
       style={{
         position: "absolute",
-        left: 545,
-        top: 200,
-        width: 395,
-        height: 395,
+        left: 370,
+        top: 300,
+        width: 590,
+        height: 590,
         transform: `scale(${scale})`,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        filter: "drop-shadow(0 12px 24px rgba(0,0,0,0.65))",
+        filter: "drop-shadow(0 14px 28px rgba(0,0,0,0.75))",
       }}
       className="z-20 pointer-events-none select-none"
     >
