@@ -893,7 +893,7 @@ class ScriptService:
                 return
             try:
                 query_to_search = ImageService.format_transparent_query(
-                    item.image_query or item.prompt_title or item.answer_text
+                    item.image_query or item.answer_text
                 )
                 candidates = await self.image_service._search_image_urls(query_to_search, max_results=8)
                 if candidates:

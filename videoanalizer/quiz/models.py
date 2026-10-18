@@ -867,6 +867,7 @@ class VisualQuizItem(BaseModel):
     is_approved: bool = Field(default=False, description="Whether image was approved by user")
     prompt_tts: str = Field(..., min_length=2, max_length=120, description="Announcer question text")
     answer_tts: str = Field(..., min_length=2, max_length=140, description="Announcer answer/cliffhanger text")
+    prompt_title: str | None = Field(default=None, description="Optional title fallback for backwards compatibility")
 
 
 class VisualQuizInterstitialType(StrEnum):

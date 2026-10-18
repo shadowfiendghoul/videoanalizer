@@ -96,6 +96,7 @@ async def test_visual_quiz_orchestrator_render_flow(sample_visual_quiz_dataset, 
         [{"word": "тест", "start_frame": 0, "end_frame": 10}],
         2400,
         210,
+        None,
     )
 
     output_video = tmp_path / "output_visual.mp4"
