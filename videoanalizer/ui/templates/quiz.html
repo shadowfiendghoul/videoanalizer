@@ -63,11 +63,6 @@
       </div>
 
       <div class="flex items-center space-x-3">
-        <!-- Quick Language Switcher -->
-        <div class="flex items-center p-0.5 rounded-xl bg-black/50 border border-white/10 text-xs shadow-inner">
-          <button type="button" id="header-lang-ru" onclick="setAppLanguage('ru')" class="px-2.5 py-1 rounded-lg font-semibold transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer">🇷🇺 RU</button>
-          <button type="button" id="header-lang-en" onclick="setAppLanguage('en')" class="px-2.5 py-1 rounded-lg font-semibold transition-all text-slate-400 hover:text-white border border-transparent cursor-pointer">🇺🇸 EN</button>
-        </div>
         <button 
           type="button" 
           id="header-history-btn" 
@@ -143,14 +138,17 @@
           <div class="flex items-center justify-between border-b border-white/[0.06] pb-4 gap-2">
             <h2 class="text-lg font-semibold flex items-center space-x-2.5">
               <i data-lucide="flame" class="w-5 h-5 text-amber-400"></i>
-              <span id="panel-title-text">Создание викторины</span>
+              <span>Создание викторины</span>
             </h2>
             <div class="flex items-center space-x-3">
-              <span id="panel-format-text" class="text-xs text-slate-400 font-mono hidden sm:inline">Формат: 9 вопросов (Лестница)</span>
-              <!-- Card Top Quick Language Switcher -->
-              <div class="flex items-center p-0.5 rounded-lg bg-black/60 border border-white/10 text-xs">
-                <button type="button" id="btn-lang-ru" onclick="setAppLanguage('ru')" class="px-2 py-1 rounded font-semibold transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer">🇷🇺 RU</button>
-                <button type="button" id="btn-lang-en" onclick="setAppLanguage('en')" class="px-2 py-1 rounded font-semibold transition-all text-slate-400 hover:text-white border border-transparent cursor-pointer">🇺🇸 EN</button>
+              <span class="text-xs text-slate-400 font-mono hidden sm:inline">Формат: 9 вопросов (Лестница)</span>
+              <!-- Card Top Quick Language Switcher for generated video -->
+              <div class="flex items-center space-x-2 bg-black/60 border border-white/10 px-3 py-1.5 rounded-xl">
+                <span class="text-xs text-slate-400 font-medium">Язык видео:</span>
+                <div class="flex items-center p-0.5 rounded-lg bg-black/40 border border-white/10 text-xs">
+                  <button type="button" id="btn-lang-ru" onclick="setAppLanguage('ru')" class="px-2.5 py-1 rounded-md font-semibold transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer">🇷🇺 RU</button>
+                  <button type="button" id="btn-lang-en" onclick="setAppLanguage('en')" class="px-2.5 py-1 rounded-md font-semibold transition-all text-slate-400 hover:text-white border border-transparent cursor-pointer">🇺🇸 EN</button>
+                </div>
               </div>
             </div>
           </div>
@@ -2154,123 +2152,61 @@
     function applyLanguageUI(lang) {
       const isEn = lang === 'en';
 
-      // Update quick language switcher buttons in header and card
+      // Update quick language selector buttons for video language
       const activeLangClass = ['bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/30'];
       const inactiveLangClass = ['text-slate-400', 'hover:text-white', 'border-transparent'];
-      ['header-lang-ru', 'btn-lang-ru'].forEach(id => {
-        const b = document.getElementById(id);
-        if (b) {
-          b.classList.remove(...activeLangClass, ...inactiveLangClass);
-          b.classList.add(...(isEn ? inactiveLangClass : activeLangClass));
-        }
-      });
-      ['header-lang-en', 'btn-lang-en'].forEach(id => {
-        const b = document.getElementById(id);
-        if (b) {
-          b.classList.remove(...activeLangClass, ...inactiveLangClass);
-          b.classList.add(...(isEn ? activeLangClass : inactiveLangClass));
-        }
-      });
-
-      // Header labels
-      const sub = document.getElementById('header-subtitle');
-      if (sub) sub.textContent = isEn ? 'Viral vertical quiz generator for TikTok & Shorts' : 'Генератор вирусных вертикальных квизов для TikTok & Shorts';
-      const histBtnSpan = document.querySelector('#header-history-btn span');
-      if (histBtnSpan) histBtnSpan.textContent = isEn ? 'History' : 'История';
-      const splitBtnSpan = document.querySelector('#header-split-btn span');
-      if (splitBtnSpan) splitBtnSpan.textContent = isEn ? 'Shorts Video Splitter' : 'Нарезка видео в Shorts';
-      const onlineStatus = document.getElementById('header-online-status');
-      if (onlineStatus) onlineStatus.textContent = isEn ? 'Online' : 'Онлайн';
-
-      // Card Header
-      const pTitle = document.getElementById('panel-title-text');
-      if (pTitle) pTitle.textContent = isEn ? 'Create Quiz' : 'Создание викторины';
-      const pFormat = document.getElementById('panel-format-text');
-      if (pFormat) pFormat.textContent = isEn ? 'Format: 9 questions (Ladder)' : 'Формат: 9 вопросов (Лестница)';
-
-      // Mode switcher tabs
-      const tabSingle = document.getElementById('tab-mode-single');
-      if (tabSingle) {
-        const s = tabSingle.querySelector('span');
-        if (s) s.textContent = isEn ? 'Single Video' : 'Одиночное видео';
+      const btnRu = document.getElementById('btn-lang-ru');
+      const btnEn = document.getElementById('btn-lang-en');
+      if (btnRu) {
+        btnRu.classList.remove(...activeLangClass, ...inactiveLangClass);
+        btnRu.classList.add(...(isEn ? inactiveLangClass : activeLangClass));
       }
-      const tabBatch = document.getElementById('tab-mode-batch');
-      if (tabBatch) {
-        const s = tabBatch.querySelector('span');
-        if (s) s.textContent = isEn ? '⚡ Batch Queue' : '⚡ Пакетная очередь';
-      }
-      const tabVisual = document.getElementById('tab-mode-visual');
-      if (tabVisual) {
-        const s = tabVisual.querySelector('span');
-        if (s) s.textContent = isEn ? '🖼️ Visual Quiz (1-10)' : '🖼️ Visual Quiz (1-10)';
+      if (btnEn) {
+        btnEn.classList.remove(...activeLangClass, ...inactiveLangClass);
+        btnEn.classList.add(...(isEn ? activeLangClass : inactiveLangClass));
       }
 
-      // Visual Mode Section
-      const visSection = document.getElementById('visual-mode-section');
-      if (visSection) {
-        const visTitle = visSection.querySelector('.font-semibold.text-xs.text-cyan-300 span');
-        if (visTitle) visTitle.textContent = isEn ? 'Visual Quiz with Images & Rapid Flip-Hook' : 'Визуальная викторина с картинками и флип-хуком';
-        const visBadge = visSection.querySelector('.text-\\[10px\\].font-mono.rounded-full');
-        if (visBadge) visBadge.textContent = isEn ? '10 items + progressive ladder' : '10 предметов + лестница уровней';
-
-        const visTopicLabel = visSection.querySelector('label');
-        if (visTopicLabel) visTopicLabel.textContent = isEn ? 'Quiz Topic (any theme):' : 'Тема викторины (любая тема):';
-        const visTopicSub = visSection.querySelector('.text-cyan-400.font-mono');
-        if (visTopicSub) visTopicSub.textContent = isEn ? '10 questions (Q1-Q10)' : '10 вопросов (Q1-Q10)';
-
-        const visInput = document.getElementById('visual-topic-input');
-        if (visInput) {
-          visInput.placeholder = isEn 
-            ? 'e.g.: World Iconic Brand Logos, Supercars, Dog Breeds, Famous Monuments...'
-            : 'Например: Суперкары мира, Породы собак, Логотипы культовых брендов...';
-          if (isEn && (visInput.value === 'Логотипы культовых брендов' || visInput.value === 'Суперкары мира' || !visInput.value)) {
-            visInput.value = 'World Iconic Brand Logos';
-          } else if (!isEn && (visInput.value === 'World Iconic Brand Logos' || visInput.value === 'Supercars of the World' || !visInput.value)) {
-            visInput.value = 'Логотипы культовых брендов';
-          }
-        }
-
-        const aiTopicBtnText = document.getElementById('btn-ai-visual-topic-text');
-        if (aiTopicBtnText && !aiTopicBtnText.textContent.includes('...')) {
-          aiTopicBtnText.textContent = isEn ? '✨ AI Topic' : '✨ AI Тема';
-        }
-
-        const genScriptBtnText = document.getElementById('btn-generate-visual-script-text');
-        if (genScriptBtnText && !genScriptBtnText.textContent.includes('...')) {
-          genScriptBtnText.textContent = isEn 
-            ? 'Generate Script & Find 10 Images (AI)'
-            : 'Сгенерировать сценарий и найти 10 картинок (AI)';
-        }
-
-        const ideasContainer = document.getElementById('visual-ideas-chips');
-        if (ideasContainer) {
-          if (isEn) {
-            ideasContainer.innerHTML = `
-              <span class="text-[11px] text-slate-400 self-center mr-1">Ideas:</span>
-              <button type="button" onclick="setVisualTopic('World Iconic Brand Logos')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏷️ Iconic Logos</button>
-              <button type="button" onclick="setVisualTopic('Supercars and Hypercars')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Supercars</button>
-              <button type="button" onclick="setVisualTopic('Rare Dog Breeds and Animals')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🐕 Dog Breeds</button>
-              <button type="button" onclick="setVisualTopic('World Architectural Wonders')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🌍 World Wonders</button>
-              <button type="button" onclick="setVisualTopic('World Flags and Rare Emblems')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🚩 World Flags</button>
-            `;
-          } else {
-            ideasContainer.innerHTML = `
-              <span class="text-[11px] text-slate-400 self-center mr-1">Идеи:</span>
-              <button type="button" onclick="setVisualTopic('Суперкары мира')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Суперкары</button>
-              <button type="button" onclick="setVisualTopic('Породы собак')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🐕 Породы собак</button>
-              <button type="button" onclick="setVisualTopic('Мировые бренды и логотипы')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏷️ Бренды</button>
-              <button type="button" onclick="setVisualTopic('Шедевры мировой живописи')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🎨 Живопись</button>
-              <button type="button" onclick="setVisualTopic('Чудеса планеты Земля')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🌍 Чудеса Земли</button>
-            `;
-          }
+      // Visual Mode Section: update suggested topic examples for video
+      const visInput = document.getElementById('visual-topic-input');
+      if (visInput) {
+        visInput.placeholder = isEn 
+          ? 'Например: World Iconic Brand Logos, Supercars, Dog Breeds, Famous Monuments...'
+          : 'Например: Суперкары мира, Породы собак, Логотипы культовых брендов...';
+        if (isEn && (visInput.value === 'Логотипы культовых брендов' || visInput.value === 'Суперкары мира' || !visInput.value)) {
+          visInput.value = 'World Iconic Brand Logos';
+        } else if (!isEn && (visInput.value === 'World Iconic Brand Logos' || visInput.value === 'Supercars of the World' || !visInput.value)) {
+          visInput.value = 'Логотипы культовых брендов';
         }
       }
 
-      // Single Video Mode Section
+      const ideasContainer = document.getElementById('visual-ideas-chips');
+      if (ideasContainer) {
+        if (isEn) {
+          ideasContainer.innerHTML = `
+            <span class="text-[11px] text-slate-400 self-center mr-1">Темы (EN):</span>
+            <button type="button" onclick="setVisualTopic('World Iconic Brand Logos')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏷️ Iconic Logos</button>
+            <button type="button" onclick="setVisualTopic('Supercars and Hypercars')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Supercars</button>
+            <button type="button" onclick="setVisualTopic('Rare Dog Breeds and Animals')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🐕 Dog Breeds</button>
+            <button type="button" onclick="setVisualTopic('World Architectural Wonders')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🌍 World Wonders</button>
+            <button type="button" onclick="setVisualTopic('World Flags and Rare Emblems')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🚩 World Flags</button>
+          `;
+        } else {
+          ideasContainer.innerHTML = `
+            <span class="text-[11px] text-slate-400 self-center mr-1">Идеи:</span>
+            <button type="button" onclick="setVisualTopic('Суперкары мира')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Суперкары</button>
+            <button type="button" onclick="setVisualTopic('Породы собак')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🐕 Породы собак</button>
+            <button type="button" onclick="setVisualTopic('Мировые бренды и логотипы')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏷️ Бренды</button>
+            <button type="button" onclick="setVisualTopic('Шедевры мировой живописи')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🎨 Живопись</button>
+            <button type="button" onclick="setVisualTopic('Чудеса планеты Земля')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🌍 Чудеса Земли</button>
+          `;
+        }
+      }
+
+      // Single Video Mode Section: update suggested topic examples for video
       const singleTopicInput = document.getElementById('topic-input');
       if (singleTopicInput) {
         singleTopicInput.placeholder = isEn 
-          ? 'e.g.: Space Mysteries, Ancient Rome, World History, Video Games...'
+          ? 'Например: Space Mysteries, Ancient Rome, World History, Video Games...'
           : 'Например: Загадки космоса, История Древнего Рима, Школьная программа...';
         if (isEn && (singleTopicInput.value === 'Школьная программа' || !singleTopicInput.value)) {
           singleTopicInput.value = 'General Knowledge Trivia';
@@ -2278,14 +2214,12 @@
           singleTopicInput.value = 'Школьная программа';
         }
       }
-      const suggestSingleBtn = document.getElementById('suggest-topic-btn-text');
-      if (suggestSingleBtn) suggestSingleBtn.textContent = isEn ? '🎲 Suggest Topic' : '🎲 Придумать тему';
 
       const singlePresetChips = document.getElementById('single-preset-chips');
       if (singlePresetChips) {
         if (isEn) {
           singlePresetChips.innerHTML = `
-            <span class="text-xs text-slate-400 self-center mr-1">Quick topics:</span>
+            <span class="text-xs text-slate-400 self-center mr-1">Быстрые темы (EN):</span>
             <button type="button" onclick="setTopic('General Knowledge Trivia: Test Your Brain')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">📚 General Knowledge</button>
             <button type="button" onclick="setTopic('Guess the Iconic Video Game')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🎮 Video Games</button>
             <button type="button" onclick="setTopic('Guess the Movie by One Iconic Quote')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-purple-500/20 hover:text-purple-300 text-slate-300 border border-white/[0.06] transition-all">🎬 Cinema</button>
@@ -2304,28 +2238,7 @@
         }
       }
 
-      // Batch Mode Section
-      const batchTitle = document.querySelector('#batch-mode-section .font-semibold.text-xs.text-purple-300 span');
-      if (batchTitle) batchTitle.textContent = isEn ? 'Batch Queue Settings' : 'Настройки пакетной очереди';
-      const batchBadge = document.querySelector('#batch-mode-section .text-\\[10px\\].font-mono.rounded-full');
-      if (batchBadge) batchBadge.textContent = isEn ? '1 request = whole batch' : '1 запрос = вся пачка тем';
-      const batchBtnText = document.getElementById('btn-generate-batch-topics-text');
-      if (batchBtnText) batchBtnText.textContent = isEn ? '✨ Generate Batch Topics (1 AI request)' : '✨ Сгенерировать темы для пачки (1 запрос ИИ)';
-      const batchHintInput = document.getElementById('batch-hint-input');
-      if (batchHintInput) {
-        batchHintInput.placeholder = isEn 
-          ? 'Leave empty for maximum variety or enter niche (e.g.: Science, Gaming)' 
-          : 'Оставьте пустым для максимального разнообразия или впишите нишу (например: Наука, Игры)';
-      }
-
-      // Action buttons
-      const previewBtnSpan = document.querySelector('#preview-btn span');
-      if (previewBtnSpan) previewBtnSpan.textContent = isEn ? 'Generate Questions (AI)' : 'Сгенерировать вопросы (AI)';
-
-      const directCreateBtnSpan = document.querySelector('button[onclick*="startQuizGeneration(null)"] span');
-      if (directCreateBtnSpan) directCreateBtnSpan.textContent = isEn ? 'Create video directly (skip preview)' : 'Создать видео сразу (без предпросмотра)';
-
-      // Intro Hook
+      // Intro Hook default phrase for video
       const introHookInput = document.getElementById('intro-hook-input');
       if (introHookInput) {
         if (isEn && (introHookInput.value === 'Ты гений, если ответишь на все вопросы!' || !introHookInput.value)) {
@@ -2334,12 +2247,6 @@
           introHookInput.value = 'Ты гений, если ответишь на все вопросы!';
         }
       }
-
-      // Visual Cards Panel
-      const approveAllBtnText = document.getElementById('btn-approve-all-visual-text');
-      if (approveAllBtnText) approveAllBtnText.textContent = isEn ? 'Approve All Cards' : 'Одобрить все фото';
-      const renderVisualBtnText = document.getElementById('btn-render-visual-quiz-text');
-      if (renderVisualBtnText) renderVisualBtnText.textContent = isEn ? 'Render Shorts (1080x1920)' : 'Срендерить Shorts (1080x1920)';
 
       // Re-render visual cards if present
       if (currentVisualDataset) {
