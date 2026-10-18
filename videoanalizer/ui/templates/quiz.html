@@ -477,14 +477,14 @@
                 </div>
                 <div class="space-y-1">
                   <div class="flex items-center justify-between">
-                    <label class="block text-xs text-slate-300 font-medium">Темп речи (Shorts)</label>
-                    <span id="speech-rate-display" class="font-mono text-[11px] text-purple-300 font-bold">1.15x (+15%)</span>
+                    <label class="block text-xs text-slate-300 font-medium">Темп речи</label>
+                    <span id="speech-rate-display" class="font-mono text-[11px] text-purple-300 font-bold">1.00x (+0%)</span>
                   </div>
-                  <input type="range" id="speech-rate-slider" min="0.8" max="1.5" step="0.05" value="1.15" oninput="updateSpeechRateDisplay(this.value); saveSettings();" class="w-full accent-purple-500 h-1.5 bg-black/50 rounded appearance-none cursor-pointer mt-1" />
+                  <input type="range" id="speech-rate-slider" min="0.8" max="1.5" step="0.05" value="1.0" oninput="updateSpeechRateDisplay(this.value); saveSettings();" class="w-full accent-purple-500 h-1.5 bg-black/50 rounded appearance-none cursor-pointer mt-1" />
                   <div class="flex justify-between text-[9px] text-slate-500 font-mono">
                     <span>0.8x</span>
-                    <span>1.0x Норма</span>
-                    <span class="text-purple-400 font-bold">1.15x Shorts</span>
+                    <span class="text-purple-400 font-bold">1.0x Норма</span>
+                    <span>1.15x Shorts</span>
                     <span>1.5x</span>
                   </div>
                 </div>
@@ -1971,7 +1971,7 @@
       const baseVoice = document.getElementById('voice-select')?.value || 'ru-RU-DmitryNeural';
       const rvcModel = document.getElementById('rvc-model-select')?.value || null;
       const pitchShift = parseInt(document.getElementById('pitch-shift-slider')?.value || '0', 10);
-      const speechRate = parseFloat(document.getElementById('speech-rate-slider')?.value || '1.15');
+      const speechRate = parseFloat(document.getElementById('speech-rate-slider')?.value || '1.0');
 
       return {
         voice_mode: mode,

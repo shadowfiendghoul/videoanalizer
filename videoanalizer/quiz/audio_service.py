@@ -809,43 +809,28 @@ class AudioService:
             voice_config=voice_config,
         )
 
-        # Ensure hook audio finishes cleanly within ~2.9-3.0s using FFmpeg atempo if needed
-        target_hook_ms = 3000
-        if hook_dur_ms > target_hook_ms and hook_audio_path.exists():
-            speed_ratio = hook_dur_ms / target_hook_ms
-            speed_ratio = min(2.2, max(1.05, speed_ratio))
-            sped_up_path = workspace.get_audio_path("visual_hook_fast.mp3")
-            ffmpeg_cmd = [
-                "ffmpeg", "-y", "-i", str(hook_audio_path),
-                "-filter:a", f"atempo={speed_ratio:.3f}",
-                "-vn", str(sped_up_path),
-            ]
-            try:
-                proc = await asyncio.create_subprocess_exec(
-                    *ffmpeg_cmd,
-                    stdout=asyncio.subprocess.DEVNULL,
-                    stderr=asyncio.subprocess.DEVNULL,
-                )
-                await proc.wait()
-                if sped_up_path.exists() and proc.returncode == 0:
-                    shutil.move(str(sped_up_path), str(hook_audio_path))
-                    hook_dur_ms = probe_audio_duration_ms(hook_audio_path)
-                    scale = 1.0 / speed_ratio
-                    for w in hook_words:
-                        w.start_ms = int(w.start_ms * scale)
-                        w.end_ms = int(w.end_ms * scale)
-            except Exception as err:
-                logger.warning("Failed to accelerate hook audio: %s", err)
-
-        hook_end_frame = int(round(3.2 * fps))  # Strictly 3.2s transition
+        # Natural, clear pacing for intro hook without aggressive atempo distortion
+        hook_dur_sec = max(3.0, (hook_dur_ms + 250) / 1000.0)
+        hook_end_frame = int(round(hook_dur_sec * fps))
         audio_events.append((hook_audio_path, 0.0, 0.0))
 
-        # Add Rapid Card Flip SFX during intro
+        # Add Rapid Card / Cash Counter Flip SFX during intro at gentle, balanced volume (-15 dB)
         card_flip_sfx = self.config.sfx_dir / "card_flip_rapid.wav"
         if card_flip_sfx.exists():
-            audio_events.append((card_flip_sfx, 0.0, -4.0))
+            card_flip_intro = workspace.get_audio_path("card_flip_intro.wav")
+            try:
+                subprocess.run([
+                    "ffmpeg", "-y", "-stream_loop", "1", "-i", str(card_flip_sfx),
+                    "-t", f"{hook_dur_sec:.2f}",
+                    "-af", f"afade=t=out:st={max(0.1, hook_dur_sec - 0.25):.2f}:d=0.25",
+                    "-ar", "44100", "-ac", "2",
+                    str(card_flip_intro),
+                ], capture_output=True, check=True)
+                audio_events.append((card_flip_intro, 0.0, -15.0))
+            except Exception:
+                audio_events.append((card_flip_sfx, 0.0, -15.0))
 
-        # Add transition sound effect at 3.2s transition point
+        # Add transition sound effect at hook transition point
         level_up_sfx = self.config.sfx_dir / "level_up.wav"
         ding_sfx = self.config.sfx_dir / "reveal_ding.wav"
         if level_up_sfx.exists():
@@ -866,7 +851,26 @@ class AudioService:
             })
 
         current_frame = hook_end_frame
-        timer_sfx = self.config.sfx_dir / "timer_tick.wav"
+
+        # Prepare authentic clock ticking sound for the countdowns
+        timer_dur_sec = max(1.0, float(dataset.timer_duration_sec or 2.0))
+        timer_countdown_path = workspace.get_audio_path("timer_tick_countdown.wav")
+        tick_src = self.config.sfx_dir / "timer_tick.mp3"
+        if not tick_src.exists():
+            tick_src = self.config.sfx_dir / "timer_tick.wav"
+
+        if tick_src.exists():
+            try:
+                subprocess.run([
+                    "ffmpeg", "-y", "-i", str(tick_src),
+                    "-t", f"{timer_dur_sec:.2f}",
+                    "-af", f"afade=t=out:st={max(0.1, timer_dur_sec - 0.15):.2f}:d=0.15",
+                    "-ar", "44100", "-ac", "2",
+                    str(timer_countdown_path),
+                ], capture_output=True, check=True)
+            except Exception as err:
+                logger.warning("Failed to slice timer tick audio: %s", err)
+
         cliff_sfx = self.config.sfx_dir / "heartbeat_panic.wav"
 
         # Interstitial lookup by question number
@@ -930,8 +934,10 @@ class AudioService:
             timing_slots.append(slot)
 
             audio_events.append((q_prompt_path, start_frame / fps, 0.0))
-            if timer_sfx.exists():
-                audio_events.append((timer_sfx, timer_start_frame / fps, -6.0))
+            if timer_countdown_path.exists():
+                audio_events.append((timer_countdown_path, timer_start_frame / fps, -4.0))
+            elif tick_src.exists():
+                audio_events.append((tick_src, timer_start_frame / fps, -4.0))
 
             if q_id == 10 and cliff_sfx.exists():
                 audio_events.append((cliff_sfx, reveal_frame / fps, -3.0))

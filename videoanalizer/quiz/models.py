@@ -734,7 +734,7 @@ class VoiceConfig(BaseModel):
         description="Pitch transposition in semitones (-12..+12). 0 = preserve",
     )
     speech_rate: float = Field(
-        default=1.15,
+        default=1.0,
         ge=0.8,
         le=1.5,
         description="Speech rate multiplier (1.0 = normal, 1.15 = +15% for Shorts)",
