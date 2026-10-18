@@ -70,6 +70,7 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
         currentFrame={currentGlobalFrame}
         cueSheet={cue_sheet}
         retention={retention}
+        language={challenge.language as any}
       />
 
       {/* 4. Top-Center Level Tier Banner (УРОВЕНЬ: ЛЕГКИЙ/СРЕДНИЙ/ТЯЖЕЛЫЙ) */}
@@ -247,6 +248,7 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
         currentFrame={currentGlobalFrame}
         totalFrames={cue_sheet.total_duration_frames}
         config={retention?.comment_trap}
+        language={challenge.language as any}
       />
 
       {/* Outro Buzzer SFX on Comment Trap */}

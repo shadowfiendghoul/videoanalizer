@@ -6,6 +6,7 @@ interface RankStatusBarProps {
   currentFrame: number;
   cueSheet: AudioCueSheet;
   retention?: QuizRetentionConfig;
+  language?: "ru" | "en";
 }
 
 const DEFAULT_TIERS: RankTierConfig[] = [
@@ -47,6 +48,7 @@ export const RankStatusBar: React.FC<RankStatusBarProps> = ({
   currentFrame,
   cueSheet,
   retention,
+  language = "ru",
 }) => {
   const { fps } = useVideoConfig();
 
@@ -57,7 +59,21 @@ export const RankStatusBar: React.FC<RankStatusBarProps> = ({
     return null;
   }
 
-  const tiers = retention?.rank_tiers?.length ? retention.rank_tiers : DEFAULT_TIERS;
+  const isEn = language === "en";
+  const rawTiers = retention?.rank_tiers?.length ? retention.rank_tiers : DEFAULT_TIERS;
+  const tiers = isEn
+    ? rawTiers.map((t) => ({
+        ...t,
+        rank_title:
+          t.rank_title === "Нормис"
+            ? "Normie"
+            : t.rank_title === "Эрудит"
+            ? "Scholar"
+            : t.rank_title.includes("1%")
+            ? "Top 1% Genius"
+            : t.rank_title,
+      }))
+    : rawTiers;
 
   // Determine active question
   let activeQ = 1;

@@ -6,12 +6,14 @@ interface CommentTrapOutroProps {
   currentFrame: number;
   totalFrames: number;
   config?: CommentTrapConfig;
+  language?: "ru" | "en";
 }
 
 export const CommentTrapOutro: React.FC<CommentTrapOutroProps> = ({
   currentFrame,
   totalFrames,
   config,
+  language = "ru",
 }) => {
   const { fps } = useVideoConfig();
 
@@ -43,9 +45,12 @@ export const CommentTrapOutro: React.FC<CommentTrapOutroProps> = ({
     [0.98, 1.02]
   );
 
-  const text =
-    config?.outro_challenge_text ||
-    "Если набрал 8+ — ты соврал. Пиши честный счет в комменты! 👇";
+  const isEn = language === "en";
+  const defaultText = isEn
+    ? "Scored 8+? You're lying! Drop your real score below! 👇"
+    : "Если набрал 8+ — ты соврал. Пиши честный счет в комменты! 👇";
+
+  const text = config?.outro_challenge_text || defaultText;
 
   return (
     <div
