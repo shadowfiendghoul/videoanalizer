@@ -23,9 +23,9 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const normalizedWords = React.useMemo(() => {
+  const sortedWords = React.useMemo(() => {
     if (!words || words.length === 0) return [];
-    return words.map((w: any) => {
+    const list = words.map((w: any) => {
       const s =
         typeof w.start_ms === "number"
           ? w.start_ms
@@ -40,19 +40,50 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
         end_ms: e,
       };
     });
+    return list.sort((a, b) => a.start_ms - b.start_ms);
   }, [words, fps]);
 
-  if (normalizedWords.length === 0) {
+  if (sortedWords.length === 0) {
     return null;
   }
 
-  // Convert current frame to milliseconds
-  const syncMs = (frame / fps) * 1000;
+  // Anticipation lead time (200ms) to cancel Edge-TTS acoustic onset lag and match visual reading
+  const SUBTITLE_LEAD_MS = 200;
+  const syncMs = (frame / fps) * 1000 + SUBTITLE_LEAD_MS;
 
-  // Find currently active word (active word window + 120ms leeway)
-  const activeWord = normalizedWords.find(
-    (w) => syncMs >= w.start_ms && syncMs <= w.end_ms + 120
-  );
+  // Find active word: latest word whose start_ms <= syncMs
+  let activeIndex = -1;
+  for (let i = 0; i < sortedWords.length; i++) {
+    if (syncMs >= sortedWords[i].start_ms) {
+      activeIndex = i;
+    } else {
+      break;
+    }
+  }
+
+  if (activeIndex === -1) {
+    return null;
+  }
+
+  const activeWord = sortedWords[activeIndex];
+  const nextWord = sortedWords[activeIndex + 1];
+
+  // Duration the active word should be held on screen:
+  // If next word follows immediately (gap <= 300ms), hold until next word starts.
+  // If there is silence/countdown pause (gap > 300ms), hold for word duration + 120ms then clear.
+  const wordDuration = Math.max(200, activeWord.end_ms - activeWord.start_ms);
+  const holdUntil = activeWord.start_ms + wordDuration + 120;
+
+  if (nextWord) {
+    const gap = nextWord.start_ms - activeWord.end_ms;
+    if (gap > 300 && syncMs > holdUntil) {
+      return null;
+    }
+  } else {
+    if (syncMs > holdUntil) {
+      return null;
+    }
+  }
 
   if (!activeWord || !activeWord.word) {
     return null;
