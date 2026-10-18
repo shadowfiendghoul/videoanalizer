@@ -1660,8 +1660,74 @@
     lucide.createIcons();
 
     function setTopic(name) {
-      document.getElementById('topic-input').value = name;
+      const el = document.getElementById('topic-input');
+      if (el) el.value = name;
     }
+
+    let currentQuizMode = 'single';
+
+    function switchQuizMode(mode) {
+      currentQuizMode = mode;
+      try {
+        localStorage.setItem('quiz_active_mode', mode);
+      } catch (e) {}
+
+      const singleTab = document.getElementById('tab-mode-single');
+      const batchTab = document.getElementById('tab-mode-batch');
+      const visualTab = document.getElementById('tab-mode-visual');
+      const singleSection = document.getElementById('single-mode-section');
+      const batchSection = document.getElementById('batch-mode-section');
+      const visualSection = document.getElementById('visual-mode-section');
+      const previewBtn = document.getElementById('preview-btn');
+      const visualCardsPanel = document.getElementById('visual-cards-panel');
+      const questionsPreviewCard = document.getElementById('questions-preview-card');
+
+      const activeSingleClass = ['bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/30', 'shadow-sm'];
+      const activeBatchClass = ['bg-purple-500/20', 'text-purple-300', 'border-purple-500/30', 'shadow-sm'];
+      const activeVisualClass = ['bg-cyan-500/20', 'text-cyan-300', 'border-cyan-500/30', 'shadow-sm'];
+      const inactiveTabClass = ['text-slate-400', 'hover:text-white', 'border-transparent'];
+
+      // Reset all tabs
+      [singleTab, batchTab, visualTab].forEach(t => {
+        if (t) {
+          t.classList.remove(...activeSingleClass, ...activeBatchClass, ...activeVisualClass);
+          t.classList.add(...inactiveTabClass);
+        }
+      });
+
+      // Hide all mode sections
+      singleSection?.classList.add('hidden');
+      batchSection?.classList.add('hidden');
+      visualSection?.classList.add('hidden');
+
+      if (mode === 'single') {
+        singleTab?.classList.remove(...inactiveTabClass);
+        singleTab?.classList.add(...activeSingleClass);
+        singleSection?.classList.remove('hidden');
+        if (previewBtn && previewBtn.parentElement) previewBtn.parentElement.classList.remove('hidden');
+        visualCardsPanel?.classList.add('hidden');
+      } else if (mode === 'batch') {
+        batchTab?.classList.remove(...inactiveTabClass);
+        batchTab?.classList.add(...activeBatchClass);
+        batchSection?.classList.remove('hidden');
+        if (previewBtn && previewBtn.parentElement) previewBtn.parentElement.classList.add('hidden');
+        document.getElementById('batch-queue-section')?.classList.remove('hidden');
+        visualCardsPanel?.classList.add('hidden');
+      } else if (mode === 'visual') {
+        visualTab?.classList.remove(...inactiveTabClass);
+        visualTab?.classList.add(...activeVisualClass);
+        visualSection?.classList.remove('hidden');
+        if (previewBtn && previewBtn.parentElement) previewBtn.parentElement.classList.add('hidden');
+        questionsPreviewCard?.classList.add('hidden');
+        if (typeof currentVisualDataset !== 'undefined' && currentVisualDataset) {
+          visualCardsPanel?.classList.remove('hidden');
+        }
+      }
+      if (window.lucide) {
+        try { lucide.createIcons(); } catch (e) {}
+      }
+    }
+    window.switchQuizMode = switchQuizMode;
 
     const SETTINGS_STORAGE_KEY = 'videoanalyzer_quiz_settings_v1';
     let currentUniquifierMode = 'smart_random';
@@ -2004,142 +2070,172 @@
     }
 
     function loadSettings() {
-      const s = getStoredSettings();
-      if (!s) return;
+      try {
+        const s = getStoredSettings();
+        if (!s) return;
 
-      if (typeof s.introHookEnabled === 'boolean' && document.getElementById('intro-hook-toggle')) {
-        document.getElementById('intro-hook-toggle').checked = s.introHookEnabled;
-        toggleIntroHookSection();
-      }
-      if (typeof s.introHook === 'string' && document.getElementById('intro-hook-input')) {
-        document.getElementById('intro-hook-input').value = s.introHook;
-      }
-      if (s.language && document.getElementById('language-select')) {
-        document.getElementById('language-select').value = s.language;
-      }
-      if (s.voice && document.getElementById('voice-select')) {
-        document.getElementById('voice-select').value = s.voice;
-      }
-      if (s.voiceMode) {
-        setVoiceMode(s.voiceMode);
-      }
-      if (s.speechRate && document.getElementById('speech-rate-slider')) {
-        document.getElementById('speech-rate-slider').value = s.speechRate;
-        updateSpeechRateDisplay(s.speechRate);
-      }
-      if (s.pitchShift && document.getElementById('pitch-shift-slider')) {
-        document.getElementById('pitch-shift-slider').value = s.pitchShift;
-        updatePitchShiftDisplay(s.pitchShift);
-      }
-      if (s.background && document.getElementById('background-select')) {
-        document.getElementById('background-select').value = s.background;
-      }
-      if (typeof s.bannerEnabled === 'boolean' && document.getElementById('banner-toggle')) {
-        document.getElementById('banner-toggle').checked = s.bannerEnabled;
-        const section = document.getElementById('banner-upload-section');
-        if (s.bannerEnabled && section) {
-          section.classList.remove('hidden');
+        if (typeof s.introHookEnabled === 'boolean') {
+          const t = document.getElementById('intro-hook-toggle');
+          if (t) t.checked = s.introHookEnabled;
+          toggleIntroHookSection();
         }
-        if (s.bannerFile && s.bannerName) {
-          uploadedBannerFile = s.bannerFile;
-          document.getElementById('banner-file-name').textContent = s.bannerName;
-          if (s.bannerDuration) {
-            document.getElementById('banner-duration-badge').textContent = s.bannerDuration;
+        if (typeof s.introHook === 'string') {
+          const inp = document.getElementById('intro-hook-input');
+          if (inp) inp.value = s.introHook;
+        }
+        if (s.language) {
+          const el = document.getElementById('language-select');
+          if (el) el.value = s.language;
+        }
+        if (s.voice) {
+          const el = document.getElementById('voice-select');
+          if (el) el.value = s.voice;
+        }
+        if (s.voiceMode) {
+          try { setVoiceMode(s.voiceMode); } catch (e) {}
+        }
+        if (s.speechRate && document.getElementById('speech-rate-slider')) {
+          document.getElementById('speech-rate-slider').value = s.speechRate;
+          updateSpeechRateDisplay(s.speechRate);
+        }
+        if (s.pitchShift && document.getElementById('pitch-shift-slider')) {
+          document.getElementById('pitch-shift-slider').value = s.pitchShift;
+          updatePitchShiftDisplay(s.pitchShift);
+        }
+        if (s.background) {
+          const el = document.getElementById('background-select');
+          if (el) el.value = s.background;
+        }
+        if (typeof s.bannerEnabled === 'boolean') {
+          const t = document.getElementById('banner-toggle');
+          if (t) t.checked = s.bannerEnabled;
+          const section = document.getElementById('banner-upload-section');
+          if (s.bannerEnabled && section) {
+            section.classList.remove('hidden');
           }
-          document.getElementById('banner-dropzone')?.classList.add('hidden');
-          document.getElementById('banner-status-box')?.classList.remove('hidden');
-        }
-      }
-      if (typeof s.musicEnabled === 'boolean' && document.getElementById('music-toggle')) {
-        document.getElementById('music-toggle').checked = s.musicEnabled;
-        const mSection = document.getElementById('music-upload-section');
-        if (s.musicEnabled && mSection) {
-          mSection.classList.remove('hidden');
-        }
-        if (s.musicFile && s.musicName) {
-          uploadedMusicFile = s.musicFile;
-          document.getElementById('music-file-name').textContent = s.musicName;
-          if (s.musicDuration) {
-            document.getElementById('music-duration-badge').textContent = s.musicDuration;
+          if (s.bannerFile && s.bannerName) {
+            uploadedBannerFile = s.bannerFile;
+            const fn = document.getElementById('banner-file-name');
+            if (fn) fn.textContent = s.bannerName;
+            if (s.bannerDuration) {
+              const bd = document.getElementById('banner-duration-badge');
+              if (bd) bd.textContent = s.bannerDuration;
+            }
+            document.getElementById('banner-dropzone')?.classList.add('hidden');
+            document.getElementById('banner-status-box')?.classList.remove('hidden');
           }
-          if (typeof s.musicVolume === 'number' && document.getElementById('music-volume-slider')) {
-            document.getElementById('music-volume-slider').value = s.musicVolume;
-            const volBadge = document.getElementById('music-volume-val');
-            if (volBadge) volBadge.textContent = Math.round(s.musicVolume * 100) + '%';
-          }
-          document.getElementById('music-dropzone')?.classList.add('hidden');
-          document.getElementById('music-status-box')?.classList.remove('hidden');
         }
+        if (typeof s.musicEnabled === 'boolean') {
+          const t = document.getElementById('music-toggle');
+          if (t) t.checked = s.musicEnabled;
+          const mSection = document.getElementById('music-upload-section');
+          if (s.musicEnabled && mSection) {
+            mSection.classList.remove('hidden');
+          }
+          if (s.musicFile && s.musicName) {
+            uploadedMusicFile = s.musicFile;
+            const mn = document.getElementById('music-file-name');
+            if (mn) mn.textContent = s.musicName;
+            if (s.musicDuration) {
+              const md = document.getElementById('music-duration-badge');
+              if (md) md.textContent = s.musicDuration;
+            }
+            if (typeof s.musicVolume === 'number' && document.getElementById('music-volume-slider')) {
+              document.getElementById('music-volume-slider').value = s.musicVolume;
+              const volBadge = document.getElementById('music-volume-val');
+              if (volBadge) volBadge.textContent = Math.round(s.musicVolume * 100) + '%';
+            }
+            document.getElementById('music-dropzone')?.classList.add('hidden');
+            document.getElementById('music-status-box')?.classList.remove('hidden');
+          }
+        }
+        if (typeof s.rankEnabled === 'boolean') {
+          const el = document.getElementById('rank-toggle');
+          if (el) el.checked = s.rankEnabled;
+        }
+        if (typeof s.timerEnabled === 'boolean') {
+          const el = document.getElementById('timer-toggle');
+          if (el) el.checked = s.timerEnabled;
+        }
+        if (typeof s.streakEnabled === 'boolean') {
+          const el = document.getElementById('streak-toggle');
+          if (el) el.checked = s.streakEnabled;
+        }
+        if (typeof s.trapEnabled === 'boolean') {
+          const el = document.getElementById('trap-toggle');
+          if (el) el.checked = s.trapEnabled;
+        }
+        if (typeof s.topicTemperature === 'number' && document.getElementById('topic-temperature-slider')) {
+          const val = Math.min(2.0, Math.max(0.2, s.topicTemperature));
+          document.getElementById('topic-temperature-slider').value = val;
+          updateTopicTempBadge(val);
+        }
+        if (typeof s.temperature === 'number' && document.getElementById('temperature-slider')) {
+          const val = Math.min(2.0, Math.max(0.2, s.temperature));
+          document.getElementById('temperature-slider').value = val;
+          updateTempBadge(val);
+        }
+        if (typeof s.factCheckEnabled === 'boolean') {
+          const el = document.getElementById('fact-check-toggle');
+          if (el) el.checked = s.factCheckEnabled;
+        }
+        if (typeof s.uniquifierEnabled === 'boolean') {
+          const el = document.getElementById('uniquifier-toggle');
+          if (el) el.checked = s.uniquifierEnabled;
+          toggleUniquifierSection();
+        }
+        if (s.uniquifierMode) {
+          try { setUniquifierMode(s.uniquifierMode, false); } catch (e) {}
+        }
+        if (s.uniquifierBrightness && document.getElementById('uniq-slider-brightness')) {
+          document.getElementById('uniq-slider-brightness').value = s.uniquifierBrightness;
+          const b = parseFloat(s.uniquifierBrightness);
+          const el = document.getElementById('uniq-val-brightness');
+          if (el) el.textContent = (b >= 0 ? '+' : '') + b.toFixed(2);
+        }
+        if (s.uniquifierContrast && document.getElementById('uniq-slider-contrast')) {
+          document.getElementById('uniq-slider-contrast').value = s.uniquifierContrast;
+          const el = document.getElementById('uniq-val-contrast');
+          if (el) el.textContent = parseFloat(s.uniquifierContrast).toFixed(2);
+        }
+        if (s.uniquifierSaturation && document.getElementById('uniq-slider-saturation')) {
+          document.getElementById('uniq-slider-saturation').value = s.uniquifierSaturation;
+          const el = document.getElementById('uniq-val-saturation');
+          if (el) el.textContent = parseFloat(s.uniquifierSaturation).toFixed(2);
+        }
+        if (s.uniquifierZoom && document.getElementById('uniq-slider-zoom')) {
+          document.getElementById('uniq-slider-zoom').value = s.uniquifierZoom;
+          const el = document.getElementById('uniq-val-zoom');
+          if (el) el.textContent = '+' + Math.round((parseFloat(s.uniquifierZoom) - 1) * 100) + '%';
+        }
+        if (s.uniquifierNoise && document.getElementById('uniq-slider-noise')) {
+          document.getElementById('uniq-slider-noise').value = s.uniquifierNoise;
+          const el = document.getElementById('uniq-val-noise');
+          if (el) el.textContent = parseFloat(s.uniquifierNoise).toFixed(1);
+        }
+        if (s.uniquifierAudio && document.getElementById('uniq-slider-audio')) {
+          document.getElementById('uniq-slider-audio').value = s.uniquifierAudio;
+          const a = parseFloat(s.uniquifierAudio);
+          const el = document.getElementById('uniq-val-audio');
+          if (el) el.textContent = (a >= 1 ? '+' : '') + ((a - 1) * 100).toFixed(1) + '%';
+        }
+        if (typeof s.uniquifierFlip === 'boolean') {
+          const el = document.getElementById('uniq-flip-toggle');
+          if (el) el.checked = s.uniquifierFlip;
+        }
+        if (s.renderProfile) {
+          try { setRenderProfile(s.renderProfile, false); } catch (e) {}
+        } else {
+          try {
+            const storedProfile = localStorage.getItem('quiz_render_profile');
+            if (storedProfile) setRenderProfile(storedProfile, false);
+          } catch (e) {}
+        }
+        const curLang = document.getElementById('language-select')?.value || 'ru';
+        applyLanguageUI(curLang);
+      } catch (err) {
+        console.warn('loadSettings handled error:', err);
       }
-      if (typeof s.rankEnabled === 'boolean' && document.getElementById('rank-toggle')) {
-        document.getElementById('rank-toggle').checked = s.rankEnabled;
-      }
-      if (typeof s.timerEnabled === 'boolean' && document.getElementById('timer-toggle')) {
-        document.getElementById('timer-toggle').checked = s.timerEnabled;
-      }
-      if (typeof s.streakEnabled === 'boolean' && document.getElementById('streak-toggle')) {
-        document.getElementById('streak-toggle').checked = s.streakEnabled;
-      }
-      if (typeof s.trapEnabled === 'boolean' && document.getElementById('trap-toggle')) {
-        document.getElementById('trap-toggle').checked = s.trapEnabled;
-      }
-      if (typeof s.topicTemperature === 'number' && document.getElementById('topic-temperature-slider')) {
-        const val = Math.min(2.0, Math.max(0.2, s.topicTemperature));
-        document.getElementById('topic-temperature-slider').value = val;
-        updateTopicTempBadge(val);
-      }
-      if (typeof s.temperature === 'number' && document.getElementById('temperature-slider')) {
-        const val = Math.min(2.0, Math.max(0.2, s.temperature));
-        document.getElementById('temperature-slider').value = val;
-        updateTempBadge(val);
-      }
-      if (typeof s.factCheckEnabled === 'boolean' && document.getElementById('fact-check-toggle')) {
-        document.getElementById('fact-check-toggle').checked = s.factCheckEnabled;
-      }
-      if (typeof s.uniquifierEnabled === 'boolean' && document.getElementById('uniquifier-toggle')) {
-        document.getElementById('uniquifier-toggle').checked = s.uniquifierEnabled;
-        toggleUniquifierSection();
-      }
-      if (s.uniquifierMode) {
-        setUniquifierMode(s.uniquifierMode, false);
-      }
-      if (s.uniquifierBrightness && document.getElementById('uniq-slider-brightness')) {
-        document.getElementById('uniq-slider-brightness').value = s.uniquifierBrightness;
-        const b = parseFloat(s.uniquifierBrightness);
-        document.getElementById('uniq-val-brightness').textContent = (b >= 0 ? '+' : '') + b.toFixed(2);
-      }
-      if (s.uniquifierContrast && document.getElementById('uniq-slider-contrast')) {
-        document.getElementById('uniq-slider-contrast').value = s.uniquifierContrast;
-        document.getElementById('uniq-val-contrast').textContent = parseFloat(s.uniquifierContrast).toFixed(2);
-      }
-      if (s.uniquifierSaturation && document.getElementById('uniq-slider-saturation')) {
-        document.getElementById('uniq-slider-saturation').value = s.uniquifierSaturation;
-        document.getElementById('uniq-val-saturation').textContent = parseFloat(s.uniquifierSaturation).toFixed(2);
-      }
-      if (s.uniquifierZoom && document.getElementById('uniq-slider-zoom')) {
-        document.getElementById('uniq-slider-zoom').value = s.uniquifierZoom;
-        document.getElementById('uniq-val-zoom').textContent = '+' + Math.round((parseFloat(s.uniquifierZoom) - 1) * 100) + '%';
-      }
-      if (s.uniquifierNoise && document.getElementById('uniq-slider-noise')) {
-        document.getElementById('uniq-slider-noise').value = s.uniquifierNoise;
-        document.getElementById('uniq-val-noise').textContent = parseFloat(s.uniquifierNoise).toFixed(1);
-      }
-      if (s.uniquifierAudio && document.getElementById('uniq-slider-audio')) {
-        document.getElementById('uniq-slider-audio').value = s.uniquifierAudio;
-        const a = parseFloat(s.uniquifierAudio);
-        document.getElementById('uniq-val-audio').textContent = (a >= 1 ? '+' : '') + ((a - 1) * 100).toFixed(1) + '%';
-      }
-      if (typeof s.uniquifierFlip === 'boolean' && document.getElementById('uniq-flip-toggle')) {
-        document.getElementById('uniq-flip-toggle').checked = s.uniquifierFlip;
-      }
-      if (s.renderProfile) {
-        setRenderProfile(s.renderProfile, false);
-      } else {
-        const storedProfile = localStorage.getItem('quiz_render_profile');
-        if (storedProfile) setRenderProfile(storedProfile, false);
-      }
-      const curLang = document.getElementById('language-select')?.value || 'ru';
-      applyLanguageUI(curLang);
     }
 
     function setAppLanguage(lang) {
@@ -3475,69 +3571,6 @@
       const t = pool[Math.floor(Math.random() * pool.length)];
       setVisualTopic(t);
     }
-
-    function switchQuizMode(mode) {
-      currentQuizMode = mode;
-      try {
-        localStorage.setItem('quiz_active_mode', mode);
-      } catch (e) {}
-
-      const singleTab = document.getElementById('tab-mode-single');
-      const batchTab = document.getElementById('tab-mode-batch');
-      const visualTab = document.getElementById('tab-mode-visual');
-      const singleSection = document.getElementById('single-mode-section');
-      const batchSection = document.getElementById('batch-mode-section');
-      const visualSection = document.getElementById('visual-mode-section');
-      const previewBtn = document.getElementById('preview-btn');
-      const visualCardsPanel = document.getElementById('visual-cards-panel');
-      const questionsPreviewCard = document.getElementById('questions-preview-card');
-
-      const activeSingleClass = ['bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/30', 'shadow-sm'];
-      const activeBatchClass = ['bg-purple-500/20', 'text-purple-300', 'border-purple-500/30', 'shadow-sm'];
-      const activeVisualClass = ['bg-cyan-500/20', 'text-cyan-300', 'border-cyan-500/30', 'shadow-sm'];
-      const inactiveTabClass = ['text-slate-400', 'hover:text-white', 'border-transparent'];
-
-      // Reset all tabs
-      [singleTab, batchTab, visualTab].forEach(t => {
-        if (t) {
-          t.classList.remove(...activeSingleClass, ...activeBatchClass, ...activeVisualClass);
-          t.classList.add(...inactiveTabClass);
-        }
-      });
-
-      // Hide all mode sections
-      singleSection?.classList.add('hidden');
-      batchSection?.classList.add('hidden');
-      visualSection?.classList.add('hidden');
-
-      if (mode === 'single') {
-        singleTab?.classList.remove(...inactiveTabClass);
-        singleTab?.classList.add(...activeSingleClass);
-        singleSection?.classList.remove('hidden');
-        if (previewBtn && previewBtn.parentElement) previewBtn.parentElement.classList.remove('hidden');
-        visualCardsPanel?.classList.add('hidden');
-      } else if (mode === 'batch') {
-        batchTab?.classList.remove(...inactiveTabClass);
-        batchTab?.classList.add(...activeBatchClass);
-        batchSection?.classList.remove('hidden');
-        if (previewBtn && previewBtn.parentElement) previewBtn.parentElement.classList.add('hidden');
-        document.getElementById('batch-queue-section')?.classList.remove('hidden');
-        visualCardsPanel?.classList.add('hidden');
-      } else if (mode === 'visual') {
-        visualTab?.classList.remove(...inactiveTabClass);
-        visualTab?.classList.add(...activeVisualClass);
-        visualSection?.classList.remove('hidden');
-        if (previewBtn && previewBtn.parentElement) previewBtn.parentElement.classList.add('hidden');
-        questionsPreviewCard?.classList.add('hidden');
-        if (currentVisualDataset) {
-          visualCardsPanel?.classList.remove('hidden');
-        }
-      }
-      if (window.lucide) {
-        try { lucide.createIcons(); } catch (e) {}
-      }
-    }
-    window.switchQuizMode = switchQuizMode;
 
     async function generateVisualQuizScript() {
       const topicInput = document.getElementById('visual-topic-input');
