@@ -58,11 +58,16 @@
               Квизы 1-9 (@dreaaam33)
             </span>
           </div>
-          <p class="text-xs text-slate-400">Генератор вирусных вертикальных квизов для TikTok & Shorts</p>
+          <p id="header-subtitle" class="text-xs text-slate-400">Генератор вирусных вертикальных квизов для TikTok & Shorts</p>
         </div>
       </div>
 
       <div class="flex items-center space-x-3">
+        <!-- Quick Language Switcher -->
+        <div class="flex items-center p-0.5 rounded-xl bg-black/50 border border-white/10 text-xs shadow-inner">
+          <button type="button" id="header-lang-ru" onclick="setAppLanguage('ru')" class="px-2.5 py-1 rounded-lg font-semibold transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer">🇷🇺 RU</button>
+          <button type="button" id="header-lang-en" onclick="setAppLanguage('en')" class="px-2.5 py-1 rounded-lg font-semibold transition-all text-slate-400 hover:text-white border border-transparent cursor-pointer">🇺🇸 EN</button>
+        </div>
         <button 
           type="button" 
           id="header-history-btn" 
@@ -74,13 +79,13 @@
           <span>История</span>
           <span id="header-history-badge" class="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold">0</span>
         </button>
-        <a href="/" class="text-xs px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 transition-all flex items-center space-x-1.5 border border-white/[0.08]">
+        <a id="header-split-btn" href="/" class="text-xs px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 transition-all flex items-center space-x-1.5 border border-white/[0.08]">
           <i data-lucide="video" class="w-3.5 h-3.5"></i>
           <span>Нарезка видео в Shorts</span>
         </a>
         <div class="flex items-center space-x-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Онлайн</span>
+          <span id="header-online-status">Онлайн</span>
         </div>
       </div>
     </div>
@@ -135,12 +140,19 @@
 
         <!-- Panel: Quiz Topic & Parameters -->
         <div class="glass-panel p-6 space-y-5">
-          <div class="flex items-center justify-between border-b border-white/[0.06] pb-4">
+          <div class="flex items-center justify-between border-b border-white/[0.06] pb-4 gap-2">
             <h2 class="text-lg font-semibold flex items-center space-x-2.5">
               <i data-lucide="flame" class="w-5 h-5 text-amber-400"></i>
-              <span>Создание викторины</span>
+              <span id="panel-title-text">Создание викторины</span>
             </h2>
-            <span class="text-xs text-slate-400 font-mono">Формат: 9 вопросов (Лестница)</span>
+            <div class="flex items-center space-x-3">
+              <span id="panel-format-text" class="text-xs text-slate-400 font-mono hidden sm:inline">Формат: 9 вопросов (Лестница)</span>
+              <!-- Card Top Quick Language Switcher -->
+              <div class="flex items-center p-0.5 rounded-lg bg-black/60 border border-white/10 text-xs">
+                <button type="button" id="btn-lang-ru" onclick="setAppLanguage('ru')" class="px-2 py-1 rounded font-semibold transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 cursor-pointer">🇷🇺 RU</button>
+                <button type="button" id="btn-lang-en" onclick="setAppLanguage('en')" class="px-2 py-1 rounded font-semibold transition-all text-slate-400 hover:text-white border border-transparent cursor-pointer">🇺🇸 EN</button>
+              </div>
+            </div>
           </div>
 
           <!-- Mode Switcher Tabs -->
@@ -204,7 +216,7 @@
               </div>
               
               <!-- Preset Chips -->
-              <div class="flex flex-wrap gap-2 pt-1">
+              <div id="single-preset-chips" class="flex flex-wrap gap-2 pt-1">
                 <span class="text-xs text-slate-400 self-center mr-1">Быстрые темы:</span>
                 <button onclick="setTopic('Школьная программа: вспомнишь все ответы?')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">📚 Школьная программа</button>
                 <button onclick="setTopic('Угадай культовую видеоигру')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🎮 Видеоигры</button>
@@ -2132,8 +2144,49 @@
       applyLanguageUI(curLang);
     }
 
+    function setAppLanguage(lang) {
+      const select = document.getElementById('language-select');
+      if (select) select.value = lang;
+      handleLanguageChange();
+    }
+    window.setAppLanguage = setAppLanguage;
+
     function applyLanguageUI(lang) {
       const isEn = lang === 'en';
+
+      // Update quick language switcher buttons in header and card
+      const activeLangClass = ['bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/30'];
+      const inactiveLangClass = ['text-slate-400', 'hover:text-white', 'border-transparent'];
+      ['header-lang-ru', 'btn-lang-ru'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) {
+          b.classList.remove(...activeLangClass, ...inactiveLangClass);
+          b.classList.add(...(isEn ? inactiveLangClass : activeLangClass));
+        }
+      });
+      ['header-lang-en', 'btn-lang-en'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) {
+          b.classList.remove(...activeLangClass, ...inactiveLangClass);
+          b.classList.add(...(isEn ? activeLangClass : inactiveLangClass));
+        }
+      });
+
+      // Header labels
+      const sub = document.getElementById('header-subtitle');
+      if (sub) sub.textContent = isEn ? 'Viral vertical quiz generator for TikTok & Shorts' : 'Генератор вирусных вертикальных квизов для TikTok & Shorts';
+      const histBtnSpan = document.querySelector('#header-history-btn span');
+      if (histBtnSpan) histBtnSpan.textContent = isEn ? 'History' : 'История';
+      const splitBtnSpan = document.querySelector('#header-split-btn span');
+      if (splitBtnSpan) splitBtnSpan.textContent = isEn ? 'Shorts Video Splitter' : 'Нарезка видео в Shorts';
+      const onlineStatus = document.getElementById('header-online-status');
+      if (onlineStatus) onlineStatus.textContent = isEn ? 'Online' : 'Онлайн';
+
+      // Card Header
+      const pTitle = document.getElementById('panel-title-text');
+      if (pTitle) pTitle.textContent = isEn ? 'Create Quiz' : 'Создание викторины';
+      const pFormat = document.getElementById('panel-format-text');
+      if (pFormat) pFormat.textContent = isEn ? 'Format: 9 questions (Ladder)' : 'Формат: 9 вопросов (Лестница)';
 
       // Mode switcher tabs
       const tabSingle = document.getElementById('tab-mode-single');
@@ -2228,10 +2281,48 @@
       const suggestSingleBtn = document.getElementById('suggest-topic-btn-text');
       if (suggestSingleBtn) suggestSingleBtn.textContent = isEn ? '🎲 Suggest Topic' : '🎲 Придумать тему';
 
+      const singlePresetChips = document.getElementById('single-preset-chips');
+      if (singlePresetChips) {
+        if (isEn) {
+          singlePresetChips.innerHTML = `
+            <span class="text-xs text-slate-400 self-center mr-1">Quick topics:</span>
+            <button type="button" onclick="setTopic('General Knowledge Trivia: Test Your Brain')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">📚 General Knowledge</button>
+            <button type="button" onclick="setTopic('Guess the Iconic Video Game')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🎮 Video Games</button>
+            <button type="button" onclick="setTopic('Guess the Movie by One Iconic Quote')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-purple-500/20 hover:text-purple-300 text-slate-300 border border-white/[0.06] transition-all">🎬 Cinema</button>
+            <button type="button" onclick="setTopic('Mind-Blowing Space & Universe Trivia')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-amber-500/20 hover:text-amber-300 text-slate-300 border border-white/[0.06] transition-all">🚀 Space</button>
+            <button type="button" onclick="setTopic('Supercars: Guess the Legendary Brand')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-rose-500/20 hover:text-rose-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Supercars</button>
+          `;
+        } else {
+          singlePresetChips.innerHTML = `
+            <span class="text-xs text-slate-400 self-center mr-1">Быстрые темы:</span>
+            <button type="button" onclick="setTopic('Школьная программа: вспомнишь все ответы?')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 border border-white/[0.06] transition-all">📚 Школьная программа</button>
+            <button type="button" onclick="setTopic('Угадай культовую видеоигру')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🎮 Видеоигры</button>
+            <button type="button" onclick="setTopic('Угадай фильм по одной фразе')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-purple-500/20 hover:text-purple-300 text-slate-300 border border-white/[0.06] transition-all">🎬 Кино</button>
+            <button type="button" onclick="setTopic('Тест на эрудицию: Тайны космоса и планет')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-amber-500/20 hover:text-amber-300 text-slate-300 border border-white/[0.06] transition-all">🚀 Космос</button>
+            <button type="button" onclick="setTopic('Автомобили: угадай легендарную марку')" class="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-rose-500/20 hover:text-rose-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Автомобили</button>
+          `;
+        }
+      }
+
+      // Batch Mode Section
+      const batchTitle = document.querySelector('#batch-mode-section .font-semibold.text-xs.text-purple-300 span');
+      if (batchTitle) batchTitle.textContent = isEn ? 'Batch Queue Settings' : 'Настройки пакетной очереди';
+      const batchBadge = document.querySelector('#batch-mode-section .text-\\[10px\\].font-mono.rounded-full');
+      if (batchBadge) batchBadge.textContent = isEn ? '1 request = whole batch' : '1 запрос = вся пачка тем';
+      const batchBtnText = document.getElementById('btn-generate-batch-topics-text');
+      if (batchBtnText) batchBtnText.textContent = isEn ? '✨ Generate Batch Topics (1 AI request)' : '✨ Сгенерировать темы для пачки (1 запрос ИИ)';
+      const batchHintInput = document.getElementById('batch-hint-input');
+      if (batchHintInput) {
+        batchHintInput.placeholder = isEn 
+          ? 'Leave empty for maximum variety or enter niche (e.g.: Science, Gaming)' 
+          : 'Оставьте пустым для максимального разнообразия или впишите нишу (например: Наука, Игры)';
+      }
+
+      // Action buttons
       const previewBtnSpan = document.querySelector('#preview-btn span');
       if (previewBtnSpan) previewBtnSpan.textContent = isEn ? 'Generate Questions (AI)' : 'Сгенерировать вопросы (AI)';
 
-      const directCreateBtnSpan = document.querySelector('#single-mode-section button[onclick="startQuizGeneration(null)"] span');
+      const directCreateBtnSpan = document.querySelector('button[onclick*="startQuizGeneration(null)"] span');
       if (directCreateBtnSpan) directCreateBtnSpan.textContent = isEn ? 'Create video directly (skip preview)' : 'Создать видео сразу (без предпросмотра)';
 
       // Intro Hook
@@ -2255,20 +2346,29 @@
         currentVisualDataset.language = lang;
         renderVisualQuizCards(currentVisualDataset);
       }
-      if (window.lucide) lucide.createIcons();
+      if (window.lucide) {
+        try { lucide.createIcons(); } catch (e) {}
+      }
     }
 
     function handleLanguageChange() {
-      const lang = document.getElementById('language-select').value;
+      const select = document.getElementById('language-select');
+      const lang = select ? select.value : 'ru';
       const voiceSelect = document.getElementById('voice-select');
-      if (lang === 'en' && voiceSelect.value.startsWith('ru-')) {
-        voiceSelect.value = 'en-US-GuyNeural';
-      } else if (lang === 'ru' && voiceSelect.value.startsWith('en-')) {
-        voiceSelect.value = 'ru-RU-DmitryNeural';
+      if (voiceSelect) {
+        if (lang === 'en' && voiceSelect.value.startsWith('ru-')) {
+          voiceSelect.value = 'en-US-GuyNeural';
+        } else if (lang === 'ru' && voiceSelect.value.startsWith('en-')) {
+          voiceSelect.value = 'ru-RU-DmitryNeural';
+        }
       }
+      try {
+        localStorage.setItem('quiz_language', lang);
+      } catch (e) {}
       applyLanguageUI(lang);
       saveSettings();
     }
+    window.handleLanguageChange = handleLanguageChange;
 
     function getBgIcon(filename) {
       const lower = filename.toLowerCase();
@@ -3471,6 +3571,10 @@
 
     function switchQuizMode(mode) {
       currentQuizMode = mode;
+      try {
+        localStorage.setItem('quiz_active_mode', mode);
+      } catch (e) {}
+
       const singleTab = document.getElementById('tab-mode-single');
       const batchTab = document.getElementById('tab-mode-batch');
       const visualTab = document.getElementById('tab-mode-visual');
@@ -3488,8 +3592,10 @@
 
       // Reset all tabs
       [singleTab, batchTab, visualTab].forEach(t => {
-        t?.classList.remove(...activeSingleClass, ...activeBatchClass, ...activeVisualClass);
-        t?.classList.add(...inactiveTabClass);
+        if (t) {
+          t.classList.remove(...activeSingleClass, ...activeBatchClass, ...activeVisualClass);
+          t.classList.add(...inactiveTabClass);
+        }
       });
 
       // Hide all mode sections
@@ -3501,27 +3607,30 @@
         singleTab?.classList.remove(...inactiveTabClass);
         singleTab?.classList.add(...activeSingleClass);
         singleSection?.classList.remove('hidden');
-        if (previewBtn) previewBtn.parentElement.classList.remove('hidden');
+        if (previewBtn && previewBtn.parentElement) previewBtn.parentElement.classList.remove('hidden');
         visualCardsPanel?.classList.add('hidden');
       } else if (mode === 'batch') {
         batchTab?.classList.remove(...inactiveTabClass);
         batchTab?.classList.add(...activeBatchClass);
         batchSection?.classList.remove('hidden');
-        if (previewBtn) previewBtn.parentElement.classList.add('hidden');
+        if (previewBtn && previewBtn.parentElement) previewBtn.parentElement.classList.add('hidden');
         document.getElementById('batch-queue-section')?.classList.remove('hidden');
         visualCardsPanel?.classList.add('hidden');
       } else if (mode === 'visual') {
         visualTab?.classList.remove(...inactiveTabClass);
         visualTab?.classList.add(...activeVisualClass);
         visualSection?.classList.remove('hidden');
-        if (previewBtn) previewBtn.parentElement.classList.add('hidden');
+        if (previewBtn && previewBtn.parentElement) previewBtn.parentElement.classList.add('hidden');
         questionsPreviewCard?.classList.add('hidden');
         if (currentVisualDataset) {
           visualCardsPanel?.classList.remove('hidden');
         }
       }
-      lucide.createIcons();
+      if (window.lucide) {
+        try { lucide.createIcons(); } catch (e) {}
+      }
     }
+    window.switchQuizMode = switchQuizMode;
 
     async function generateVisualQuizScript() {
       const topicInput = document.getElementById('visual-topic-input');
@@ -5345,6 +5454,25 @@
 
     // Auto-load history and restore queue state on start
     window.addEventListener('DOMContentLoaded', () => {
+      // Explicit mode tab click listeners to guarantee flawless switching
+      document.getElementById('tab-mode-single')?.addEventListener('click', (e) => { e.preventDefault(); switchQuizMode('single'); });
+      document.getElementById('tab-mode-batch')?.addEventListener('click', (e) => { e.preventDefault(); switchQuizMode('batch'); });
+      document.getElementById('tab-mode-visual')?.addEventListener('click', (e) => { e.preventDefault(); switchQuizMode('visual'); });
+
+      // Restore saved mode or default to single
+      try {
+        const savedMode = localStorage.getItem('quiz_active_mode');
+        if (savedMode && ['single', 'batch', 'visual'].includes(savedMode)) {
+          switchQuizMode(savedMode);
+        }
+      } catch (e) {}
+
+      // Restore saved language or apply current
+      try {
+        const savedLang = localStorage.getItem('quiz_language') || document.getElementById('language-select')?.value || 'ru';
+        setAppLanguage(savedLang);
+      } catch (e) {}
+
       loadGenerationHistory();
       if (window.location.hash === '#history') {
         switchMainView('history');
