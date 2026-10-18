@@ -790,17 +790,30 @@ class AudioService:
         subtitles: list[dict] = []
         audio_events: list[tuple[Path, float, float]] = []  # (path, start_time_sec, volume_db)
 
-        # 1. Synthesize Intro Hook (Strictly 3.0–3.2 seconds duration)
+        # 1. Synthesize Intro Hook (Strictly <= 3.0 seconds duration, calculated by words)
         hook_audio_path = workspace.get_audio_path("visual_hook.mp3")
         hook_text = dataset.hook_tts
         if is_en:
             cleaned_hook = re.sub(r'[, -]*\b(let\'?s go[, -]*)?what is (this|that|it)(\s+brand)?\??', '', hook_text, flags=re.IGNORECASE).strip()
+            if not cleaned_hook:
+                cleaned_hook = "Can you guess all these logos? Let's go!"
         else:
             cleaned_hook = re.sub(r'[, -]*\b(погнали[, -]*)?что это(\s+за\s+[^.!?]+)?\??', '', hook_text, flags=re.IGNORECASE).strip()
-        if cleaned_hook:
-            if not cleaned_hook.endswith(('.', '!', '?')):
-                cleaned_hook += '!'
-            hook_text = cleaned_hook
+            if not cleaned_hook:
+                cleaned_hook = "Угадай все эти логотипы! Погнали!"
+
+        # Calculate word budget: at natural pace (~2.5 words/sec), 3.0s holds 5-7 words comfortably
+        words_tokens = cleaned_hook.split()
+        if len(words_tokens) > 7:
+            sentences = [s.strip() for s in re.split(r'[.!?]+', cleaned_hook) if s.strip()]
+            if sentences and 3 <= len(sentences[0].split()) <= 7:
+                cleaned_hook = sentences[0]
+            else:
+                cleaned_hook = " ".join(words_tokens[:6]).rstrip(",;:- ")
+
+        if not cleaned_hook.endswith(('.', '!', '?')):
+            cleaned_hook += '!'
+        hook_text = cleaned_hook
 
         hook_dur_ms, hook_words = await self.synthesize_speech_with_cues(
             hook_text,
@@ -809,8 +822,40 @@ class AudioService:
             voice_config=voice_config,
         )
 
-        # Natural, clear pacing for intro hook without aggressive atempo distortion
-        hook_dur_sec = max(3.0, (hook_dur_ms + 250) / 1000.0)
+        # Calculate speech duration from word cues
+        speech_end_ms = hook_words[-1].end_ms if hook_words else hook_dur_ms
+
+        # If speech exceeds 2700 ms, slightly adjust tempo (mild atempo <= 1.25x) so it finishes before 2650 ms
+        if speech_end_ms > 2700 and hook_audio_path.exists():
+            target_ms = 2600
+            speed_ratio = min(1.25, max(1.04, speech_end_ms / target_ms))
+            sped_up_path = workspace.get_audio_path("visual_hook_fast.mp3")
+            ffmpeg_cmd = [
+                "ffmpeg", "-y", "-i", str(hook_audio_path),
+                "-filter:a", f"atempo={speed_ratio:.3f}",
+                "-vn", str(sped_up_path),
+            ]
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *ffmpeg_cmd,
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                await proc.wait()
+                if sped_up_path.exists() and proc.returncode == 0:
+                    shutil.move(str(sped_up_path), str(hook_audio_path))
+                    hook_dur_ms = probe_audio_duration_ms(hook_audio_path)
+                    scale = 1.0 / speed_ratio
+                    for w in hook_words:
+                        w.start_ms = int(w.start_ms * scale)
+                        w.end_ms = int(w.end_ms * scale)
+                    speech_end_ms = hook_words[-1].end_ms if hook_words else hook_dur_ms
+            except Exception as err:
+                logger.warning("Failed to slightly adjust hook tempo: %s", err)
+
+        # Calculate intro duration strictly from words: speech end + 200ms breathing room, strictly capped at MAXIMUM 3.0s
+        word_calculated_sec = (speech_end_ms + 200) / 1000.0
+        hook_dur_sec = min(3.0, max(2.0, word_calculated_sec))
         hook_end_frame = int(round(hook_dur_sec * fps))
         audio_events.append((hook_audio_path, 0.0, 0.0))
 

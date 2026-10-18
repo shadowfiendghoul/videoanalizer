@@ -235,7 +235,7 @@ export const Root: React.FC = () => {
           width: 1080,
           height: 1920,
           total_duration_frames: 3000,
-          hook_end_frame: 210,
+          hook_end_frame: 180,
           timing_slots: [],
           subtitles: [],
           audio_mix_path: "",

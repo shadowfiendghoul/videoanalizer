@@ -285,7 +285,9 @@ VISUAL_QUIZ_SYSTEM_PROMPT = """Ты — креативный сценарист 
    - Запрещено использовать общие слова вроде "photo", "car", "building", если тема про логотипы/эмблемы.
 
 4. ИНТРО-ХУК ('hook_tts'):
-   - Энергичная интригующая фраза ровно на 3.0 секунды, представляющая тему и бросающая вызов зрителю (например: «Угадай все эти логотипы! На десятый ответят только знатоки. Погнали!» или «Сможешь назвать все бренды? Дойди до конца!»).
+   - КРАТКАЯ энергичная фраза СТРОГО до 5–7 слов (длительность звучания максимум 2.5–2.7 секунды, чтобы всё интро длилось строго до 3 секунд!).
+   - Примеры RU (5-6 слов): «Угадай все эти логотипы! Погнали!», «Сможешь назвать все бренды? Проверим!», «Узнаешь все 10 автомобилей? Попробуй!».
+   - Примеры EN (5-7 words): "Can you guess all these logos? Let's go!", "Name all ten brands! Ready?".
    - ВНИМАНИЕ: В хуке СТРОГО ЗАПРЕЩЕНО говорить вопросы вроде «Что это?», «Что это за бренд?», «Погнали, что это?» или спрашивать название предметов! Хук ТОЛЬКО бросает вызов и объявляет тему. Вопрос «Что это?» задается только в первом раунде игры.
 
 5. ВСТАВКИ ('interstitials'):
@@ -795,7 +797,7 @@ class ScriptService:
                 "- For Question 1: narrator immediately asks the question without saying 'Question 1' (e.g. 'What brand is this?' or 'Can you guess this logo?').",
                 "- For Questions 2-9: narrator announces question number (e.g. 'Number two, what is this?', 'Question three, what's this brand?').",
                 "- For Question 10: set answer_text strictly to 'Write in comments', difficulty='master'. For answer_tts, the narrator intriguingly challenges the viewer to guess in comments (e.g. 'And this is the final level! Drop your guess in the comments!').",
-                "- In hook_tts: energetic 3.0s challenge in English (e.g. 'Can you guess all these logos? Only one percent can beat the final level. Let's go!'). Do NOT ask 'what is this' in the hook.",
+                "- In hook_tts: energetic short challenge in English STRICTLY 5-7 words, under 3.0 seconds (e.g. 'Can you guess all these logos? Let's go!' or 'Name all ten brands! Ready?'). Do NOT exceed 7 words. Do NOT ask 'what is this' in the hook.",
                 "- For interstitials: after question 3 comment bait ('Hold the comment button and drop your favorite emoji!'), after question 6 share bait ('Share this video with a friend to test them!').",
             ]
         else:
@@ -803,7 +805,8 @@ class ScriptService:
                 f"Тема визуальной викторины: «{chosen_theme}».",
                 f"Язык озвучки и интерфейса: {language}.",
                 "Сгенерируй вирусный сценарий из 10 предметов с нарастающей сложностью (3 easy, 3 medium, 3 hard, 1 master-ловушка). "
-                "Для вопроса 1 диктор сразу задает вопрос без фразы 'Вопрос 1'. Для вопроса 10 ответ скрыт с призывом писать в комментарии.",
+                "Для вопроса 1 диктор сразу задает вопрос без фразы 'Вопрос 1'. Для вопроса 10 ответ скрыт с призывом писать в комментарии. "
+                "Для интро hook_tts напиши краткий энергичный вызов СТРОГО до 5-7 слов (максимум 2.5-2.7 секунды речи, например: 'Угадай все эти логотипы! Погнали!').",
             ]
         if exclusion_clause:
             prompt_parts.append(exclusion_clause)
@@ -822,21 +825,28 @@ class ScriptService:
         dataset.mode = "visual_image_quiz"
         dataset.language = "en" if is_en else "ru"
 
-        # Sanitize hook_tts to ensure narrator never asks "Что это?" / "What is this?" in intro hook
+        # Sanitize hook_tts: forbid "What is this?" and enforce strict 5-7 words budget for <= 3.0s intro
         if dataset.hook_tts:
             cleaned_hook = dataset.hook_tts
             if is_en:
                 cleaned_hook = re.sub(r'[, -]*\b(let\'?s go[, -]*)?what is (this|that|it)(\s+brand)?\??', '', cleaned_hook, flags=re.IGNORECASE).strip()
                 if not cleaned_hook:
-                    cleaned_hook = f"Can you guess all these {chosen_theme}? Only true experts beat level ten. Let's go!"
-                elif not cleaned_hook.endswith(('.', '!', '?')):
-                    cleaned_hook += '!'
+                    cleaned_hook = "Can you guess all these logos? Let's go!"
             else:
                 cleaned_hook = re.sub(r'[, -]*\b(погнали[, -]*)?что это(\s+за\s+[^.!?]+)?\??', '', cleaned_hook, flags=re.IGNORECASE).strip()
                 if not cleaned_hook:
-                    cleaned_hook = f"Угадай все {chosen_theme}! На десятый ответят только знатоки. Погнали!"
-                elif not cleaned_hook.endswith(('.', '!', '?')):
-                    cleaned_hook += '!'
+                    cleaned_hook = "Угадай все эти логотипы! Погнали!"
+
+            # Enforce max 6-7 words budget so speech finishes cleanly under 3.0s
+            words = cleaned_hook.split()
+            if len(words) > 7:
+                sentences = [s.strip() for s in re.split(r'[.!?]+', cleaned_hook) if s.strip()]
+                if sentences and 3 <= len(sentences[0].split()) <= 7:
+                    cleaned_hook = sentences[0]
+                else:
+                    cleaned_hook = " ".join(words[:6]).rstrip(",;:- ")
+            if not cleaned_hook.endswith(('.', '!', '?')):
+                cleaned_hook += '!'
             dataset.hook_tts = cleaned_hook
 
         # Sanitize question 1 to ensure no "Question 1" / "Вопрос номер один" prefix
