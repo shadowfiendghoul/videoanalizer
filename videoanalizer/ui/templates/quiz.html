@@ -2126,6 +2126,8 @@
         setRenderProfile(s.renderProfile, false);
       } else {
         const storedProfile = localStorage.getItem('quiz_render_profile');
+        if (storedProfile) setRenderProfile(storedProfile, false);
+      }
       const curLang = document.getElementById('language-select')?.value || 'ru';
       applyLanguageUI(curLang);
     }
