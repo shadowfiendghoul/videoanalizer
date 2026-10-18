@@ -777,7 +777,13 @@ class AudioService:
             (master_audio_path, timing_slots, subtitles, total_duration_frames, hook_end_frame, banner_start_frame)
         """
         ensure_default_sfx(self.config.sfx_dir)
-        selected_voice = voice or "ru-RU-DmitryNeural"
+        is_en = getattr(dataset, "language", "ru").lower().startswith("en")
+        if is_en and (not voice or voice.startswith("ru-")):
+            selected_voice = "en-US-GuyNeural"
+        elif not voice:
+            selected_voice = "ru-RU-DmitryNeural"
+        else:
+            selected_voice = voice
         fps = self.config.fps
 
         timing_slots: list[VisualQuizTimingSlot] = []
@@ -787,7 +793,10 @@ class AudioService:
         # 1. Synthesize Intro Hook (Strictly 3.0–3.2 seconds duration)
         hook_audio_path = workspace.get_audio_path("visual_hook.mp3")
         hook_text = dataset.hook_tts
-        cleaned_hook = re.sub(r'[, -]*\b(погнали[, -]*)?что это(\s+за\s+[^.!?]+)?\??', '', hook_text, flags=re.IGNORECASE).strip()
+        if is_en:
+            cleaned_hook = re.sub(r'[, -]*\b(let\'?s go[, -]*)?what is (this|that|it)(\s+brand)?\??', '', hook_text, flags=re.IGNORECASE).strip()
+        else:
+            cleaned_hook = re.sub(r'[, -]*\b(погнали[, -]*)?что это(\s+за\s+[^.!?]+)?\??', '', hook_text, flags=re.IGNORECASE).strip()
         if cleaned_hook:
             if not cleaned_hook.endswith(('.', '!', '?')):
                 cleaned_hook += '!'
@@ -846,10 +855,14 @@ class AudioService:
 
         # Add hook words to subtitles
         for w in hook_words:
+            s_f = max(0, int(w.start_ms * fps / 1000))
+            e_f = max(1, int(w.end_ms * fps / 1000))
             subtitles.append({
                 "word": w.word,
-                "start_frame": max(0, int(w.start_ms * fps / 1000)),
-                "end_frame": max(1, int(w.end_ms * fps / 1000)),
+                "start_ms": int(w.start_ms),
+                "end_ms": int(w.end_ms),
+                "start_frame": s_f,
+                "end_frame": e_f,
             })
 
         current_frame = hook_end_frame
@@ -928,16 +941,24 @@ class AudioService:
             audio_events.append((q_ans_path, answer_audio_start_frame / fps, 0.0))
 
             for w in p_words:
+                s_f = start_frame + int(w.start_ms * fps / 1000)
+                e_f = start_frame + int(w.end_ms * fps / 1000)
                 subtitles.append({
                     "word": w.word,
-                    "start_frame": start_frame + int(w.start_ms * fps / 1000),
-                    "end_frame": start_frame + int(w.end_ms * fps / 1000),
+                    "start_ms": int(s_f * 1000 / fps),
+                    "end_ms": int(e_f * 1000 / fps),
+                    "start_frame": s_f,
+                    "end_frame": e_f,
                 })
             for w in a_words:
+                s_f = answer_audio_start_frame + int(w.start_ms * fps / 1000)
+                e_f = answer_audio_start_frame + int(w.end_ms * fps / 1000)
                 subtitles.append({
                     "word": w.word,
-                    "start_frame": answer_audio_start_frame + int(w.start_ms * fps / 1000),
-                    "end_frame": answer_audio_start_frame + int(w.end_ms * fps / 1000),
+                    "start_ms": int(s_f * 1000 / fps),
+                    "end_ms": int(e_f * 1000 / fps),
+                    "start_frame": s_f,
+                    "end_frame": e_f,
                 })
 
             current_frame = end_frame + 6
@@ -955,10 +976,14 @@ class AudioService:
                 inter_start_frame = current_frame
                 audio_events.append((inter_path, inter_start_frame / fps, 0.0))
                 for w in i_words:
+                    s_f = inter_start_frame + int(w.start_ms * fps / 1000)
+                    e_f = inter_start_frame + int(w.end_ms * fps / 1000)
                     subtitles.append({
                         "word": w.word,
-                        "start_frame": inter_start_frame + int(w.start_ms * fps / 1000),
-                        "end_frame": inter_start_frame + int(w.end_ms * fps / 1000),
+                        "start_ms": int(s_f * 1000 / fps),
+                        "end_ms": int(e_f * 1000 / fps),
+                        "start_frame": s_f,
+                        "end_frame": e_f,
                     })
                 inter_frames = max(int(inter.duration_sec * fps), int(i_dur_ms * fps / 1000) + 12)
                 current_frame += inter_frames

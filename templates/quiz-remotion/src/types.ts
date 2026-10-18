@@ -161,6 +161,7 @@ export interface VisualQuizInterstitial {
 export interface VisualQuizDataset {
   mode: "visual_image_quiz";
   theme: string;
+  language?: string;
   hook_tts: string;
   rapid_flip_duration_ms: number;
   timer_duration_sec: number;
@@ -183,6 +184,8 @@ export interface VisualQuizWordTiming {
   word: string;
   start_frame: number;
   end_frame: number;
+  start_ms?: number;
+  end_ms?: number;
 }
 
 export interface VisualQuizRenderProps extends Record<string, unknown> {

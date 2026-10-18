@@ -386,7 +386,7 @@
               </div>
 
               <!-- Quick Theme chips -->
-              <div class="flex flex-wrap gap-1.5 pt-1">
+              <div id="visual-ideas-chips" class="flex flex-wrap gap-1.5 pt-1">
                 <span class="text-[11px] text-slate-400 self-center mr-1">Идеи:</span>
                 <button type="button" onclick="setVisualTopic('Суперкары мира')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Суперкары</button>
                 <button type="button" onclick="setVisualTopic('Породы собак')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🐕 Породы собак</button>
@@ -2126,8 +2126,134 @@
         setRenderProfile(s.renderProfile, false);
       } else {
         const storedProfile = localStorage.getItem('quiz_render_profile');
-        if (storedProfile) setRenderProfile(storedProfile, false);
+      const curLang = document.getElementById('language-select')?.value || 'ru';
+      applyLanguageUI(curLang);
+    }
+
+    function applyLanguageUI(lang) {
+      const isEn = lang === 'en';
+
+      // Mode switcher tabs
+      const tabSingle = document.getElementById('tab-mode-single');
+      if (tabSingle) {
+        const s = tabSingle.querySelector('span');
+        if (s) s.textContent = isEn ? 'Single Video' : 'Одиночное видео';
       }
+      const tabBatch = document.getElementById('tab-mode-batch');
+      if (tabBatch) {
+        const s = tabBatch.querySelector('span');
+        if (s) s.textContent = isEn ? '⚡ Batch Queue' : '⚡ Пакетная очередь';
+      }
+      const tabVisual = document.getElementById('tab-mode-visual');
+      if (tabVisual) {
+        const s = tabVisual.querySelector('span');
+        if (s) s.textContent = isEn ? '🖼️ Visual Quiz (1-10)' : '🖼️ Visual Quiz (1-10)';
+      }
+
+      // Visual Mode Section
+      const visSection = document.getElementById('visual-mode-section');
+      if (visSection) {
+        const visTitle = visSection.querySelector('.font-semibold.text-xs.text-cyan-300 span');
+        if (visTitle) visTitle.textContent = isEn ? 'Visual Quiz with Images & Rapid Flip-Hook' : 'Визуальная викторина с картинками и флип-хуком';
+        const visBadge = visSection.querySelector('.text-\\[10px\\].font-mono.rounded-full');
+        if (visBadge) visBadge.textContent = isEn ? '10 items + progressive ladder' : '10 предметов + лестница уровней';
+
+        const visTopicLabel = visSection.querySelector('label');
+        if (visTopicLabel) visTopicLabel.textContent = isEn ? 'Quiz Topic (any theme):' : 'Тема викторины (любая тема):';
+        const visTopicSub = visSection.querySelector('.text-cyan-400.font-mono');
+        if (visTopicSub) visTopicSub.textContent = isEn ? '10 questions (Q1-Q10)' : '10 вопросов (Q1-Q10)';
+
+        const visInput = document.getElementById('visual-topic-input');
+        if (visInput) {
+          visInput.placeholder = isEn 
+            ? 'e.g.: World Iconic Brand Logos, Supercars, Dog Breeds, Famous Monuments...'
+            : 'Например: Суперкары мира, Породы собак, Логотипы культовых брендов...';
+          if (isEn && (visInput.value === 'Логотипы культовых брендов' || visInput.value === 'Суперкары мира' || !visInput.value)) {
+            visInput.value = 'World Iconic Brand Logos';
+          } else if (!isEn && (visInput.value === 'World Iconic Brand Logos' || visInput.value === 'Supercars of the World' || !visInput.value)) {
+            visInput.value = 'Логотипы культовых брендов';
+          }
+        }
+
+        const aiTopicBtnText = document.getElementById('btn-ai-visual-topic-text');
+        if (aiTopicBtnText && !aiTopicBtnText.textContent.includes('...')) {
+          aiTopicBtnText.textContent = isEn ? '✨ AI Topic' : '✨ AI Тема';
+        }
+
+        const genScriptBtnText = document.getElementById('btn-generate-visual-script-text');
+        if (genScriptBtnText && !genScriptBtnText.textContent.includes('...')) {
+          genScriptBtnText.textContent = isEn 
+            ? 'Generate Script & Find 10 Images (AI)'
+            : 'Сгенерировать сценарий и найти 10 картинок (AI)';
+        }
+
+        const ideasContainer = document.getElementById('visual-ideas-chips');
+        if (ideasContainer) {
+          if (isEn) {
+            ideasContainer.innerHTML = `
+              <span class="text-[11px] text-slate-400 self-center mr-1">Ideas:</span>
+              <button type="button" onclick="setVisualTopic('World Iconic Brand Logos')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏷️ Iconic Logos</button>
+              <button type="button" onclick="setVisualTopic('Supercars and Hypercars')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Supercars</button>
+              <button type="button" onclick="setVisualTopic('Rare Dog Breeds and Animals')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🐕 Dog Breeds</button>
+              <button type="button" onclick="setVisualTopic('World Architectural Wonders')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🌍 World Wonders</button>
+              <button type="button" onclick="setVisualTopic('World Flags and Rare Emblems')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🚩 World Flags</button>
+            `;
+          } else {
+            ideasContainer.innerHTML = `
+              <span class="text-[11px] text-slate-400 self-center mr-1">Идеи:</span>
+              <button type="button" onclick="setVisualTopic('Суперкары мира')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏎️ Суперкары</button>
+              <button type="button" onclick="setVisualTopic('Породы собак')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🐕 Породы собак</button>
+              <button type="button" onclick="setVisualTopic('Мировые бренды и логотипы')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🏷️ Бренды</button>
+              <button type="button" onclick="setVisualTopic('Шедевры мировой живописи')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🎨 Живопись</button>
+              <button type="button" onclick="setVisualTopic('Чудеса планеты Земля')" class="text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-300 border border-white/[0.06] transition-all">🌍 Чудеса Земли</button>
+            `;
+          }
+        }
+      }
+
+      // Single Video Mode Section
+      const singleTopicInput = document.getElementById('topic-input');
+      if (singleTopicInput) {
+        singleTopicInput.placeholder = isEn 
+          ? 'e.g.: Space Mysteries, Ancient Rome, World History, Video Games...'
+          : 'Например: Загадки космоса, История Древнего Рима, Школьная программа...';
+        if (isEn && (singleTopicInput.value === 'Школьная программа' || !singleTopicInput.value)) {
+          singleTopicInput.value = 'General Knowledge Trivia';
+        } else if (!isEn && (singleTopicInput.value === 'General Knowledge Trivia' || !singleTopicInput.value)) {
+          singleTopicInput.value = 'Школьная программа';
+        }
+      }
+      const suggestSingleBtn = document.getElementById('suggest-topic-btn-text');
+      if (suggestSingleBtn) suggestSingleBtn.textContent = isEn ? '🎲 Suggest Topic' : '🎲 Придумать тему';
+
+      const previewBtnSpan = document.querySelector('#preview-btn span');
+      if (previewBtnSpan) previewBtnSpan.textContent = isEn ? 'Generate Questions (AI)' : 'Сгенерировать вопросы (AI)';
+
+      const directCreateBtnSpan = document.querySelector('#single-mode-section button[onclick="startQuizGeneration(null)"] span');
+      if (directCreateBtnSpan) directCreateBtnSpan.textContent = isEn ? 'Create video directly (skip preview)' : 'Создать видео сразу (без предпросмотра)';
+
+      // Intro Hook
+      const introHookInput = document.getElementById('intro-hook-input');
+      if (introHookInput) {
+        if (isEn && (introHookInput.value === 'Ты гений, если ответишь на все вопросы!' || !introHookInput.value)) {
+          introHookInput.value = "You're a genius if you get all questions right!";
+        } else if (!isEn && (introHookInput.value === "You're a genius if you get all questions right!" || !introHookInput.value)) {
+          introHookInput.value = 'Ты гений, если ответишь на все вопросы!';
+        }
+      }
+
+      // Visual Cards Panel
+      const approveAllBtnText = document.getElementById('btn-approve-all-visual-text');
+      if (approveAllBtnText) approveAllBtnText.textContent = isEn ? 'Approve All Cards' : 'Одобрить все фото';
+      const renderVisualBtnText = document.getElementById('btn-render-visual-quiz-text');
+      if (renderVisualBtnText) renderVisualBtnText.textContent = isEn ? 'Render Shorts (1080x1920)' : 'Срендерить Shorts (1080x1920)';
+
+      // Re-render visual cards if present
+      if (currentVisualDataset) {
+        currentVisualDataset.language = lang;
+        renderVisualQuizCards(currentVisualDataset);
+      }
+      if (window.lucide) lucide.createIcons();
     }
 
     function handleLanguageChange() {
@@ -2138,6 +2264,7 @@
       } else if (lang === 'ru' && voiceSelect.value.startsWith('en-')) {
         voiceSelect.value = 'ru-RU-DmitryNeural';
       }
+      applyLanguageUI(lang);
       saveSettings();
     }
 
@@ -3211,6 +3338,19 @@
       "Флаги необычных стран"
     ];
 
+    const VISUAL_QUIZ_PRESET_THEMES_EN = [
+      "World Iconic Brand Logos",
+      "Supercars and Hypercars",
+      "World Flags and Rare Emblems",
+      "Classic 90s Video Game Heroes",
+      "Rare Dog Breeds and Animals",
+      "World Architectural Wonders",
+      "Famous Movie Vehicles and Tech",
+      "Marvel and DC Superhero Emblems",
+      "Legendary Sneaker History",
+      "World Football Club Badges"
+    ];
+
     let currentBackgroundMode = 'loop';
 
     function setBackgroundMode(mode) {
@@ -3321,7 +3461,9 @@
     }
 
     function randomVisualTopic() {
-      const t = VISUAL_QUIZ_PRESET_THEMES[Math.floor(Math.random() * VISUAL_QUIZ_PRESET_THEMES.length)];
+      const isEn = (document.getElementById('language-select')?.value || 'ru') === 'en';
+      const pool = isEn ? VISUAL_QUIZ_PRESET_THEMES_EN : VISUAL_QUIZ_PRESET_THEMES;
+      const t = pool[Math.floor(Math.random() * pool.length)];
       setVisualTopic(t);
     }
 
@@ -3438,11 +3580,12 @@
       if (hookInput) hookInput.value = dataset.hook_tts || '';
       if (!grid) return;
 
+      const isEn = (document.getElementById('language-select')?.value || 'ru') === 'en';
       const difficultyBadges = {
-        easy: { label: 'Легкий (1-3)', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-        medium: { label: 'Средний (4-6)', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
-        hard: { label: 'Эксперт (7-9)', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-        master: { label: 'Мастер (10)', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' }
+        easy: { label: isEn ? 'Easy (1-3)' : 'Легкий (1-3)', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+        medium: { label: isEn ? 'Medium (4-6)' : 'Средний (4-6)', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+        hard: { label: isEn ? 'Hard (7-9)' : 'Эксперт (7-9)', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+        master: { label: isEn ? 'Master (10)' : 'Мастер (10)', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' }
       };
 
       grid.innerHTML = dataset.items.map((it, idx) => {
@@ -3460,7 +3603,7 @@
                 <span class="text-[10px] px-2 py-0.5 rounded-full border font-mono font-medium ${diff.color}">
                   ${diff.label}
                 </span>
-                ${isLastTrap ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">Ловушка</span>' : ''}
+                ${isLastTrap ? `<span class="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">${isEn ? 'Trap' : 'Ловушка'}</span>` : ''}
               </div>
               <button 
                 type="button" 
@@ -3469,32 +3612,32 @@
                 class="text-[11px] px-2.5 py-1 rounded-lg transition-all flex items-center space-x-1 font-semibold ${isApproved ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-white/[0.06] text-slate-400 border border-white/[0.1] hover:text-white'} cursor-pointer"
               >
                 <i data-lucide="${isApproved ? 'check-circle' : 'circle'}" class="w-3.5 h-3.5"></i>
-                <span>${isApproved ? 'Одобрено' : 'Одобрить'}</span>
+                <span>${isApproved ? (isEn ? 'Approved' : 'Одобрено') : (isEn ? 'Approve' : 'Одобрить')}</span>
               </button>
             </div>
 
             <!-- Question details: Answer & Narrator prompt -->
             <div class="space-y-1.5">
               <div class="flex items-center space-x-2">
-                <span class="text-[11px] text-slate-400 font-semibold shrink-0">Ответ:</span>
+                <span class="text-[11px] text-slate-400 font-semibold shrink-0">${isEn ? 'Answer:' : 'Ответ:'}</span>
                 <input 
                   type="text" 
                   id="visual-answer-input-${idx}"
                   value="${(it.answer_text || '').replace(/"/g, '&quot;')}" 
                   oninput="syncVisualCardAnswer(${idx}, this.value)"
                   class="flex-1 bg-black/50 border border-white/[0.08] focus:border-cyan-400 rounded px-2.5 py-1 text-xs text-white font-bold focus:outline-none transition-all"
-                  placeholder="Правильный ответ"
+                  placeholder="${isEn ? 'Correct answer' : 'Правильный ответ'}"
                 />
               </div>
               <div class="flex items-center space-x-2">
-                <span class="text-[11px] text-slate-500 shrink-0">Озвучка:</span>
+                <span class="text-[11px] text-slate-500 shrink-0">${isEn ? 'Voiceover:' : 'Озвучка:'}</span>
                 <input 
                   type="text" 
                   id="visual-prompt-input-${idx}"
                   value="${(it.prompt_tts || '').replace(/"/g, '&quot;')}" 
                   oninput="syncVisualCardPrompt(${idx}, this.value)"
                   class="flex-1 bg-black/30 border border-white/[0.06] focus:border-cyan-400/50 rounded px-2.5 py-0.5 text-[11px] text-slate-300 italic focus:outline-none transition-all"
-                  placeholder="Фраза диктора"
+                  placeholder="${isEn ? 'Narrator cue' : 'Фраза диктора'}"
                 />
               </div>
             </div>
@@ -3504,7 +3647,7 @@
               <div class="flex items-center justify-between text-xs text-slate-300">
                 <div class="flex items-center space-x-1.5">
                   <i data-lucide="image" class="w-3.5 h-3.5 text-cyan-400"></i>
-                  <span class="font-medium text-[11px]">Изображение / визуальная подсказка</span>
+                  <span class="font-medium text-[11px]">${isEn ? 'Image / Visual Clue' : 'Изображение / визуальная подсказка'}</span>
                 </div>
                 <span class="text-[10px] text-slate-400 font-mono">1080x1080</span>
               </div>
@@ -3521,7 +3664,7 @@
                   />
                   <div id="visual-img-thumb-placeholder-${idx}" class="${hasImg ? 'hidden' : ''} text-slate-500 text-[10px] text-center p-1">
                     <i data-lucide="image-off" class="w-4 h-4 mx-auto mb-0.5"></i>
-                    <span>Нет фото</span>
+                    <span>${isEn ? 'No photo' : 'Нет фото'}</span>
                   </div>
                 </div>
 
@@ -3533,7 +3676,7 @@
                       id="visual-img-query-input-${idx}"
                       value="${(it.image_query || '').replace(/"/g, '&quot;')}" 
                       oninput="syncVisualCardQuery(${idx}, this.value)"
-                      placeholder="Поисковый запрос картинки (например, ${it.answer_text.replace(/"/g, '&quot;')})" 
+                      placeholder="${isEn ? 'Image search query (e.g. ' + it.answer_text.replace(/"/g, '&quot;') + ')' : 'Поисковый запрос картинки (например, ' + it.answer_text.replace(/"/g, '&quot;') + ')'}" 
                       class="flex-1 bg-black/60 border border-white/[0.1] focus:border-cyan-400 rounded-lg px-2.5 py-1 text-xs text-slate-200 focus:outline-none transition-all truncate"
                     />
                     <button 
@@ -3541,10 +3684,10 @@
                       id="visual-img-search-btn-${idx}"
                       onclick="searchVisualImageOptions(${idx})" 
                       class="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-medium transition-all flex items-center space-x-1 shrink-0 cursor-pointer"
-                      title="Найти альтернативные изображения"
+                      title="${isEn ? 'Find alternative images' : 'Найти альтернативные изображения'}"
                     >
                       <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                      <span>Другое фото</span>
+                      <span>${isEn ? 'Search other' : 'Другое фото'}</span>
                     </button>
                   </div>
                   <input 
@@ -3559,7 +3702,7 @@
                       id="visual-img-url-edit-${idx}"
                       value="${(it.image_url || '').replace(/"/g, '&quot;')}" 
                       oninput="syncVisualCardUrl(${idx}, this.value)"
-                      placeholder="Или вставьте прямой URL картинки..."
+                      placeholder="${isEn ? 'Or paste direct image URL...' : 'Или вставьте прямой URL картинки...'}"
                       class="flex-1 bg-transparent border-0 border-b border-white/[0.06] focus:border-cyan-400/50 px-1 py-0.5 text-[10px] text-slate-400 focus:text-slate-200 focus:outline-none transition-all font-mono truncate"
                     />
                   </div>
@@ -3569,8 +3712,8 @@
               <!-- Candidate gallery drawer -->
               <div id="visual-candidates-strip-${idx}" class="hidden space-y-1.5 pt-1.5 border-t border-white/[0.04]">
                 <div class="flex items-center justify-between">
-                  <span class="text-[10px] text-cyan-400 font-medium">Выберите вариант из найденных (кликните):</span>
-                  <button type="button" onclick="document.getElementById('visual-candidates-strip-${idx}').classList.add('hidden')" class="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer">✕ Закрыть</button>
+                  <span class="text-[10px] text-cyan-400 font-medium">${isEn ? 'Select an image candidate (click):' : 'Выберите вариант из найденных (кликните):'}</span>
+                  <button type="button" onclick="document.getElementById('visual-candidates-strip-${idx}').classList.add('hidden')" class="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer">${isEn ? '✕ Close' : '✕ Закрыть'}</button>
                 </div>
                 <div id="visual-candidates-list-${idx}" class="flex gap-2 overflow-x-auto pb-1 max-w-full"></div>
               </div>
@@ -3738,7 +3881,9 @@
         }
       }
       if (btn) {
-        btn.innerHTML = `<i data-lucide="${it.is_approved ? 'check-circle' : 'circle'}" class="w-3.5 h-3.5"></i><span>${it.is_approved ? 'Одобрено' : 'Одобрить'}</span>`;
+        const isEn = (document.getElementById('language-select')?.value || 'ru') === 'en';
+        const labelText = it.is_approved ? (isEn ? 'Approved' : 'Одобрено') : (isEn ? 'Approve' : 'Одобрить');
+        btn.innerHTML = `<i data-lucide="${it.is_approved ? 'check-circle' : 'circle'}" class="w-3.5 h-3.5"></i><span>${labelText}</span>`;
         if (it.is_approved) {
           btn.className = "text-[11px] px-2.5 py-1 rounded-lg transition-all flex items-center space-x-1 font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-pointer";
         } else {
@@ -3787,6 +3932,7 @@
       if (vHookInput && vHookInput.value.trim()) {
         currentVisualDataset.hook_tts = vHookInput.value.trim();
       }
+      currentVisualDataset.language = document.getElementById('language-select')?.value || 'ru';
 
       const bgVideoSelect = document.getElementById('background-select');
       const bgVideo = bgVideoSelect ? bgVideoSelect.value : null;

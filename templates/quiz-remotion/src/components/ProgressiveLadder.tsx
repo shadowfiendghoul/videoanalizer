@@ -6,6 +6,7 @@ interface ProgressiveLadderProps {
   items: VisualQuizItem[];
   timingSlots: VisualQuizTimingSlot[];
   hookEndFrame: number;
+  language?: string;
 }
 
 const TIER_COLORS = {
@@ -19,6 +20,7 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
   items,
   timingSlots,
   hookEndFrame,
+  language = "ru",
 }) => {
   const frame = useCurrentFrame();
 
@@ -26,12 +28,14 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
     return null;
   }
 
+  const isEn = language.toLowerCase().startsWith("en");
+
   // Groups matching reference video
   const groups = [
-    { title: "Лёгкий", color: TIER_COLORS.easy, ids: [1, 2, 3] },
-    { title: "Средний", color: TIER_COLORS.medium, ids: [4, 5, 6] },
-    { title: "Сложный", color: TIER_COLORS.hard, ids: [7, 8, 9] },
-    { title: "Мастер", color: TIER_COLORS.master, ids: [10] },
+    { title: isEn ? "Easy" : "Лёгкий", color: TIER_COLORS.easy, ids: [1, 2, 3] },
+    { title: isEn ? "Medium" : "Средний", color: TIER_COLORS.medium, ids: [4, 5, 6] },
+    { title: isEn ? "Hard" : "Сложный", color: TIER_COLORS.hard, ids: [7, 8, 9] },
+    { title: isEn ? "Master" : "Мастер", color: TIER_COLORS.master, ids: [10] },
   ];
 
   return (
@@ -75,7 +79,7 @@ export const ProgressiveLadder: React.FC<ProgressiveLadderProps> = ({
               let label = `${id}.`;
               if (isRevealed) {
                 if (id === 10) {
-                  label = `${id}. Пиши в коммы`;
+                  label = isEn ? `${id}. Write in comments` : `${id}. Пиши в коммы`;
                 } else if (item?.answer_text) {
                   label = `${id}. ${item.answer_text}`;
                 }

@@ -894,6 +894,7 @@ class VisualQuizDataset(BaseModel):
 
     mode: Literal["visual_image_quiz"] = Field(default="visual_image_quiz", description="Mode identifier")
     theme: str = Field(..., min_length=2, max_length=100, description="Quiz theme")
+    language: str = Field(default="ru", pattern=r"^(ru|en)$", description="Language code (ru or en)")
     hook_tts: str = Field(..., min_length=5, max_length=250, description="Intro hook narration")
     rapid_flip_duration_ms: int = Field(default=120, ge=80, le=200, description="Intro flip speed in ms")
     timer_duration_sec: float = Field(default=2.0, ge=1.5, le=3.0, description="Question timer duration")

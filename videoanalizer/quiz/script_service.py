@@ -244,6 +244,20 @@ RANDOM_VISUAL_QUIZ_THEMES = [
     "Культовые кроссовки в истории сникер-культуры",
 ]
 
+RANDOM_VISUAL_QUIZ_THEMES_EN = [
+    "World's Most Iconic Brand Logos",
+    "Supercars and Legendary Sports Cars",
+    "World Flags and Famous Emblems",
+    "Iconic Video Game Weapons and Items",
+    "Rare Dog Breeds and Exotic Animals",
+    "World Architectural Landmarks and Wonders",
+    "Legendary Spaceships and Sci-Fi Tech",
+    "Classic 90s and 2000s Retro Game Heroes",
+    "Premier League and World Football Badges",
+    "Iconic Marvel and DC Superhero Emblems",
+    "Legendary Sneakers in Streetwear History",
+]
+
 VISUAL_QUIZ_SYSTEM_PROMPT = """Ты — креативный сценарист вирусных вертикальных викторин в формате «Visual Image Quiz» (Shorts, TikTok, Reels).
 Зритель смотрит на быстро сменяющиеся картинки, а затем последовательно угадывает 10 предметов по фото/логотипам с нарастающей сложностью.
 
@@ -435,26 +449,45 @@ class ScriptService:
         temperature: float | None = None,
     ) -> VisualTopicSuggestion:
         """Suggest a viral visual quiz topic with catchy rapid-flip hook using Gemini."""
-        prompt_lines = [
-            f"Язык: {language}.",
-            "Придумай 1 вирусную тему для визуальной викторины с карточками-картинками и флип-хуком.",
-        ]
-        if category_hint and category_hint.strip():
-            prompt_lines.append(f"Пожелание/направление от пользователя: «{category_hint.strip()}».")
-        else:
-            angles = [
-                "Логотипы культовых брендов и тайные детали",
-                "Суперкары и спорткары по оптике/силуэту",
-                "Угадай популярный фильм по одному кадру",
-                "Персонажи аниме по силуэтам или глазам",
-                "Флаги государств мира с подвохом",
-                "Известные мировые достопримечательности",
-                "Культовые видеоигры 2000-х по скриншоту",
-                "Породы собак и редкие кошачьи",
-                "Символы супергероев Marvel и DC",
-                "Культовые кроссовки в истории сникер-культуры",
+        is_en = (language or "ru").lower().startswith("en")
+        if is_en:
+            prompt_lines = [
+                "Language: English (en).",
+                "Invent 1 viral visual quiz topic with image cards and an engaging rapid-flip hook strictly in English.",
             ]
-            prompt_lines.append(f"Вектор для вдохновения: «{random.choice(angles)}».")
+            if category_hint and category_hint.strip():
+                prompt_lines.append(f"User category direction: '{category_hint.strip()}'.")
+            else:
+                angles = [
+                    "World iconic brand logos and secret details",
+                    "Supercars and hypercars by headlights or silhouette",
+                    "Famous movie landmarks by a single shot",
+                    "Popular video game icons and weapons",
+                    "World flags with optical illusions or traps",
+                    "Architectural wonders and famous monuments",
+                ]
+                prompt_lines.append(f"Inspiration angle: '{random.choice(angles)}'.")
+        else:
+            prompt_lines = [
+                f"Язык: {language}.",
+                "Придумай 1 вирусную тему для визуальной викторины с карточками-картинками и флип-хуком.",
+            ]
+            if category_hint and category_hint.strip():
+                prompt_lines.append(f"Пожелание/направление от пользователя: «{category_hint.strip()}».")
+            else:
+                angles = [
+                    "Логотипы культовых брендов и тайные детали",
+                    "Суперкары и спорткары по оптике/силуэту",
+                    "Угадай популярный фильм по одному кадру",
+                    "Персонажи аниме по силуэтам или глазам",
+                    "Флаги государств мира с подвохом",
+                    "Известные мировые достопримечательности",
+                    "Культовые видеоигры 2000-х по скриншоту",
+                    "Породы собак и редкие кошачьи",
+                    "Символы супергероев Marvel и DC",
+                    "Культовые кроссовки в истории сникер-культуры",
+                ]
+                prompt_lines.append(f"Вектор для вдохновения: «{random.choice(angles)}».")
 
         exclusions = self.exclusions_manager.load()
         if exclusions.get("topics"):
@@ -745,15 +778,33 @@ class ScriptService:
         temperature: float | None = None,
     ) -> VisualQuizDataset:
         """Generate a complete Visual Image Quiz dataset with 10 questions and optional image search."""
-        chosen_theme = theme.strip() if theme and theme.strip() else random.choice(RANDOM_VISUAL_QUIZ_THEMES)
+        is_en = (language or "ru").lower().startswith("en")
+        if not theme or not theme.strip():
+            chosen_theme = random.choice(RANDOM_VISUAL_QUIZ_THEMES_EN if is_en else RANDOM_VISUAL_QUIZ_THEMES)
+        else:
+            chosen_theme = theme.strip()
 
         exclusion_clause = self.exclusions_manager.get_prompt_exclusion_clause(max_items=80)
-        prompt_parts = [
-            f"Тема визуальной викторины: «{chosen_theme}».",
-            f"Язык озвучки и интерфейса: {language}.",
-            "Сгенерируй вирусный сценарий из 10 предметов с нарастающей сложностью (3 easy, 3 medium, 3 hard, 1 master-ловушка). "
-            "Для вопроса 1 диктор сразу задает вопрос без фразы 'Вопрос 1'. Для вопроса 10 ответ скрыт с призывом писать в комментарии.",
-        ]
+        if is_en:
+            prompt_parts = [
+                f"Visual Quiz Theme: '{chosen_theme}'.",
+                "Language of voiceover and UI: English (en).",
+                "Generate a viral script with exactly 10 items of increasing difficulty (3 easy, 3 medium, 3 hard, 1 master cliffhanger).",
+                "CRITICAL RULES FOR ENGLISH:",
+                "- All answer_text, prompt_tts, answer_tts, and hook_tts MUST BE IN NATURAL ENGLISH.",
+                "- For Question 1: narrator immediately asks the question without saying 'Question 1' (e.g. 'What brand is this?' or 'Can you guess this logo?').",
+                "- For Questions 2-9: narrator announces question number (e.g. 'Number two, what is this?', 'Question three, what's this brand?').",
+                "- For Question 10: set answer_text strictly to 'Write in comments', difficulty='master'. For answer_tts, the narrator intriguingly challenges the viewer to guess in comments (e.g. 'And this is the final level! Drop your guess in the comments!').",
+                "- In hook_tts: energetic 3.0s challenge in English (e.g. 'Can you guess all these logos? Only one percent can beat the final level. Let's go!'). Do NOT ask 'what is this' in the hook.",
+                "- For interstitials: after question 3 comment bait ('Hold the comment button and drop your favorite emoji!'), after question 6 share bait ('Share this video with a friend to test them!').",
+            ]
+        else:
+            prompt_parts = [
+                f"Тема визуальной викторины: «{chosen_theme}».",
+                f"Язык озвучки и интерфейса: {language}.",
+                "Сгенерируй вирусный сценарий из 10 предметов с нарастающей сложностью (3 easy, 3 medium, 3 hard, 1 master-ловушка). "
+                "Для вопроса 1 диктор сразу задает вопрос без фразы 'Вопрос 1'. Для вопроса 10 ответ скрыт с призывом писать в комментарии.",
+            ]
         if exclusion_clause:
             prompt_parts.append(exclusion_clause)
 
@@ -769,27 +820,40 @@ class ScriptService:
         # Force structural integrity
         dataset.theme = chosen_theme
         dataset.mode = "visual_image_quiz"
+        dataset.language = "en" if is_en else "ru"
 
-        # Sanitize hook_tts to ensure narrator never asks "Что это?" in intro hook
+        # Sanitize hook_tts to ensure narrator never asks "Что это?" / "What is this?" in intro hook
         if dataset.hook_tts:
             cleaned_hook = dataset.hook_tts
-            cleaned_hook = re.sub(r'[, -]*\b(погнали[, -]*)?что это(\s+за\s+[^.!?]+)?\??', '', cleaned_hook, flags=re.IGNORECASE).strip()
-            if not cleaned_hook:
-                cleaned_hook = f"Угадай все {chosen_theme}! На десятый ответят только знатоки. Погнали!"
-            elif not cleaned_hook.endswith(('.', '!', '?')):
-                cleaned_hook += '!'
+            if is_en:
+                cleaned_hook = re.sub(r'[, -]*\b(let\'?s go[, -]*)?what is (this|that|it)(\s+brand)?\??', '', cleaned_hook, flags=re.IGNORECASE).strip()
+                if not cleaned_hook:
+                    cleaned_hook = f"Can you guess all these {chosen_theme}? Only true experts beat level ten. Let's go!"
+                elif not cleaned_hook.endswith(('.', '!', '?')):
+                    cleaned_hook += '!'
+            else:
+                cleaned_hook = re.sub(r'[, -]*\b(погнали[, -]*)?что это(\s+за\s+[^.!?]+)?\??', '', cleaned_hook, flags=re.IGNORECASE).strip()
+                if not cleaned_hook:
+                    cleaned_hook = f"Угадай все {chosen_theme}! На десятый ответят только знатоки. Погнали!"
+                elif not cleaned_hook.endswith(('.', '!', '?')):
+                    cleaned_hook += '!'
             dataset.hook_tts = cleaned_hook
 
-        # Sanitize question 1 to ensure no "Вопрос номер один" prefix
+        # Sanitize question 1 to ensure no "Question 1" / "Вопрос номер один" prefix
         if dataset.items:
             q1_prompt = dataset.items[0].prompt_tts
-            for prefix in ("Вопрос номер один,", "Вопрос номер 1,", "Вопрос 1,", "Вопрос один,"):
-                if q1_prompt.startswith(prefix):
+            prefixes = (
+                ("Question number one,", "Question number 1,", "Question 1,", "Question one,")
+                if is_en
+                else ("Вопрос номер один,", "Вопрос номер 1,", "Вопрос 1,", "Вопрос один,")
+            )
+            for prefix in prefixes:
+                if q1_prompt.lower().startswith(prefix.lower()):
                     dataset.items[0].prompt_tts = q1_prompt[len(prefix):].strip()
 
         # Sanitize question 10 cliffhanger
         if len(dataset.items) >= 10:
-            dataset.items[9].answer_text = "Пиши в коммы"
+            dataset.items[9].answer_text = "Write in comments" if is_en else "Пиши в коммы"
             dataset.items[9].difficulty = VisualDifficulty.MASTER
 
         # Search candidate images if requested
@@ -797,10 +861,11 @@ class ScriptService:
             await self._resolve_visual_quiz_images(dataset)
 
         # Record newly generated items and theme to exclusions file to prevent future repetition
+        cliff_labels = {"Пиши в коммы", "Write in comments"}
         new_items = [
             it.answer_text
             for it in dataset.items
-            if it.answer_text and it.answer_text != "Пиши в коммы"
+            if it.answer_text and it.answer_text not in cliff_labels
         ]
         self.exclusions_manager.add_exclusions(topic=chosen_theme, items=new_items)
 

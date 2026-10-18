@@ -99,6 +99,7 @@ export const VisualImageQuizComp: React.FC<VisualQuizRenderProps> = ({
         items={dataset.items}
         timingSlots={timing_slots}
         hookEndFrame={hook_end_frame}
+        language={dataset.language || "ru"}
       />
 
       {/* Intro Hook: Rapid Center Flip (Centered huge logo flash from 0.0s to 3.2s) */}
