@@ -46,11 +46,11 @@ if exist ".venv\Scripts\python.exe" (
     set "PY_RUN=python"
 )
 
-:: Verify and auto-install newly required packages (faster-whisper, hf_xet) if missing
+:: Verify and auto-install newly required packages if missing
 !PY_RUN! -c "import faster_whisper, hf_xet" >nul 2>&1
 if !errorlevel! neq 0 (
-    echo [INFO] Updating Python dependencies (faster-whisper, hf_xet)...
-    !PY_RUN! -m pip install -e . >nul 2>&1
+    echo [INFO] Updating Python dependencies: faster-whisper, ctranslate2, hf_xet...
+    !PY_RUN! -m pip install faster-whisper ctranslate2 hf_xet
 )
 
 :: Ensure Remotion template dependencies are installed
