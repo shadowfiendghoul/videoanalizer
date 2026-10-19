@@ -820,7 +820,7 @@ class ScriptService:
         dataset.mode = "visual_image_quiz"
         dataset.language = "en" if is_en else "ru"
         dataset.interstitials = []
-        dataset.timer_duration_sec = 1.0
+        dataset.timer_duration_sec = 1.75
 
         # Sanitize hook_tts: forbid "What is this?" and enforce strict 5-7 words budget for <= 3.0s intro
         if dataset.hook_tts:
