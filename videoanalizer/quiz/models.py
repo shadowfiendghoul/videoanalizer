@@ -885,7 +885,7 @@ class VisualQuizInterstitial(BaseModel):
     after_question: int = Field(..., ge=1, le=9, description="Question number after which interstitial displays")
     type: VisualQuizInterstitialType = Field(..., description="Type of bait activity")
     tts_text: str = Field(..., min_length=3, max_length=140, description="Voice call to action")
-    duration_sec: float = Field(default=2.0, ge=1.0, le=4.0, description="Duration in seconds")
+    duration_sec: float = Field(default=1.5, ge=1.0, le=4.0, description="Duration in seconds")
 
 
 class VisualQuizDataset(BaseModel):
@@ -898,7 +898,7 @@ class VisualQuizDataset(BaseModel):
     language: str = Field(default="ru", pattern=r"^(ru|en)$", description="Language code (ru or en)")
     hook_tts: str = Field(..., min_length=5, max_length=250, description="Intro hook narration")
     rapid_flip_duration_ms: int = Field(default=120, ge=80, le=200, description="Intro flip speed in ms")
-    timer_duration_sec: float = Field(default=2.0, ge=1.5, le=3.0, description="Question timer duration")
+    timer_duration_sec: float = Field(default=1.5, ge=1.0, le=3.0, description="Question timer duration")
     items: list[VisualQuizItem] = Field(..., min_length=10, max_length=10, description="Exactly 10 questions")
     interstitials: list[VisualQuizInterstitial] = Field(default_factory=list, description="Engagement baits")
 

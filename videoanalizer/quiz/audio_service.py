@@ -898,7 +898,7 @@ class AudioService:
         current_frame = hook_end_frame
 
         # Prepare authentic clock ticking sound for the countdowns
-        timer_dur_sec = max(1.0, float(dataset.timer_duration_sec or 2.0))
+        timer_dur_sec = max(1.0, float(dataset.timer_duration_sec or 1.5))
         timer_countdown_path = workspace.get_audio_path("timer_tick_countdown.wav")
         tick_src = self.config.sfx_dir / "timer_tick.mp3"
         if not tick_src.exists():
@@ -957,14 +957,14 @@ class AudioService:
             start_frame = current_frame
             p_frames = max(0, int(p_dur_ms * fps / 1000)) if item.prompt_tts and item.prompt_tts.strip() else 0
 
-            # Timer starts strictly after prompt audio finishes (plus 6 frames breathing room)
-            timer_start_frame = start_frame + p_frames + (6 if p_frames > 0 else 0)
-            timer_duration_frames = int(dataset.timer_duration_sec * fps)
+            # Timer starts strictly after prompt audio finishes (plus 4 frames breathing room)
+            timer_start_frame = start_frame + p_frames + (4 if p_frames > 0 else 0)
+            timer_duration_frames = int(timer_dur_sec * fps)
             reveal_frame = timer_start_frame + timer_duration_frames
             answer_audio_start_frame = reveal_frame
 
             ans_frames = max(1, int(a_dur_ms * fps / 1000))
-            end_frame = reveal_frame + ans_frames + 16
+            end_frame = reveal_frame + ans_frames + 8
 
             slot = VisualQuizTimingSlot(
                 question_id=q_id,
@@ -1012,7 +1012,7 @@ class AudioService:
                     "end_frame": e_f,
                 })
 
-            current_frame = end_frame + 6
+            current_frame = end_frame + 2
 
             # Check interstitial
             if q_id in interstitials_map:
@@ -1036,10 +1036,16 @@ class AudioService:
                         "start_frame": s_f,
                         "end_frame": e_f,
                     })
-                inter_frames = max(int(inter.duration_sec * fps), int(i_dur_ms * fps / 1000) + 12)
+                inter_frames = max(int(inter.duration_sec * fps), int(i_dur_ms * fps / 1000) + 4)
                 current_frame += inter_frames
 
         total_duration_frames = current_frame
+        logger.info(
+            "Visual quiz total duration: %.2fs (%d frames at %dfps)",
+            total_duration_frames / fps,
+            total_duration_frames,
+            fps,
+        )
         master_audio_path = workspace.get_audio_path("visual_quiz_master_mix.wav")
 
         await self._render_audio_events_mix(audio_events, master_audio_path, total_duration_frames / fps)

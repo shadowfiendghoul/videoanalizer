@@ -18,7 +18,7 @@ interface KaraokeCaptionsProps {
 
 export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
   words,
-  bottomOffset = 460,
+  bottomOffset = 380,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -47,8 +47,8 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
     return null;
   }
 
-  // Anticipation lead time (200ms) to cancel Edge-TTS acoustic onset lag and match visual reading
-  const SUBTITLE_LEAD_MS = 200;
+  // Anticipation lead time (80ms) to cancel Edge-TTS acoustic onset lag without running ahead of speech
+  const SUBTITLE_LEAD_MS = 80;
   const syncMs = (frame / fps) * 1000 + SUBTITLE_LEAD_MS;
 
   // Find active word: latest word whose start_ms <= syncMs
