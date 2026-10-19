@@ -955,16 +955,25 @@ class AudioService:
             )
 
             start_frame = current_frame
-            p_frames = max(0, int(p_dur_ms * fps / 1000)) if item.prompt_tts and item.prompt_tts.strip() else 0
+            # Calculate prompt duration strictly from spoken words to eliminate ~800ms Edge-TTS silence padding
+            p_speech_end_ms = p_words[-1].end_ms if p_words else p_dur_ms
+            p_frames = (
+                max(0, int((p_speech_end_ms + 80) * fps / 1000))
+                if item.prompt_tts and item.prompt_tts.strip()
+                else 0
+            )
 
-            # Timer starts strictly after prompt audio finishes (plus 4 frames breathing room)
-            timer_start_frame = start_frame + p_frames + (4 if p_frames > 0 else 0)
+            # Timer starts strictly after prompt audio finishes (plus 2 frames breathing room)
+            timer_start_frame = start_frame + p_frames + (2 if p_frames > 0 else 0)
             timer_duration_frames = int(timer_dur_sec * fps)
             reveal_frame = timer_start_frame + timer_duration_frames
             answer_audio_start_frame = reveal_frame
 
-            ans_frames = max(1, int(a_dur_ms * fps / 1000))
-            end_frame = reveal_frame + ans_frames + 8
+            # Answer ends promptly after the last word is spoken (120ms natural phonetic release)
+            # This completely cuts out the ~1.0s of dead silence trailing padding from Edge-TTS
+            a_speech_end_ms = a_words[-1].end_ms if a_words else a_dur_ms
+            ans_frames = max(1, int((a_speech_end_ms + 120) * fps / 1000))
+            end_frame = reveal_frame + ans_frames
 
             slot = VisualQuizTimingSlot(
                 question_id=q_id,
@@ -1036,7 +1045,8 @@ class AudioService:
                         "start_frame": s_f,
                         "end_frame": e_f,
                     })
-                inter_frames = max(int(inter.duration_sec * fps), int(i_dur_ms * fps / 1000) + 4)
+                i_speech_end_ms = i_words[-1].end_ms if i_words else i_dur_ms
+                inter_frames = int((i_speech_end_ms + 120) * fps / 1000)
                 current_frame += inter_frames
 
         total_duration_frames = current_frame
