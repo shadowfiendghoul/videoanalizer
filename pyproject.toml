@@ -42,6 +42,7 @@ dependencies = [
     "huggingface_hub>=0.23.0",
     "faster-whisper>=1.2.0",
     "ctranslate2>=4.8.0",
+    "hf_xet>=1.0.0",
 ]
 
 [project.optional-dependencies]

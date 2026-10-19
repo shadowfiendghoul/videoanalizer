@@ -46,6 +46,13 @@ if exist ".venv\Scripts\python.exe" (
     set "PY_RUN=python"
 )
 
+:: Verify and auto-install newly required packages (faster-whisper, hf_xet) if missing
+!PY_RUN! -c "import faster_whisper, hf_xet" >nul 2>&1
+if !errorlevel! neq 0 (
+    echo [INFO] Updating Python dependencies (faster-whisper, hf_xet)...
+    !PY_RUN! -m pip install -e . >nul 2>&1
+)
+
 :: Ensure Remotion template dependencies are installed
 if exist "templates\quiz-remotion\package.json" (
     if not exist "templates\quiz-remotion\node_modules" (

@@ -52,6 +52,14 @@ def _get_whisper_model() -> Any:
     global _whisper_model
     if _whisper_model is None:
         try:
+            import os
+
+            # Suppress missing hf_xet storage warning from huggingface_hub if hf_xet is not installed
+            try:
+                import hf_xet  # noqa: F401
+            except ImportError:
+                os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+
             from faster_whisper import WhisperModel
 
             _whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8")
