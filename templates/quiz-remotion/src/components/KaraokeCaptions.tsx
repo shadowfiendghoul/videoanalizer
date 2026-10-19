@@ -47,8 +47,8 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
     return null;
   }
 
-  // Anticipation lead time (80ms) to cancel Edge-TTS acoustic onset lag without running ahead of speech
-  const SUBTITLE_LEAD_MS = 80;
+  // Anticipation lead time (140ms) - golden midpoint between 200ms (too early) and 80ms (lagging)
+  const SUBTITLE_LEAD_MS = 140;
   const syncMs = (frame / fps) * 1000 + SUBTITLE_LEAD_MS;
 
   // Find active word: latest word whose start_ms <= syncMs
