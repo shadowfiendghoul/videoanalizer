@@ -10,6 +10,7 @@ import subprocess
 import sys
 import wave
 from pathlib import Path
+from typing import Any
 
 import edge_tts
 
@@ -41,6 +42,82 @@ def ensure_latest_edge_tts() -> None:
         import edge_tts as _reloaded_edge_tts
 
         edge_tts = _reloaded_edge_tts
+
+
+_whisper_model: Any = None
+
+
+def _get_whisper_model() -> Any:
+    """Lazy load faster-whisper tiny model on CPU for acoustic alignment."""
+    global _whisper_model
+    if _whisper_model is None:
+        try:
+            from faster_whisper import WhisperModel
+
+            _whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8")
+            logger.info("Loaded faster-whisper tiny (int8 CPU) for acoustic subtitle alignment")
+        except Exception as err:
+            logger.warning("Failed to initialize faster-whisper model: %s", err)
+            _whisper_model = False
+    return _whisper_model if _whisper_model is not False else None
+
+
+def extract_acoustic_word_cues(
+    audio_path: Path,
+    expected_text: str = "",
+    language: str | None = None,
+) -> list[WordCue] | None:
+    """Extract acoustic word-level timestamps using faster-whisper.
+
+    Bypasses PyAV file reader incompatibility by reading raw float32 audio via soundfile
+    and resampling to 16kHz before passing directly to faster-whisper.
+    Returns WordCue list with precise speech onset/offset, or None on failure.
+    """
+    model = _get_whisper_model()
+    if model is None or not audio_path.exists() or audio_path.stat().st_size == 0:
+        return None
+
+    try:
+        import librosa
+        import soundfile as sf
+
+        data, sr = sf.read(str(audio_path), dtype="float32")
+        if data.ndim > 1:
+            data = data.mean(axis=1)
+        if sr != 16000:
+            data = librosa.resample(data, orig_sr=sr, target_sr=16000)
+
+        kwargs: dict[str, Any] = {
+            "word_timestamps": True,
+            "beam_size": 1,
+            "temperature": 0.0,
+        }
+        clean_prompt = expected_text.strip() if expected_text else ""
+        if clean_prompt:
+            kwargs["initial_prompt"] = clean_prompt
+        if language:
+            kwargs["language"] = language
+
+        segments, _ = model.transcribe(data, **kwargs)
+        word_cues: list[WordCue] = []
+        for segment in segments:
+            if segment.words:
+                for w in segment.words:
+                    word_str = (w.word or "").strip()
+                    if word_str:
+                        word_cues.append(
+                            WordCue(
+                                word=word_str,
+                                start_ms=int(w.start * 1000),
+                                end_ms=int(w.end * 1000),
+                            )
+                        )
+        if word_cues:
+            return word_cues
+    except Exception as err:
+        logger.warning("Whisper acoustic alignment failed for %s: %s", audio_path, err)
+    return None
+
 
 
 def probe_audio_duration_ms(audio_path: Path) -> int:
@@ -352,6 +429,9 @@ class AudioService:
             cues = [
                 WordCue(word=w.word, start_ms=w.start_ms, end_ms=w.end_ms) for w in res.words
             ]
+            whisper_cues = extract_acoustic_word_cues(output_path, expected_text=text)
+            if whisper_cues:
+                cues = whisper_cues
             return res.duration_ms, cues
 
         if "sapi" in voice.lower() or "irina" in voice.lower():
@@ -513,7 +593,14 @@ class AudioService:
                 logger.warning("Failed to apply voice audio filter (%s): %s", af_filter, flt_err)
 
         duration_ms = probe_audio_duration_ms(output_path)
-        if not words:
+
+        whisper_lang = "ru" if "ru" in voice.lower() else ("en" if "en" in voice.lower() else None)
+        whisper_words = extract_acoustic_word_cues(
+            output_path, expected_text=text, language=whisper_lang
+        )
+        if whisper_words:
+            words = whisper_words
+        elif not words:
             # Fallback high-precision cues using SentenceBoundary and character length weights
             tokens = text.split()
             if tokens and duration_ms > 0:
@@ -918,10 +1005,8 @@ class AudioService:
 
         cliff_sfx = self.config.sfx_dir / "heartbeat_panic.wav"
 
-        # Interstitial lookup by question number
-        interstitials_map = {
-            it.after_question: it for it in (dataset.interstitials or [])
-        }
+        # Interstitials disabled for visual quiz to maintain tight viral pacing (< 50s)
+        interstitials_map: dict[int, Any] = {}
 
         insert_idx = max(1, len(dataset.items) // 2)
         banner_start_frame: int | None = None

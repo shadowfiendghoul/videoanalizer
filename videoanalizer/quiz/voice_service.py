@@ -313,6 +313,12 @@ class VoiceService:
                 await asyncio.sleep(0.35 * (attempt + 1))
 
         if not audio_bytes:
+            if not cfg.allow_fallback:
+                raise RuntimeError(
+                    f"Edge-TTS synthesis failed for '{clean_text}': {last_err}. "
+                    "Mid-session degradation to offline robotic voice is disabled "
+                    "to guarantee voice consistency."
+                )
             logger.warning(
                 "Edge-TTS returned no audio data for '%s' (%s). Falling back to offline fallback.",
                 clean_text,

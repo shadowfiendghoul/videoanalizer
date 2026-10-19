@@ -290,10 +290,6 @@ VISUAL_QUIZ_SYSTEM_PROMPT = """Ты — креативный сценарист 
    - Примеры EN (5-7 words): "Can you guess all these logos? Let's go!", "Name all ten brands! Ready?".
    - ВНИМАНИЕ: В хуке СТРОГО ЗАПРЕЩЕНО говорить вопросы вроде «Что это?», «Что это за бренд?», «Погнали, что это?» или спрашивать название предметов! Хук ТОЛЬКО бросает вызов и объявляет тему. Вопрос «Что это?» задается только в первом раунде игры.
 
-5. ВСТАВКИ ('interstitials'):
-   - после вопроса 3: type="comment_bait", tts_text="Зажми кнопку комментариев и отправь свой смайлик!"
-   - после вопроса 6: type="share_bait", tts_text="Перешли это видео другу, который шарит так же!"
-
 Верни строго валидный JSON по схеме VisualQuizDataset."""
 
 
@@ -798,7 +794,6 @@ class ScriptService:
                 "- For Questions 2-9: narrator announces question number (e.g. 'Number two, what is this?', 'Question three, what's this brand?').",
                 "- For Question 10: set answer_text strictly to 'Write in comments', difficulty='master'. For answer_tts, the narrator intriguingly challenges the viewer to guess in comments (e.g. 'And this is the final level! Drop your guess in the comments!').",
                 "- In hook_tts: energetic short challenge in English STRICTLY 5-7 words, under 3.0 seconds (e.g. 'Can you guess all these logos? Let's go!' or 'Name all ten brands! Ready?'). Do NOT exceed 7 words. Do NOT ask 'what is this' in the hook.",
-                "- For interstitials: after question 3 comment bait ('Hold the comment button and drop your favorite emoji!'), after question 6 share bait ('Share this video with a friend to test them!').",
             ]
         else:
             prompt_parts = [
@@ -824,6 +819,7 @@ class ScriptService:
         dataset.theme = chosen_theme
         dataset.mode = "visual_image_quiz"
         dataset.language = "en" if is_en else "ru"
+        dataset.interstitials = []
 
         # Sanitize hook_tts: forbid "What is this?" and enforce strict 5-7 words budget for <= 3.0s intro
         if dataset.hook_tts:

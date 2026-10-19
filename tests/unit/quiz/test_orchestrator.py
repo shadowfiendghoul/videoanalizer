@@ -626,7 +626,9 @@ def test_orchestrator_chains_random_backgrounds_when_short(tmp_path: Path) -> No
         patch.object(orchestrator, "_probe_video_duration_sec", side_effect=fake_probe),
         patch("subprocess.run", side_effect=fake_subprocess_run),
     ):
-        name = orchestrator._prepare_background(bg1, target_bg, duration_sec=60.0)
+        name = orchestrator._prepare_background(
+            bg1, target_bg, duration_sec=60.0, background_mode="random_switch"
+        )
         assert name == "background.mp4"
         assert target_bg.exists()
         # Verify ffmpeg was invoked with concat
