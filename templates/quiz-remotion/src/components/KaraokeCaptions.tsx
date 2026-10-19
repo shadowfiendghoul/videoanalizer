@@ -47,8 +47,8 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
     return null;
   }
 
-  // Acoustic alignment from Whisper timestamps (0ms lead time needed for true acoustic onset)
-  const SUBTITLE_LEAD_MS = 0;
+  // Acoustic alignment from Whisper timestamps with 25ms perceptual display lead (1.5 frames at 60fps)
+  const SUBTITLE_LEAD_MS = 25;
   const syncMs = (frame / fps) * 1000 + SUBTITLE_LEAD_MS;
 
   // Find active word: latest word whose start_ms <= syncMs

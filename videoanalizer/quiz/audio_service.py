@@ -984,8 +984,8 @@ class AudioService:
 
         current_frame = hook_end_frame
 
-        # Prepare authentic clock ticking sound for the countdowns
-        timer_dur_sec = max(1.0, float(dataset.timer_duration_sec or 1.5))
+        # Prepare authentic clock ticking sound for the countdowns (snappy 1.0s timer for viral < 50s duration)
+        timer_dur_sec = min(1.2, max(0.8, float(dataset.timer_duration_sec or 1.0)))
         timer_countdown_path = workspace.get_audio_path("timer_tick_countdown.wav")
         tick_src = self.config.sfx_dir / "timer_tick.mp3"
         if not tick_src.exists():

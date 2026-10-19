@@ -898,7 +898,7 @@ class VisualQuizDataset(BaseModel):
     language: str = Field(default="ru", pattern=r"^(ru|en)$", description="Language code (ru or en)")
     hook_tts: str = Field(..., min_length=5, max_length=250, description="Intro hook narration")
     rapid_flip_duration_ms: int = Field(default=120, ge=80, le=200, description="Intro flip speed in ms")
-    timer_duration_sec: float = Field(default=1.5, ge=1.0, le=3.0, description="Question timer duration")
+    timer_duration_sec: float = Field(default=1.0, ge=0.8, le=3.0, description="Question timer duration")
     items: list[VisualQuizItem] = Field(..., min_length=10, max_length=10, description="Exactly 10 questions")
     interstitials: list[VisualQuizInterstitial] = Field(default_factory=list, description="Engagement baits")
 
