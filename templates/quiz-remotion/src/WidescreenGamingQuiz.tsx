@@ -230,16 +230,7 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
         />
       )}
 
-      {activeSlot?.slot_type === "splash" && (
-        <WidescreenRoundSplash
-          roundNumber={activeSlot.round_number || 1}
-          roundTitle={roundMap.get(activeSlot.round_number || 1)?.round_title || `ROUND ${activeSlot.round_number}`}
-          passRateStatistic={roundMap.get(activeSlot.round_number || 1)?.pass_rate_statistic || "90% PASS RATE"}
-          themeColor={roundMap.get(activeSlot.round_number || 1)?.badge_theme_color || "#00E5FF"}
-          relativeFrame={frame - activeSlot.start_frame}
-          durationFrames={activeSlot.duration_frames}
-        />
-      )}
+      {/* Round transitions are handled purely by the diagonal blade wipe below (no text splash screens) */}
 
       {activeSlot?.slot_type === "outro" && (
         <WidescreenOutro
@@ -326,28 +317,23 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
         })()
       )}
 
-      {/* 4. HIGH-OCTANE ESPORTS ROUND TRANSITIONS (Diagonal Blade Wipe) */}
+      {/* 4. HIGH-OCTANE ESPORTS ROUND TRANSITIONS (Diagonal Blade Wipe - Pure Visual, No Text) */}
       {(() => {
-        // A. If currently in a splash slot (entering or exiting splash)
+        // A. If in a splash slot: play the clean blade wipe for the transition
         if (activeSlot?.slot_type === "splash") {
           const relFrame = frame - activeSlot.start_frame;
           const dur = activeSlot.duration_frames;
-          if (relFrame < 24) {
-            return <WidescreenRoundTransition relativeFrame={relFrame} durationFrames={24} accentColor="#FFE033" />;
-          }
-          if (relFrame >= dur - 24) {
-            return <WidescreenRoundTransition relativeFrame={relFrame - (dur - 24)} durationFrames={24} accentColor="#F43F5E" />;
-          }
+          return <WidescreenRoundTransition relativeFrame={relFrame} durationFrames={Math.min(dur, 28)} accentColor="#FFE033" />;
         }
 
-        // B. When starting the first question of a new round (if no preceding splash)
+        // B. When starting the first question of a new round
         if (activeSlot?.slot_type === "question") {
           const relFrame = frame - activeSlot.start_frame;
           const currentIdx = timing_slots.findIndex((s) => s === activeSlot);
           const prevSlot = currentIdx > 0 ? timing_slots[currentIdx - 1] : null;
           const isNewRound = prevSlot?.round_number !== activeSlot.round_number && prevSlot?.slot_type !== "splash";
-          if (isNewRound && relFrame < 24) {
-            return <WidescreenRoundTransition relativeFrame={relFrame} durationFrames={24} accentColor="#FFE033" />;
+          if (isNewRound && relFrame < 28) {
+            return <WidescreenRoundTransition relativeFrame={relFrame} durationFrames={28} accentColor="#FFE033" />;
           }
         }
 
