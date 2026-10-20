@@ -1,0 +1,144 @@
+{
+  "dataset": {
+    "mode": "widescreen_gaming_quiz",
+    "title": "50 GAMING QUESTIONS CHALLENGE",
+    "language": "en",
+    "guessing_duration_sec": 6.0,
+    "reveal_hold_duration_sec": 3.0,
+    "bgm_track_path": null,
+    "bgm_ducking_volume": 0.18,
+    "bgm_base_volume": 0.3,
+    "ambient_background_video": "backgrounds/sky_clouds_16x9.mp4",
+    "intro": {
+      "hook_tts": "50 Gaming Questions. 5 Unique Rounds. Can you reach God Tier? Round one starts right now!",
+      "duration_sec": 4.0,
+      "challenge_title": "50 GAMING QUESTIONS CHALLENGE"
+    },
+    "outro": {
+      "duration_sec": 10.0,
+      "outro_tts": "Comment your final score below and subscribe for more!",
+      "call_to_action": "COMMENT YOUR SCORE & SUBSCRIBE!",
+      "score_tiers": [
+        {
+          "tier_name": "Noob",
+          "min_score": 0,
+          "max_score": 1,
+          "badge_color": "#94A3B8"
+        },
+        {
+          "tier_name": "Pro",
+          "min_score": 2,
+          "max_score": 2,
+          "badge_color": "#00F0FF"
+        }
+      ]
+    },
+    "rounds": [
+      {
+        "round_number": 1,
+        "round_title": "ROUND 01: GAME SCREENSHOTS",
+        "asset_mode": "screenshot",
+        "pass_rate_statistic": "94% OF PLAYERS PASS THIS ROUND",
+        "badge_theme_color": "#00F0FF",
+        "splash_duration_sec": 4.0,
+        "questions": [
+          {
+            "id": "341ae1455a70",
+            "item_index": 1,
+            "global_question_number": 1,
+            "prompt_text": "Guess the video game from screenshot",
+            "answer_text": "GRAND THEFT AUTO V",
+            "asset_url": null,
+            "asset_path": "images/test_gta.png",
+            "asset_search_query": "gta 5 gameplay 4k screenshot",
+            "apply_procedural_mask": true,
+            "is_approved": false,
+            "difficulty_tag": null,
+            "audio_cue_duration_sec": 4.0
+          },
+          {
+            "id": "33d497df2658",
+            "item_index": 2,
+            "global_question_number": 2,
+            "prompt_text": "Guess the video game from screenshot",
+            "answer_text": "CYBERPUNK 2077",
+            "asset_url": null,
+            "asset_path": "images/test_gta.png",
+            "asset_search_query": "cyberpunk 2077 night city gameplay 4k",
+            "apply_procedural_mask": true,
+            "is_approved": false,
+            "difficulty_tag": null,
+            "audio_cue_duration_sec": 4.0
+          }
+        ]
+      }
+    ],
+    "total_questions_count": 2
+  },
+  "fps": 60,
+  "width": 1920,
+  "height": 1080,
+  "total_duration_frames": 1920,
+  "timing_slots": [
+    {
+      "slot_type": "intro",
+      "round_number": null,
+      "question_global_number": null,
+      "start_frame": 0,
+      "duration_frames": 240,
+      "end_frame": 240,
+      "timer_start_frame": null,
+      "timer_duration_frames": null,
+      "reveal_frame": null,
+      "audio_cue_start_frame": null,
+      "audio_cue_end_frame": null
+    },
+    {
+      "slot_type": "question",
+      "round_number": 1,
+      "question_global_number": 1,
+      "start_frame": 240,
+      "duration_frames": 540,
+      "end_frame": 780,
+      "timer_start_frame": 240,
+      "timer_duration_frames": 360,
+      "reveal_frame": 600,
+      "audio_cue_start_frame": null,
+      "audio_cue_end_frame": null
+    },
+    {
+      "slot_type": "question",
+      "round_number": 1,
+      "question_global_number": 2,
+      "start_frame": 780,
+      "duration_frames": 540,
+      "end_frame": 1320,
+      "timer_start_frame": 780,
+      "timer_duration_frames": 360,
+      "reveal_frame": 1140,
+      "audio_cue_start_frame": null,
+      "audio_cue_end_frame": null
+    },
+    {
+      "slot_type": "outro",
+      "round_number": null,
+      "question_global_number": null,
+      "start_frame": 1320,
+      "duration_frames": 600,
+      "end_frame": 1920,
+      "timer_start_frame": null,
+      "timer_duration_frames": null,
+      "reveal_frame": null,
+      "audio_cue_start_frame": null,
+      "audio_cue_end_frame": null
+    }
+  ],
+  "audio_mix_path": null,
+  "bgm_audio_path": null,
+  "sfx_ticking_path": "sfx/timer_tick.mp3",
+  "sfx_chime_path": "sfx/reveal_ding.wav",
+  "sfx_stinger_path": "sfx/sub_bass_stinger.wav",
+  "intro_tts_audio_path": null,
+  "outro_tts_audio_path": null,
+  "ambient_background_path": "backgrounds/sky_clouds_16x9.mp4"
+}

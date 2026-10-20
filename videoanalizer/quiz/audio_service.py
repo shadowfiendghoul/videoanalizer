@@ -1252,9 +1252,9 @@ class AudioService:
         # Ensure default SFX exist
         sfx_dir = self.config.sfx_dir
         ensure_default_sfx(sfx_dir)
-        tick_path = sfx_dir / "timer_tick.wav"
+        tick_path = sfx_dir / "timer_tick.mp3"
         if not tick_path.exists():
-            tick_path = sfx_dir / "timer_tick.mp3"
+            tick_path = sfx_dir / "timer_tick.wav"
         ding_path = sfx_dir / "reveal_ding.wav"
         stinger_path = sfx_dir / "sub_bass_stinger.wav"
 

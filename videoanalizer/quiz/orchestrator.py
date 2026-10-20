@@ -1292,8 +1292,10 @@ class QuizOrchestrator:
             sfx_public_dir.mkdir(parents=True, exist_ok=True)
             self.audio_service.ensure_default_sfx(self.config.sfx_dir)
 
+            tick_file = "timer_tick.mp3" if (self.config.sfx_dir / "timer_tick.mp3").exists() else "timer_tick.wav"
+
             for sfx_name, target_name in [
-                ("timer_tick.wav", "timer_tick.wav"),
+                (tick_file, tick_file),
                 ("reveal_ding.wav", "reveal_ding.wav"),
                 ("sub_bass_stinger.wav", "sub_bass_stinger.wav"),
             ]:
@@ -1392,7 +1394,7 @@ class QuizOrchestrator:
                 timing_slots=timing_slots,
                 audio_mix_path="audio/widescreen_quiz_master_mix.wav",
                 bgm_audio_path=staged_music,
-                sfx_ticking_path="sfx/timer_tick.wav",
+                sfx_ticking_path=f"sfx/{tick_file}",
                 sfx_chime_path="sfx/reveal_ding.wav",
                 sfx_stinger_path="sfx/sub_bass_stinger.wav",
                 ambient_background_path=staged_bg_video,

@@ -186,7 +186,7 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
                       from={slot.timer_start_frame!}
                       durationInFrames={slot.timer_duration_frames!}
                     >
-                      <Audio src={resolveSrc(sfx_ticking_path)!} volume={0.65} />
+                      <Audio src={resolveSrc(sfx_ticking_path)!} volume={0.7} loop />
                     </Sequence>
                   )}
 
