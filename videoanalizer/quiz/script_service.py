@@ -29,6 +29,13 @@ from videoanalizer.quiz.models import (
     VisualQuizInterstitialType,
     VisualQuizItem,
     VisualTopicSuggestion,
+    AssetDisplayMode,
+    WidescreenIntroConfig,
+    WidescreenOutroConfig,
+    WidescreenQuizDataset,
+    WidescreenQuizItem,
+    WidescreenQuizRound,
+    WidescreenScoreTier,
 )
 from videoanalizer.quiz.exclusions_service import QuizExclusionsManager
 from videoanalizer.quiz.rate_limiter import get_gemini_rate_limiter
@@ -904,5 +911,227 @@ class ScriptService:
                 logger.warning("Failed to auto-search image for '%s': %s", item.image_query, err)
 
         await asyncio.gather(*[_fetch_item_image(it) for it in dataset.items])
+
+    async def generate_widescreen_quiz_dataset(
+        self,
+        topic_prompt: str = "Культовые видеоигры всех времен",
+        language: str = "ru",
+        num_rounds: int = 5,
+        questions_per_round: int = 10,
+    ) -> WidescreenQuizDataset:
+        """Generate a complete modular 16:9 widescreen multi-round trivia quiz dataset."""
+        logger.info(
+            "Generating WidescreenQuizDataset: prompt='%s', language=%s, rounds=%d, q_per_round=%d",
+            topic_prompt,
+            language,
+            num_rounds,
+            questions_per_round,
+        )
+
+        # 1. Check if Gemini client is configured
+        client = self._client
+        has_key = bool(self.config.effective_api_key.get_secret_value())
+        if client and has_key:
+            system_instruction = (
+                "Ты — главный сценарист и геймдизайнер масштабной 16:9 widescreen телевикторины "
+                "по видеоиграм в стиле 'Quiz Please' на 50 вопросов (5 уникальных раундов по 10 вопросов). "
+                "Раунды должны прогрессировать по сложности и механикам:\n"
+                "1. Скриншоты игр (asset_mode='screenshot') — массовые популярные игры.\n"
+                "2. Звуки оружия и предметов (asset_mode='audio_sfx') — культовые игровые звуки с поисковыми запросами.\n"
+                "3. Экраны гибели Game Over (asset_mode='game_over') — узнаваемые экраны смерти с замазанным названием.\n"
+                "4. Миникарты и радары (asset_mode='minimap') — узнаваемые радары из HUD.\n"
+                "5. Силуэты персонажей (asset_mode='silhouette') — культовые герои в виде силуэтов.\n"
+                "Ответ на каждый вопрос должен быть четким названием игры или предмета/персонажа капсом (1-4 слова). "
+                "Тайминг: guessing_duration_sec=6.0, reveal_hold_duration_sec=3.0."
+            )
+            user_prompt = f"Тема викторины: {topic_prompt}. Язык: {language}. Сгенерируй {num_rounds} раундов по {questions_per_round} вопросов."
+
+            try:
+                rate_limiter = get_gemini_rate_limiter()
+                async with rate_limiter:
+                    response = await asyncio.to_thread(
+                        client.models.generate_content,
+                        model=self.config.gemini_model,
+                        contents=user_prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            response_mime_type="application/json",
+                            response_schema=WidescreenQuizDataset,
+                            temperature=0.7,
+                        ),
+                    )
+                if response and response.text:
+                    parsed = json.loads(response.text)
+                    dataset = WidescreenQuizDataset.model_validate(parsed)
+                    logger.info("Successfully generated WidescreenQuizDataset via Gemini API.")
+                    return dataset
+            except Exception as err:
+                logger.warning("Gemini generation failed: %s. Using default gaming quiz template.", err)
+
+        # 2. Deterministic Fallback Dataset (5 Rounds x 10 Questions = 50 Questions Total)
+        logger.info("Building curated default 50-question 16:9 gaming quiz dataset.")
+        rounds: list[WidescreenQuizRound] = []
+
+        round_definitions = [
+            (
+                1,
+                "РАУНД 01: СКРИНШОТЫ ИГР",
+                AssetDisplayMode.SCREENSHOT,
+                "94% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
+                "#58A6FF",
+                [
+                    ("Grand Theft Auto V", "GTA V gameplay screenshot Los Santos"),
+                    ("Minecraft", "Minecraft survival house screenshot"),
+                    ("The Elder Scrolls V: Skyrim", "Skyrim Bleak Falls Barrow screenshot"),
+                    ("Fortnite", "Fortnite battle royale gameplay screenshot"),
+                    ("The Witcher 3: Wild Hunt", "Witcher 3 White Orchard landscape screenshot"),
+                    ("DOOM Eternal", "Doom Eternal slayer combat screenshot"),
+                    ("Portal 2", "Portal 2 aperture science test chamber"),
+                    ("Cyberpunk 2077", "Cyberpunk 2077 Night City neon street"),
+                    ("Half-Life 2", "Half-Life 2 City 17 trainstation screenshot"),
+                    ("Elden Ring", "Elden Ring Erdtree Limgrave panorama"),
+                ],
+            ),
+            (
+                2,
+                "РАУНД 02: ЗВУКИ ОРУЖИЯ И ПРЕДМЕТОВ",
+                AssetDisplayMode.AUDIO_SFX,
+                "78% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
+                "#00E5FF",
+                [
+                    ("AWP (CS:GO / CS2)", "CS AWP sniper rifle gunshot sound"),
+                    ("AK-47 (COUNTER-STRIKE)", "CS AK-47 assault rifle gunshot sound"),
+                    ("MINECRAFT (ЗВУК ЕДЫ)", "Minecraft eating apple food sound"),
+                    ("HALF-LIFE (АПТЕЧКА)", "Half-Life wall health station medkit sound"),
+                    ("DARK SOULS (YOU DIED)", "Dark Souls death sound you died chime"),
+                    ("GTA (WASTED)", "GTA San Andreas wasted sound effect"),
+                    ("PAC-MAN (ГИБЕЛЬ)", "Pacman retro arcade death sound"),
+                    ("SUPER MARIO (МОНЕТКА)", "Super Mario Bros coin pickup sound"),
+                    ("SONIC (КОЛЬЦО)", "Sonic the Hedgehog gold ring sound"),
+                    ("PORTAL (ПОРТАЛЬНАЯ ПУШКА)", "Portal gun shot blue orange sound"),
+                ],
+            ),
+            (
+                3,
+                "РАУНД 03: ЭКРАНЫ СМЕРТИ (GAME OVER)",
+                AssetDisplayMode.GAME_OVER,
+                "58% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
+                "#EF4444",
+                [
+                    ("DARK SOULS III", "Dark Souls 3 YOU DIED screen clean"),
+                    ("FALLOUT: NEW VEGAS", "Fallout New Vegas death camera spinning screen"),
+                    ("GRAND THEFT AUTO: SAN ANDREAS", "GTA San Andreas wasted screen black white"),
+                    ("CUPHEAD", "Cuphead YOU DIED run and gun progress card"),
+                    ("DEAD SPACE", "Dead Space Isaac Clarke death stomp screen"),
+                    ("SEKIRO: SHADOWS DIE TWICE", "Sekiro death kanji red symbol screen"),
+                    ("RESIDENT EVIL 4", "Resident Evil 4 YOU ARE DEAD blood text"),
+                    ("CALL OF DUTY: MODERN WARFARE 2", "Call of Duty death quote screen MW2"),
+                    ("UNDERTALE", "Undertale heart broken Game Over screen"),
+                    ("HOLLOW KNIGHT", "Hollow Knight shade death crack mask screen"),
+                ],
+            ),
+            (
+                4,
+                "РАУНД 04: МИНИКАРТЫ И РАДАРЫ",
+                AssetDisplayMode.MINIMAP,
+                "42% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
+                "#F59E0B",
+                [
+                    ("THE WITCHER 3", "Witcher 3 circular compass minimap radar hud"),
+                    ("GTA V", "GTA 5 rectangular gps minimap hud"),
+                    ("CYBERPUNK 2077", "Cyberpunk 2077 circular red scanner radar minimap"),
+                    ("ASSASSIN'S CREED II", "Assassins Creed 2 eagle round minimap hud"),
+                    ("RED DEAD REDEMPTION 2", "RDR2 circular old west compass minimap hud"),
+                    ("WORLD OF WARCRAFT", "World of Warcraft circular tracking minimap hud"),
+                    ("FALLOUT 4", "Fallout 4 bottom pip boy compass bar hud"),
+                    ("CS2 / CS:GO", "Counter Strike radar circle bomb defusal minimap"),
+                    ("GENSHIN IMPACT", "Genshin Impact circular elemental minimap hud"),
+                    ("FAR CRY 3", "Far Cry 3 circular island jungle radar hud"),
+                ],
+            ),
+            (
+                5,
+                "РАУНД 05: СИЛУЭТЫ ГЕРОЕВ (БОЖЕСТВЕННЫЙ РАНГ)",
+                AssetDisplayMode.SILHOUETTE,
+                "18% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
+                "#8B5CF6",
+                [
+                    ("КРАТОС (GOD OF WAR)", "Kratos Leviathan axe God of War silhouette character render"),
+                    ("МАСТЕР ЧИФ (HALO)", "Master Chief Spartan helmet Halo silhouette"),
+                    ("ГЕРАЛЬТ (ВЕДЬМАК)", "Geralt of Rivia dual swords Witcher silhouette"),
+                    ("ГОРДОН ФРИМЕН (HALF-LIFE)", "Gordon Freeman HEV suit crowbar silhouette"),
+                    ("АРТУР МОРГАН (RDR2)", "Arthur Morgan cowboy hat revolver silhouette"),
+                    ("ЛАРА КРОФТ (TOMB RAIDER)", "Lara Croft dual pistols Tomb Raider silhouette"),
+                    ("ДУМГАЙ (DOOM)", "Doom Slayer Praetor suit shotgun silhouette"),
+                    ("СОЛИД СНЕЙК (MGS)", "Solid Snake headband Metal Gear Solid silhouette"),
+                    ("СТИВ (MINECRAFT)", "Steve Minecraft diamond pickaxe cube silhouette"),
+                    ("СЭНС (UNDERTALE)", "Sans the skeleton blue eye Undertale silhouette"),
+                ],
+            ),
+        ]
+
+        global_q_counter = 1
+        for r_num, r_title, r_mode, r_pass, r_color, items_data in round_definitions[:num_rounds]:
+            q_items: list[WidescreenQuizItem] = []
+            for item_idx, (answer, query) in enumerate(items_data[:questions_per_round], start=1):
+                prompt = "Угадайте игру по скриншоту"
+                if r_mode == AssetDisplayMode.AUDIO_SFX:
+                    prompt = "Угадайте оружие или предмет по звуку"
+                elif r_mode == AssetDisplayMode.GAME_OVER:
+                    prompt = "Из какой игры этот экран смерти?"
+                elif r_mode == AssetDisplayMode.MINIMAP:
+                    prompt = "Назовите игру по миникарте"
+                elif r_mode == AssetDisplayMode.SILHOUETTE:
+                    prompt = "Назовите культового персонажа по силуэту"
+
+                q_items.append(
+                    WidescreenQuizItem(
+                        item_index=item_idx,
+                        global_question_number=global_q_counter,
+                        prompt_text=prompt,
+                        answer_text=answer.upper(),
+                        asset_search_query=query,
+                        apply_procedural_mask=True,
+                        audio_cue_duration_sec=4.0,
+                    )
+                )
+                global_q_counter += 1
+
+            rounds.append(
+                WidescreenQuizRound(
+                    round_number=r_num,
+                    round_title=r_title,
+                    asset_mode=r_mode,
+                    pass_rate_statistic=r_pass,
+                    badge_theme_color=r_color,
+                    splash_duration_sec=4.0,
+                    questions=q_items,
+                )
+            )
+
+        return WidescreenQuizDataset(
+            mode="widescreen_gaming_quiz",
+            title="50 GAMING QUESTIONS CHALLENGE",
+            language=language,
+            guessing_duration_sec=6.0,
+            reveal_hold_duration_sec=3.0,
+            intro=WidescreenIntroConfig(
+                hook_tts="50 игровых вопросов. 5 уникальных раундов. Сможешь ли ты дойти до ранга God Tier? Раунд один начинается прямо сейчас!",
+                duration_sec=8.0,
+                challenge_title="50 GAMING QUESTIONS CHALLENGE",
+            ),
+            outro=WidescreenOutroConfig(
+                duration_sec=15.0,
+                outro_tts="Напиши свой итоговый балл в комментариях под этим видео и подпишись на канал, чтобы не пропустить вторую часть!",
+                call_to_action="НАПИШИ СВОЙ СЧЕТ В КОММЕНТАРИЯХ & ПОДПИШИСЬ!",
+                score_tiers=[
+                    WidescreenScoreTier(tier_name="Noob", min_score=0, max_score=20, badge_color="#94A3B8"),
+                    WidescreenScoreTier(tier_name="Gamer", min_score=21, max_score=35, badge_color="#3B82F6"),
+                    WidescreenScoreTier(tier_name="Pro", min_score=36, max_score=45, badge_color="#8B5CF6"),
+                    WidescreenScoreTier(tier_name="God Tier", min_score=46, max_score=50, badge_color="#F59E0B"),
+                ],
+            ),
+            rounds=rounds,
+        )
 
 

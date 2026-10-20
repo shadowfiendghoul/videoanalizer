@@ -8,7 +8,7 @@ import sys
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
@@ -39,10 +39,12 @@ from videoanalizer.quiz.models import (
     VoiceConfig,
     VoicePreviewRequest,
     VoicePreviewResponse,
+    WidescreenQuizDataset,
 )
 from videoanalizer.quiz.exclusions_service import QuizExclusionsManager
 from videoanalizer.quiz.image_service import ImageService
 from videoanalizer.quiz.orchestrator import QuizOrchestrator
+from videoanalizer.quiz.sound_service import SoundService
 from videoanalizer.quiz.voice_service import RvcModelRegistry, VoiceService
 from videoanalizer.utils.hardware import get_hardware_capabilities
 
@@ -1150,6 +1152,220 @@ async def render_visual_quiz(request: VisualQuizRenderRequest) -> VisualQuizRend
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка рендеринга визуальной викторины: {exc}",
+        ) from exc
+
+
+# ==============================================================================
+# Widescreen Gaming Quiz Endpoints (008-widescreen-gaming-quiz)
+# ==============================================================================
+
+
+class WidescreenQuizGenerateRequest(BaseModel):
+    topic_prompt: str = Field(..., description="Prompt describing the 5 rounds topic or theme")
+    rounds_count: int = Field(default=5, ge=1, le=10)
+    questions_per_round: int = Field(default=10, ge=1, le=20)
+    language: str = Field(default="ru", pattern=r"^(ru|en)$")
+    auto_fetch_assets: bool = Field(default=True)
+
+
+class WidescreenSearchAudioRequest(BaseModel):
+    query: str
+    max_duration_sec: float = Field(default=4.0, ge=0.5, le=10.0)
+
+
+class WidescreenSearchAudioCandidate(BaseModel):
+    source: str
+    title: str
+    preview_url: str
+    duration_sec: float = 4.0
+
+
+class WidescreenSearchAudioResponse(BaseModel):
+    candidates: list[WidescreenSearchAudioCandidate] = Field(default_factory=list)
+
+
+class WidescreenSearchImageRequest(BaseModel):
+    query: str
+    asset_mode: str = "screenshot"
+
+
+class WidescreenSearchImageCandidate(BaseModel):
+    thumbnail_url: str | None = None
+    image_url: str | None = None
+    title: str
+    width: int | None = 1920
+    height: int | None = 1080
+
+
+class WidescreenSearchImageResponse(BaseModel):
+    candidates: list[WidescreenSearchImageCandidate] = Field(default_factory=list)
+
+
+class WidescreenQuizRenderRequest(BaseModel):
+    dataset: WidescreenQuizDataset
+    render_profile: RenderProfile = RenderProfile.GPU_FAST
+    background_video: str | None = None
+    background_music: str | None = None
+    background_music_volume: float = 0.20
+    voice: str = "ru-RU-SvetlanaNeural"
+    voice_config: VoiceConfig | None = None
+
+
+class WidescreenQuizRenderResponse(BaseModel):
+    job_id: str
+    video_path: str
+    download_url: str
+    total_frames: int
+    duration_sec: float
+    status: str = "completed"
+
+
+@router.post("/widescreen/generate", response_model=WidescreenQuizDataset)
+async def generate_widescreen_quiz(request: WidescreenQuizGenerateRequest) -> WidescreenQuizDataset:
+    """Generate complete 5-round 16:9 gaming quiz show dataset."""
+    orchestrator = QuizOrchestrator()
+    try:
+        return await orchestrator.script_service.generate_widescreen_quiz_dataset(
+            topic_prompt=request.topic_prompt,
+            language=request.language,
+            num_rounds=request.rounds_count,
+            questions_per_round=request.questions_per_round,
+        )
+    except Exception as exc:
+        logger.error("Failed to generate widescreen quiz: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Не удалось сгенерировать 16:9 викторину: {exc}",
+        ) from exc
+
+
+@router.post("/widescreen/search-audio", response_model=WidescreenSearchAudioResponse)
+async def search_widescreen_audio(request: WidescreenSearchAudioRequest) -> WidescreenSearchAudioResponse:
+    """Search gaming weapon/item sound effect candidates."""
+    orchestrator = QuizOrchestrator()
+    candidates: list[WidescreenSearchAudioCandidate] = []
+
+    # Check web sound search candidates
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
+            search_url = f"https://api.myinstants.com/api/v1/instants/?format=json&name={request.query}"
+            resp = await client.get(search_url)
+            if resp.status_code == 200:
+                data = resp.json()
+                for item in data.get("results", [])[:5]:
+                    if "sound" in item:
+                        candidates.append(
+                            WidescreenSearchAudioCandidate(
+                                source="myinstants",
+                                title=item.get("name", request.query),
+                                preview_url=item["sound"],
+                                duration_sec=request.max_duration_sec,
+                            )
+                        )
+    except Exception as err:
+        logger.debug("Failed web sound candidates query: %s", err)
+
+    if not candidates:
+        candidates.append(
+            WidescreenSearchAudioCandidate(
+                source="procedural",
+                title=f"Procedural {request.query}",
+                preview_url="",
+                duration_sec=2.5,
+            )
+        )
+
+    return WidescreenSearchAudioResponse(candidates=candidates)
+
+
+@router.post("/widescreen/search-image", response_model=WidescreenSearchImageResponse)
+async def search_widescreen_image(request: WidescreenSearchImageRequest) -> WidescreenSearchImageResponse:
+    """Search candidate screenshot/game over/minimap/silhouette images."""
+    orchestrator = QuizOrchestrator()
+    formatted_query = orchestrator.image_service.format_gaming_query(request.query, request.asset_mode)
+    results = await orchestrator.image_service._search_image_urls(formatted_query, max_results=8)
+    candidates: list[WidescreenSearchImageCandidate] = []
+    for item in results:
+        img_url = item.get("image")
+        if img_url:
+            candidates.append(
+                WidescreenSearchImageCandidate(
+                    thumbnail_url=item.get("thumbnail"),
+                    image_url=img_url,
+                    title=item.get("title", request.query),
+                    width=int(item.get("width", 1920) or 1920),
+                    height=int(item.get("height", 1080) or 1080),
+                )
+            )
+    return WidescreenSearchImageResponse(candidates=candidates)
+
+
+@router.post("/widescreen/render", response_model=WidescreenQuizRenderResponse)
+async def render_widescreen_quiz(request: WidescreenQuizRenderRequest) -> WidescreenQuizRenderResponse:
+    """Render finalized 16:9 Widescreen Gaming Quiz into MP4 via Remotion."""
+    orchestrator = QuizOrchestrator()
+    job_id = f"wide_{uuid.uuid4().hex[:10]}"
+    try:
+        out_path = await orchestrator.render_widescreen_quiz(
+            dataset=request.dataset,
+            background_video=request.background_video,
+            background_music=request.background_music,
+            background_music_volume=request.background_music_volume,
+            voice=request.voice,
+            voice_config=request.voice_config,
+            render_profile=request.render_profile,
+        )
+        download_url = f"/api/v1/quiz/jobs/{job_id}/download"
+        total_questions = request.dataset.total_questions_count
+        duration_sec = float(total_questions * 9.0 + 8.0 + 15.0 + len(request.dataset.rounds) * 4.0)
+
+        # Store in in-memory jobs cache
+        quiz_jobs[job_id] = {
+            "job_id": job_id,
+            "status": "completed",
+            "stage": "finished",
+            "progress_percent": 100,
+            "topic": request.dataset.title,
+            "created_at": datetime.now(UTC).isoformat(),
+            "video_path": str(out_path),
+            "download_url": download_url,
+            "challenge_summary": {
+                "topic": request.dataset.title,
+                "total_questions": total_questions,
+                "duration_seconds": duration_sec,
+            },
+        }
+
+        # Store in persistent history
+        try:
+            manager = get_batch_queue_manager()
+            manager.record_history(
+                BatchQueueItem(
+                    item_id=job_id,
+                    index=1,
+                    topic=f"[16:9 Quiz] {request.dataset.title}",
+                    status=BatchQueueItemStatus.COMPLETED,
+                    video_path=str(out_path),
+                    download_url=download_url,
+                )
+            )
+        except Exception as err:
+            logger.warning("Failed to record widescreen quiz to history: %s", err)
+
+        return WidescreenQuizRenderResponse(
+            job_id=job_id,
+            video_path=str(out_path),
+            download_url=download_url,
+            total_frames=int(duration_sec * 60),
+            duration_sec=duration_sec,
+            status="completed",
+        )
+    except Exception as exc:
+        logger.error("Failed to render widescreen quiz: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка рендеринга 16:9 викторины: {exc}",
         ) from exc
 
 

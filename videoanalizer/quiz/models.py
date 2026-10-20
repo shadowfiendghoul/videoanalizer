@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal
@@ -949,6 +950,159 @@ class VisualQuizRenderProps(BaseModel):
     banner_start_frame: int | None = None
     banner_duration_frames: int | None = None
     banner_height: int | None = None
+
+
+# ---------------------------------------------------------------------------
+# 008-widescreen-gaming-quiz (16:9 1920x1080 60fps) Models
+# ---------------------------------------------------------------------------
+
+
+class AssetDisplayMode(StrEnum):
+    """Specifies the visual presentation mode for a round's central container."""
+
+    SCREENSHOT = "screenshot"
+    AUDIO_SFX = "audio_sfx"
+    GAME_OVER = "game_over"
+    MINIMAP = "minimap"
+    SILHOUETTE = "silhouette"
+    CUSTOM = "custom"
+
+
+class WidescreenQuizItem(BaseModel):
+    """Individual trivia question item within a 16:9 round."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(default_factory=lambda: secrets.token_hex(6))
+    item_index: int = Field(..., ge=1, le=50, description="1-indexed question in round")
+    global_question_number: int = Field(..., ge=1, le=100, description="1-indexed global question number")
+    prompt_text: str = Field(..., min_length=2, max_length=120, description="Question prompt text")
+    answer_text: str = Field(..., min_length=1, max_length=60, description="Correct answer text")
+    asset_url: str | None = Field(default=None, description="Remote asset URL")
+    asset_path: str | None = Field(default=None, description="Local asset path")
+    asset_search_query: str = Field(..., min_length=2, max_length=120, description="Search query")
+    apply_procedural_mask: bool = Field(default=True, description="Toggle procedural CSS mask")
+    is_approved: bool = Field(default=False, description="Approval flag in UI")
+    difficulty_tag: str | None = Field(default=None, description="Optional difficulty tag")
+    audio_cue_duration_sec: float = Field(default=4.0, ge=0.5, le=5.0, description="Max cue duration in seconds")
+
+
+class WidescreenQuizRound(BaseModel):
+    """Specification for an individual round with transition metadata."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    round_number: int = Field(..., ge=1, le=20)
+    round_title: str = Field(..., min_length=2, max_length=50)
+    asset_mode: AssetDisplayMode = Field(default=AssetDisplayMode.SCREENSHOT)
+    pass_rate_statistic: str = Field(default="90% PASS RATE", min_length=2, max_length=40)
+    badge_theme_color: str = Field(default="#00E5FF", pattern=r"^#[0-9a-fA-F]{6}$")
+    splash_duration_sec: float = Field(default=4.0, ge=2.0, le=6.0)
+    questions: list[WidescreenQuizItem] = Field(..., min_length=1, max_length=30)
+
+
+class WidescreenScoreTier(BaseModel):
+    """Outro score evaluation tier."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    tier_name: str = Field(..., min_length=2, max_length=30)
+    min_score: int = Field(..., ge=0)
+    max_score: int = Field(..., ge=0)
+    badge_color: str = Field(default="#00E5FF", pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+class WidescreenIntroConfig(BaseModel):
+    """Intro hook narration and presentation configuration."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    hook_tts: str = Field(..., min_length=10, max_length=300)
+    duration_sec: float = Field(default=8.0, ge=4.0, le=12.0)
+    challenge_title: str = Field(default="50 GAMING QUESTIONS CHALLENGE", min_length=3, max_length=80)
+
+
+class WidescreenOutroConfig(BaseModel):
+    """Outro rank card evaluation configuration."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    duration_sec: float = Field(default=15.0, ge=10.0, le=25.0)
+    outro_tts: str = Field(..., min_length=10, max_length=400)
+    call_to_action: str = Field(default="COMMENT YOUR SCORE & SUBSCRIBE!", min_length=5, max_length=120)
+    score_tiers: list[WidescreenScoreTier] = Field(
+        default_factory=lambda: [
+            WidescreenScoreTier(tier_name="Noob", min_score=0, max_score=20, badge_color="#94A3B8"),
+            WidescreenScoreTier(tier_name="Gamer", min_score=21, max_score=35, badge_color="#3B82F6"),
+            WidescreenScoreTier(tier_name="Pro", min_score=36, max_score=45, badge_color="#8B5CF6"),
+            WidescreenScoreTier(tier_name="God Tier", min_score=46, max_score=50, badge_color="#F59E0B"),
+        ]
+    )
+
+
+class WidescreenQuizDataset(BaseModel):
+    """Root configuration model driving the complete 16:9 quiz generation."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    mode: Literal["widescreen_gaming_quiz"] = "widescreen_gaming_quiz"
+    title: str = Field(default="Ultimate Gaming Quiz: 50 Questions", min_length=3, max_length=100)
+    language: str = Field(default="ru", pattern=r"^(ru|en)$")
+    guessing_duration_sec: float = Field(default=6.0, ge=3.0, le=10.0)
+    reveal_hold_duration_sec: float = Field(default=3.0, ge=1.5, le=5.0)
+    bgm_track_path: str | None = Field(default=None)
+    bgm_ducking_volume: float = Field(default=0.18, ge=0.05, le=0.5)
+    bgm_base_volume: float = Field(default=0.30, ge=0.1, le=1.0)
+    ambient_background_video: str | None = Field(default=None)
+    intro: WidescreenIntroConfig
+    outro: WidescreenOutroConfig
+    rounds: list[WidescreenQuizRound] = Field(..., min_length=1, max_length=10)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def total_questions_count(self) -> int:
+        return sum(len(r.questions) for r in self.rounds)
+
+
+class WidescreenTimingSlot(BaseModel):
+    """Frame-precise bounding points calculated for each question/splash in Remotion."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    slot_type: Literal["intro", "splash", "question", "outro"]
+    round_number: int | None = None
+    question_global_number: int | None = None
+    start_frame: int = Field(..., ge=0)
+    duration_frames: int = Field(..., ge=1)
+    end_frame: int = Field(..., ge=1)
+
+    # Question specific markers (None if splash/intro/outro)
+    timer_start_frame: int | None = None
+    timer_duration_frames: int | None = None
+    reveal_frame: int | None = None
+    audio_cue_start_frame: int | None = None
+    audio_cue_end_frame: int | None = None
+
+
+class WidescreenQuizRenderProps(BaseModel):
+    """Contract serializable to JSON and fed directly into the Remotion CLI."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    dataset: WidescreenQuizDataset
+    fps: int = Field(default=60)
+    width: int = Field(default=1920)
+    height: int = Field(default=1080)
+    total_duration_frames: int
+    timing_slots: list[WidescreenTimingSlot]
+    audio_mix_path: str | None = None
+    bgm_audio_path: str | None = None
+    sfx_ticking_path: str
+    sfx_chime_path: str
+    sfx_stinger_path: str
+    intro_tts_audio_path: str | None = None
+    outro_tts_audio_path: str | None = None
+    ambient_background_path: str | None = None
 
 
 

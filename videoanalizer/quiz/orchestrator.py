@@ -18,6 +18,7 @@ from videoanalizer.quiz.audio_service import AudioService
 from videoanalizer.quiz.config import QuizConfig, ensure_system_paths, get_quiz_config
 from videoanalizer.quiz.image_service import ImageService
 from videoanalizer.quiz.models import (
+    AssetDisplayMode,
     QuizChallenge,
     QuizRetentionConfig,
     RemotionRenderProps,
@@ -26,8 +27,11 @@ from videoanalizer.quiz.models import (
     VisualQuizDataset,
     VisualQuizRenderProps,
     VoiceConfig,
+    WidescreenQuizDataset,
+    WidescreenQuizRenderProps,
 )
 from videoanalizer.quiz.script_service import ScriptService
+from videoanalizer.quiz.sound_service import SoundService
 from videoanalizer.quiz.workspace import QuizWorkspace
 from videoanalizer.utils.hardware import (
     calculate_optimal_concurrency,
@@ -1238,4 +1242,186 @@ class QuizOrchestrator:
 
             logger.info("VisualImageQuiz rendered successfully to %s", final_output)
             return final_output
+
+    async def render_widescreen_quiz(
+        self,
+        dataset: WidescreenQuizDataset,
+        output_path: Path | str | None = None,
+        background_video: Path | str | None = None,
+        background_music: Path | str | None = None,
+        background_music_volume: float = 0.20,
+        voice: str = "ru-RU-SvetlanaNeural",
+        voice_config: VoiceConfig | None = None,
+        render_profile: RenderProfile | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
+    ) -> Path:
+        """Render a complete 16:9 widescreen multi-round gaming quiz video via Remotion (60fps)."""
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        final_output = (
+            Path(output_path)
+            if output_path
+            else self.config.output_dir / f"widescreen_quiz_{timestamp}_{secrets.token_hex(3)}.mp4"
+        )
+        final_output.parent.mkdir(parents=True, exist_ok=True)
+
+        with QuizWorkspace(base_dir=self.config.temp_dir) as ws:
+            public_dir = ws.public_dir
+            public_dir.mkdir(parents=True, exist_ok=True)
+
+            if progress_callback:
+                progress_callback(5, "Подготовка медиа-ресурсов и звуковых эффектов...")
+
+            # 1. Background video (optional ambient loop)
+            staged_bg_video: str | None = None
+            if background_video:
+                bg_source = Path(background_video)
+                if bg_source.exists():
+                    target_bg = public_dir / "ambient_background.mp4"
+                    await asyncio.to_thread(
+                        self._prepare_background,
+                        bg_source,
+                        target_bg,
+                        600.0,
+                        "cover",
+                        background_video,
+                    )
+                    staged_bg_video = "ambient_background.mp4"
+
+            # 2. Stage SFX files to public/sfx
+            sfx_public_dir = public_dir / "sfx"
+            sfx_public_dir.mkdir(parents=True, exist_ok=True)
+            self.audio_service.ensure_default_sfx(self.config.sfx_dir)
+
+            for sfx_name, target_name in [
+                ("timer_tick.wav", "timer_tick.wav"),
+                ("reveal_ding.wav", "reveal_ding.wav"),
+                ("sub_bass_stinger.wav", "sub_bass_stinger.wav"),
+            ]:
+                src_sfx = self.config.sfx_dir / sfx_name
+                if not src_sfx.exists() and sfx_name.endswith(".wav"):
+                    src_sfx = self.config.sfx_dir / sfx_name.replace(".wav", ".mp3")
+                if src_sfx.exists():
+                    shutil.copy2(src_sfx, sfx_public_dir / target_name)
+
+            # 3. Stage BGM music if provided
+            staged_music = None
+            if background_music:
+                staged_music = await asyncio.to_thread(self._prepare_music, background_music, public_dir)
+                if staged_music:
+                    dataset.bgm_track_path = str((public_dir / staged_music).resolve())
+
+            # 4. Stage & Resolve Assets (Images and Audio Cues)
+            images_dir = public_dir / "images"
+            images_dir.mkdir(parents=True, exist_ok=True)
+            sounds_dir = public_dir / "sounds"
+            sounds_dir.mkdir(parents=True, exist_ok=True)
+
+            sound_service = SoundService(config=self.config)
+
+            total_items = dataset.total_questions_count
+            resolved_count = 0
+
+            for round_obj in dataset.rounds:
+                is_audio_mode = round_obj.asset_mode == AssetDisplayMode.AUDIO_SFX
+
+                for item in round_obj.questions:
+                    if is_audio_mode:
+                        # Audio SFX resolution
+                        sound_target = sounds_dir / f"cue_{round_obj.round_number}_{item.item_index}.wav"
+                        if item.asset_path and Path(item.asset_path).exists():
+                            if Path(item.asset_path).resolve() != sound_target.resolve():
+                                shutil.copy2(item.asset_path, sound_target)
+                            item.asset_path = f"sounds/{sound_target.name}"
+                        else:
+                            query = item.asset_search_query or item.answer_text
+                            resolved = await sound_service.resolve_sound_cue(query, sound_target)
+                            item.asset_path = f"sounds/{resolved.name}" if resolved else None
+                    else:
+                        # Visual Asset resolution (Screenshot, Game Over, Minimap, Silhouette)
+                        img_target = images_dir / f"img_{round_obj.round_number}_{item.item_index}.png"
+                        if item.asset_path and Path(item.asset_path).exists():
+                            if Path(item.asset_path).resolve() != img_target.resolve():
+                                shutil.copy2(item.asset_path, img_target)
+                            item.asset_path = f"images/{img_target.name}"
+                        elif item.asset_url:
+                            downloaded = await self.image_service.download_from_url(item.asset_url, img_target)
+                            if not downloaded:
+                                query = item.asset_search_query or item.answer_text
+                                downloaded = await self.image_service.search_and_download_gaming_asset(
+                                    query, round_obj.asset_mode.value, img_target
+                                )
+                            item.asset_path = f"images/{img_target.name}"
+                        else:
+                            query = item.asset_search_query or item.answer_text
+                            await self.image_service.search_and_download_gaming_asset(
+                                query, round_obj.asset_mode.value, img_target
+                            )
+                            item.asset_path = f"images/{img_target.name}"
+
+                        # Clear remote URL to prevent external fetches in Remotion
+                        item.asset_url = None
+
+                    resolved_count += 1
+                    if progress_callback and total_items > 0:
+                        pct = 5 + int((resolved_count / total_items) * 20)
+                        progress_callback(pct, f"Загрузка ассетов: {resolved_count}/{total_items}...")
+
+            if progress_callback:
+                progress_callback(25, "Синтез аудиомикса и звуковой дорожки...")
+
+            # 5. Audio generation (Voiceover for intro & outro + SFX master mix)
+            master_audio_path, timing_slots, total_duration_frames = await self.audio_service.generate_widescreen_quiz_audio(
+                dataset=dataset,
+                workspace=ws,
+                voice_config=voice_config,
+                fps=60,
+            )
+
+            public_audio = public_dir / "audio" / "widescreen_quiz_master_mix.wav"
+            public_audio.parent.mkdir(parents=True, exist_ok=True)
+            if master_audio_path.resolve() != public_audio.resolve():
+                shutil.copy2(master_audio_path, public_audio)
+
+            # 6. Build Remotion Props
+            props = WidescreenQuizRenderProps(
+                dataset=dataset,
+                fps=60,
+                width=1920,
+                height=1080,
+                total_duration_frames=total_duration_frames,
+                timing_slots=timing_slots,
+                audio_mix_path="audio/widescreen_quiz_master_mix.wav",
+                bgm_audio_path=staged_music,
+                sfx_ticking_path="sfx/timer_tick.wav",
+                sfx_chime_path="sfx/reveal_ding.wav",
+                sfx_stinger_path="sfx/sub_bass_stinger.wav",
+                ambient_background_path=staged_bg_video,
+            )
+
+            props_file = ws.path / "remotion-props.json"
+            props_file.write_text(props.model_dump_json(indent=2), encoding="utf-8")
+
+            if progress_callback:
+                progress_callback(40, "Рендер 16:9 60fps видео через Remotion...")
+
+            # 7. Render Remotion
+            await self._render_remotion(
+                props_path=props_file,
+                public_dir=public_dir,
+                output_path=final_output,
+                progress_callback=progress_callback,
+                profile=render_profile or self.config.render_profile,
+                composition_id="WidescreenGamingQuiz",
+            )
+
+            # 8. Metadata cleanup
+            from videoanalizer.media.uniquifier import strip_video_metadata
+            strip_video_metadata(final_output, final_output)
+
+            if progress_callback:
+                progress_callback(100, "16:9 Викторина успешно создана!")
+
+            logger.info("WidescreenGamingQuiz rendered successfully to %s", final_output)
+            return final_output
+
 

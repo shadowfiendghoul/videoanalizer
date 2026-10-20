@@ -16,6 +16,7 @@ import edge_tts
 
 from videoanalizer.quiz.config import QuizConfig, get_quiz_config
 from videoanalizer.quiz.models import (
+    AssetDisplayMode,
     AudioCueSheet,
     QuestionAudioCue,
     QuizChallenge,
@@ -25,6 +26,8 @@ from videoanalizer.quiz.models import (
     VisualQuizTimingSlot,
     VisualQuizWordTiming,
     VoiceConfig,
+    WidescreenQuizDataset,
+    WidescreenTimingSlot,
     WordCue,
 )
 from videoanalizer.quiz.workspace import QuizWorkspace
@@ -328,6 +331,24 @@ def ensure_default_sfx(sfx_dir: Path) -> None:
                 click_env = math.exp(-phase * 120.0) if phase < 0.04 else 0.0
                 val = math.sin(2 * math.pi * 1800.0 * t) * click_env * 24000
                 data.extend(struct.pack("<h", int(max(-32767, min(32767, val)))))
+            f.writeframes(data)
+
+    sub_bass_path = sfx_dir / "sub_bass_stinger.wav"
+    if not sub_bass_path.exists():
+        # Cinematic sub-bass boom (2.5s)
+        n_samples = int(sample_rate * 2.5)
+        with wave.open(str(sub_bass_path), "w") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(sample_rate)
+            data = bytearray()
+            for i in range(n_samples):
+                t = i / sample_rate
+                freq = 35 + 75 * math.exp(-2.0 * t)
+                env = math.exp(-1.5 * t) * min(1.0, t / 0.05)
+                val = 0.85 * math.sin(2 * math.pi * freq * t) + 0.15 * math.sin(4 * math.pi * freq * t)
+                sample = int(val * env * 32767 * 0.9)
+                data.extend(struct.pack("<h", int(max(-32768, min(32767, sample)))))
             f.writeframes(data)
 
     return SfxPaths(
@@ -1215,4 +1236,196 @@ class AudioService:
                     shutil.copy2(valid_events[0][0], output_path)
 
         await asyncio.to_thread(_run_ffmpeg)
+
+    async def generate_widescreen_quiz_audio(
+        self,
+        dataset: WidescreenQuizDataset,
+        workspace: QuizWorkspace,
+        voice_config: VoiceConfig | None = None,
+        fps: int = 60,
+    ) -> tuple[Path, list[WidescreenTimingSlot], int]:
+        """Synthesize intro/outro voiceover and assemble complete master audio mix for 16:9 quiz."""
+        calc = WidescreenTimingCalculator(fps=fps)
+        timing_slots, total_duration_frames = calc.calculate_timeline(dataset)
+        total_duration_sec = total_duration_frames / fps
+
+        # Ensure default SFX exist
+        sfx_dir = self.config.sfx_dir
+        ensure_default_sfx(sfx_dir)
+        tick_path = sfx_dir / "timer_tick.wav"
+        if not tick_path.exists():
+            tick_path = sfx_dir / "timer_tick.mp3"
+        ding_path = sfx_dir / "reveal_ding.wav"
+        stinger_path = sfx_dir / "sub_bass_stinger.wav"
+
+        audio_events: list[tuple[Path, float, float]] = []
+
+        selected_voice = (
+            voice_config.narrator_voice
+            if voice_config and voice_config.narrator_voice
+            else ("en-US-GuyNeural" if dataset.language == "en" else "ru-RU-DmitryNeural")
+        )
+
+        # 1. Synthesize Intro Voiceover (if intro text provided)
+        if dataset.intro.hook_tts.strip():
+            intro_path = workspace.get_audio_path("widescreen_intro_tts.mp3")
+            await self.synthesize_speech_with_cues(
+                dataset.intro.hook_tts,
+                selected_voice,
+                intro_path,
+                voice_config=voice_config,
+            )
+            if intro_path.exists():
+                audio_events.append((intro_path, 0.5, 0.0))
+
+        # 2. Synthesize Outro Voiceover
+        outro_slot = next((s for s in timing_slots if s.slot_type == "outro"), None)
+        if outro_slot and dataset.outro.outro_tts.strip():
+            outro_path = workspace.get_audio_path("widescreen_outro_tts.mp3")
+            await self.synthesize_speech_with_cues(
+                dataset.outro.outro_tts,
+                selected_voice,
+                outro_path,
+                voice_config=voice_config,
+            )
+            if outro_path.exists():
+                audio_events.append((outro_path, (outro_slot.start_frame + int(0.5 * fps)) / fps, 0.0))
+
+        # 3. Assemble Question Cues & SFX
+        q_map = {
+            q.global_question_number: (q, r)
+            for r in dataset.rounds
+            for q in r.questions
+        }
+
+        for slot in timing_slots:
+            if slot.slot_type == "splash" and stinger_path.exists():
+                audio_events.append((stinger_path, slot.start_frame / fps, 0.0))
+
+            elif slot.slot_type == "question":
+                q_start_sec = slot.start_frame / fps
+
+                # 6 ticks during guessing phase: 0.0s, 1.0s, 2.0s, 3.0s, 4.0s, 5.0s
+                if tick_path.exists():
+                    for t_offset in range(int(dataset.guessing_duration_sec)):
+                        audio_events.append((tick_path, q_start_sec + float(t_offset), -4.0))
+
+                # Reveal chime at exactly 6.0s mark
+                if ding_path.exists() and slot.reveal_frame is not None:
+                    audio_events.append((ding_path, slot.reveal_frame / fps, 0.0))
+
+                # Audio cue for AUDIO_SFX rounds
+                if slot.question_global_number and slot.question_global_number in q_map:
+                    q_item, r_item = q_map[slot.question_global_number]
+                    if r_item.asset_mode == AssetDisplayMode.AUDIO_SFX and q_item.asset_path:
+                        cue_file = Path(q_item.asset_path)
+                        if cue_file.exists():
+                            audio_events.append((cue_file, q_start_sec + 0.5, 0.0))
+
+        # 4. Background Music with Ducking (if configured)
+        if dataset.bgm_track_path and Path(dataset.bgm_track_path).exists():
+            bgm_file = Path(dataset.bgm_track_path)
+            audio_events.append((bgm_file, 0.0, -14.0))
+
+        # Render master mix
+        master_audio_path = workspace.get_audio_path("widescreen_quiz_master_mix.wav")
+        await self._render_audio_events_mix(audio_events, master_audio_path, total_duration_sec)
+
+        return master_audio_path, timing_slots, total_duration_frames
+
+
+class WidescreenTimingCalculator:
+    """Frame-accurate timeline coordinate calculator for 16:9 widescreen gaming quizzes (60fps)."""
+
+    def __init__(self, fps: int = 60) -> None:
+        self.fps = fps
+
+    def calculate_timeline(
+        self,
+        dataset: WidescreenQuizDataset,
+        include_round_1_splash: bool = False,
+    ) -> tuple[list[WidescreenTimingSlot], int]:
+        """Generate precise frame coordinates for Intro, Splashes, Questions, and Outro.
+
+        Returns:
+            Tuple of (timing_slots, total_duration_frames).
+        """
+        slots: list[WidescreenTimingSlot] = []
+        current_frame = 0
+
+        # 1. Intro Hook
+        intro_frames = int(round(dataset.intro.duration_sec * self.fps))
+        slots.append(
+            WidescreenTimingSlot(
+                slot_type="intro",
+                start_frame=current_frame,
+                duration_frames=intro_frames,
+                end_frame=current_frame + intro_frames,
+            )
+        )
+        current_frame += intro_frames
+
+        # Question timing defaults
+        guessing_frames = int(round(dataset.guessing_duration_sec * self.fps))
+        hold_frames = int(round(dataset.reveal_hold_duration_sec * self.fps))
+        question_total_frames = guessing_frames + hold_frames
+
+        for round_idx, r in enumerate(dataset.rounds):
+            # Interstitial splash between rounds (or for round 1 if configured)
+            if round_idx > 0 or include_round_1_splash:
+                splash_frames = int(round(r.splash_duration_sec * self.fps))
+                slots.append(
+                    WidescreenTimingSlot(
+                        slot_type="splash",
+                        round_number=r.round_number,
+                        start_frame=current_frame,
+                        duration_frames=splash_frames,
+                        end_frame=current_frame + splash_frames,
+                    )
+                )
+                current_frame += splash_frames
+
+            # Questions in round
+            for q in r.questions:
+                q_start = current_frame
+                q_end = q_start + question_total_frames
+                reveal_f = q_start + guessing_frames
+
+                audio_start: int | None = None
+                audio_end: int | None = None
+                if r.asset_mode == AssetDisplayMode.AUDIO_SFX:
+                    audio_start = q_start + int(round(0.5 * self.fps))
+                    cue_dur = min(q.audio_cue_duration_sec, 4.0)
+                    audio_end = audio_start + int(round(cue_dur * self.fps))
+
+                slots.append(
+                    WidescreenTimingSlot(
+                        slot_type="question",
+                        round_number=r.round_number,
+                        question_global_number=q.global_question_number,
+                        start_frame=q_start,
+                        duration_frames=question_total_frames,
+                        end_frame=q_end,
+                        timer_start_frame=q_start,
+                        timer_duration_frames=guessing_frames,
+                        reveal_frame=reveal_f,
+                        audio_cue_start_frame=audio_start,
+                        audio_cue_end_frame=audio_end,
+                    )
+                )
+                current_frame = q_end
+
+        # 3. Outro Sequence
+        outro_frames = int(round(dataset.outro.duration_sec * self.fps))
+        slots.append(
+            WidescreenTimingSlot(
+                slot_type="outro",
+                start_frame=current_frame,
+                duration_frames=outro_frames,
+                end_frame=current_frame + outro_frames,
+            )
+        )
+        current_frame += outro_frames
+
+        return slots, current_frame
 

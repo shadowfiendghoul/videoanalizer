@@ -13,9 +13,9 @@
 
 **Purpose**: Scaffolding for 16:9 widescreen 1920x1080 60fps Remotion composition and base TypeScript types.
 
-- [ ] T001 Define TypeScript interfaces `WidescreenQuizItem`, `WidescreenQuizRound`, `WidescreenQuizDataset`, `WidescreenTimingSlot`, and `WidescreenQuizRenderProps` in `templates/quiz-remotion/src/types.ts`
-- [ ] T002 [P] Register `WidescreenGamingQuiz` composition (1920x1080, 60fps) with default test props in `templates/quiz-remotion/src/Root.tsx`
-- [ ] T003 [P] Create initial test scaffold and synthetic fixtures in `tests/unit/quiz/test_widescreen_quiz_models.py`
+- [X] T001 Define TypeScript interfaces `WidescreenQuizItem`, `WidescreenQuizRound`, `WidescreenQuizDataset`, `WidescreenTimingSlot`, and `WidescreenQuizRenderProps` in `templates/quiz-remotion/src/types.ts`
+- [X] T002 [P] Register `WidescreenGamingQuiz` composition (1920x1080, 60fps) with default test props in `templates/quiz-remotion/src/Root.tsx`
+- [X] T003 [P] Create initial test scaffold and synthetic fixtures in `tests/unit/quiz/test_widescreen_quiz_models.py`
 
 ---
 
@@ -23,9 +23,9 @@
 
 **Purpose**: Core Pydantic v2 data models, timing calculation utilities, and sound effect library setup that block user story implementation.
 
-- [ ] T004 Implement Pydantic v2 models `AssetDisplayMode`, `WidescreenQuizItem`, `WidescreenQuizRound`, `WidescreenIntroConfig`, `WidescreenScoreTier`, `WidescreenOutroConfig`, `WidescreenQuizDataset`, `WidescreenTimingSlot`, and `WidescreenQuizRenderProps` in `videoanalizer/quiz/models.py`
-- [ ] T005 [P] Implement `WidescreenTimingCalculator` for 60fps frame coordinates and timing slot generation in `videoanalizer/quiz/audio_service.py`
-- [ ] T006 [P] Verify and curate base SFX assets (`timer_tick.wav`, `reveal_ding.wav`, `sub_bass_stinger.wav`) in `assets/sfx/`
+- [X] T004 Implement Pydantic v2 models `AssetDisplayMode`, `WidescreenQuizItem`, `WidescreenQuizRound`, `WidescreenIntroConfig`, `WidescreenScoreTier`, `WidescreenOutroConfig`, `WidescreenQuizDataset`, `WidescreenTimingSlot`, and `WidescreenQuizRenderProps` in `videoanalizer/quiz/models.py`
+- [X] T005 [P] Implement `WidescreenTimingCalculator` for 60fps frame coordinates and timing slot generation in `videoanalizer/quiz/audio_service.py`
+- [X] T006 [P] Verify and curate base SFX assets (`timer_tick.wav`, `reveal_ding.wav`, `sub_bass_stinger.wav`) in `assets/sfx/`
 
 **Checkpoint**: Foundation ready — all user stories can now proceed.
 
@@ -39,16 +39,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Unit test for 9.0s question cycle timing calculator (frames 0–360 guessing, 360–540 reveal hold) in `tests/unit/quiz/test_widescreen_quiz_audio.py`
+- [X] T007 [P] [US1] Unit test for 9.0s question cycle timing calculator (frames 0–360 guessing, 360–540 reveal hold) in `tests/unit/quiz/test_widescreen_quiz_audio.py`
 
 ### Implementation for User Story 1
 
-- [ ] T008 [P] [US1] Create `WidescreenStatusBar.tsx` component (Round badge at X:120 Y:50 W:480 H:60, Question tracker at X:1480 Y:50 W:320 H:60) in `templates/quiz-remotion/src/components/WidescreenStatusBar.tsx`
-- [ ] T009 [P] [US1] Create base `WidescreenAssetContainer.tsx` component (X:360 Y:170 W:1200 H:600, fitted 1140x540 max image, 12px rounded corners) in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx`
-- [ ] T010 [P] [US1] Create `WidescreenTimerBar.tsx` component (X:360 Y:800 W:1200 H:16, linear depletion over 6.0s, amber #F59E0B transitioning to red #EF4444 in final 1.5s) in `templates/quiz-remotion/src/components/WidescreenTimerBar.tsx`
-- [ ] T011 [P] [US1] Create `WidescreenAnswerPanel.tsx` component (X:460 Y:860 W:1000 H:90, hidden 0–6s, spring scale bounce at 6.0s, hold until 9.0s) in `templates/quiz-remotion/src/components/WidescreenAnswerPanel.tsx`
-- [ ] T012 [US1] Implement multi-track audio assembly for 9.0s cycle (ticking during 0.0s–6.0s, reveal chime stinger at exactly 6.0s) in `videoanalizer/quiz/audio_service.py`
-- [ ] T013 [US1] Assemble complete question stage coordinating status bar, asset container, timer bar, answer panel, and SFX in `templates/quiz-remotion/src/WidescreenGamingQuiz.tsx`
+- [X] T008 [P] [US1] Create `WidescreenStatusBar.tsx` component (Round badge at X:120 Y:50 W:480 H:60, Question tracker at X:1480 Y:50 W:320 H:60) in `templates/quiz-remotion/src/components/WidescreenStatusBar.tsx`
+- [X] T009 [P] [US1] Create base `WidescreenAssetContainer.tsx` component (X:360 Y:170 W:1200 H:600, fitted 1140x540 max image, 12px rounded corners) in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx`
+- [X] T010 [P] [US1] Create `WidescreenTimerBar.tsx` component (X:360 Y:800 W:1200 H:16, linear depletion over 6.0s, amber #F59E0B transitioning to red #EF4444 in final 1.5s) in `templates/quiz-remotion/src/components/WidescreenTimerBar.tsx`
+- [X] T011 [P] [US1] Create `WidescreenAnswerPanel.tsx` component (X:460 Y:860 W:1000 H:90, hidden 0–6s, spring scale bounce at 6.0s, hold until 9.0s) in `templates/quiz-remotion/src/components/WidescreenAnswerPanel.tsx`
+- [X] T012 [US1] Implement multi-track audio assembly for 9.0s cycle (ticking during 0.0s–6.0s, reveal chime stinger at exactly 6.0s) in `videoanalizer/quiz/audio_service.py`
+- [X] T013 [US1] Assemble complete question stage coordinating status bar, asset container, timer bar, answer panel, and SFX in `templates/quiz-remotion/src/WidescreenGamingQuiz.tsx`
 
 **Checkpoint**: User Story 1 (MVP) is functional and independently testable at 60 fps.
 
@@ -62,15 +62,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] Unit tests for asset mode validation and procedural mask flags in `tests/unit/quiz/test_widescreen_quiz_models.py`
+- [X] T014 [P] [US2] Unit tests for asset mode validation and procedural mask flags in `tests/unit/quiz/test_widescreen_quiz_models.py`
 
 ### Implementation for User Story 2
 
-- [ ] T015 [P] [US2] Implement animated glowing cyan (#00E5FF) pulse and waveform visualizer in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx` for `AUDIO_SFX` mode
-- [ ] T016 [P] [US2] Implement procedural circular radar mask (`clip-path: circle()`) and tactical SVG HUD grid overlay with rotating sweep line in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx` for `MINIMAP` mode
-- [ ] T017 [P] [US2] Implement procedural silhouette mask (`filter: brightness(0)`) with smooth reveal transition on answer hold in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx` for `SILHOUETTE` mode
-- [ ] T018 [US2] Implement audio cue playback window (0.5s–4.5s) with 250ms fade-out for `AUDIO_SFX` mode questions in `videoanalizer/quiz/audio_service.py`
-- [ ] T019 [US2] Implement dynamic round badge styling and theme color switching in `templates/quiz-remotion/src/components/WidescreenStatusBar.tsx`
+- [X] T015 [P] [US2] Implement animated glowing cyan (#00E5FF) pulse and waveform visualizer in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx` for `AUDIO_SFX` mode
+- [X] T016 [P] [US2] Implement procedural circular radar mask (`clip-path: circle()`) and tactical SVG HUD grid overlay with rotating sweep line in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx` for `MINIMAP` mode
+- [X] T017 [P] [US2] Implement procedural silhouette mask (`filter: brightness(0)`) with smooth reveal transition on answer hold in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx` for `SILHOUETTE` mode
+- [X] T018 [US2] Implement audio cue playback window (0.5s–4.5s) with 250ms fade-out for `AUDIO_SFX` mode questions in `videoanalizer/quiz/audio_service.py`
+- [X] T019 [US2] Implement dynamic round badge styling and theme color switching in `templates/quiz-remotion/src/components/WidescreenStatusBar.tsx`
 
 **Checkpoint**: User Stories 1 and 2 operate cohesively with all 5 asset modalities.
 
@@ -84,14 +84,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T020 [P] [US3] Unit tests for splash screen and outro timing slot calculations in `tests/unit/quiz/test_widescreen_quiz_audio.py`
+- [X] T020 [P] [US3] Unit tests for splash screen and outro timing slot calculations in `tests/unit/quiz/test_widescreen_quiz_audio.py`
 
 ### Implementation for User Story 3
 
-- [ ] T021 [P] [US3] Create `WidescreenRoundSplash.tsx` component (4.0s duration, upcoming round number, round title, pass rate callout, sub-bass stinger) in `templates/quiz-remotion/src/components/WidescreenRoundSplash.tsx`
-- [ ] T022 [P] [US3] Create `WidescreenOutro.tsx` component (15.0s duration, 4-tier score evaluation Noob/Gamer/Pro/God Tier, subscriber CTA) in `templates/quiz-remotion/src/components/WidescreenOutro.tsx`
-- [ ] T023 [US3] Implement Edge-TTS speech narration synthesis for 8.0s Intro Hook and 15.0s Outro Card in `videoanalizer/quiz/audio_service.py`
-- [ ] T024 [US3] Integrate Intro Hook, Round Splash intervals, and Outro sequence into master timeline in `templates/quiz-remotion/src/WidescreenGamingQuiz.tsx`
+- [X] T021 [P] [US3] Create `WidescreenRoundSplash.tsx` component (4.0s duration, upcoming round number, round title, pass rate callout, sub-bass stinger) in `templates/quiz-remotion/src/components/WidescreenRoundSplash.tsx`
+- [X] T022 [P] [US3] Create `WidescreenOutro.tsx` component (15.0s duration, 4-tier score evaluation Noob/Gamer/Pro/God Tier, subscriber CTA) in `templates/quiz-remotion/src/components/WidescreenOutro.tsx`
+- [X] T023 [US3] Implement Edge-TTS speech narration synthesis for 8.0s Intro Hook and 15.0s Outro Card in `videoanalizer/quiz/audio_service.py`
+- [X] T024 [US3] Integrate Intro Hook, Round Splash intervals, and Outro sequence into master timeline in `templates/quiz-remotion/src/WidescreenGamingQuiz.tsx`
 
 **Checkpoint**: Complete broadcast structure from Intro to Outro functions seamlessly.
 
@@ -105,17 +105,17 @@
 
 ### Tests for User Story 4
 
-- [ ] T025 [P] [US4] Unit tests for Gemini prompt generation and structured output parsing in `tests/unit/quiz/test_widescreen_quiz_script.py`
-- [ ] T026 [P] [US4] Unit tests for audio SFX search and clipping in `tests/unit/quiz/test_widescreen_quiz_sound.py`
+- [X] T025 [P] [US4] Unit tests for Gemini prompt generation and structured output parsing in `tests/unit/quiz/test_widescreen_quiz_script.py`
+- [X] T026 [P] [US4] Unit tests for audio SFX search and clipping in `tests/unit/quiz/test_widescreen_quiz_sound.py`
 
 ### Implementation for User Story 4
 
-- [ ] T027 [US4] Implement prompt engineering and `generate_widescreen_quiz_dataset()` via Gemini REST API in `videoanalizer/quiz/script_service.py`
-- [ ] T028 [P] [US4] Implement `SoundService` for automated audio SFX retrieval (Freesound API, web soundboards, curated local fallback) in `videoanalizer/quiz/sound_service.py`
-- [ ] T029 [P] [US4] Extend `ImageService` for specialized gaming screenshot, minimap, and silhouette queries in `videoanalizer/quiz/image_service.py`
-- [ ] T030 [US4] Implement continuous ambient BGM track playback with automated 18% audio ducking during speech & audio cues in `videoanalizer/quiz/audio_service.py`
-- [ ] T031 [US4] Implement REST endpoints (`/api/v1/quiz/widescreen/generate`, `/search-audio`, `/search-image`, `/render`) in `videoanalizer/api/routes_quiz.py`
-- [ ] T032 [US4] Build Gradio/FastAPI review and moderation tab (grid of 50 questions across 5 rounds, asset preview, audio audition, filter toggles, file upload) in `videoanalizer/ui/app.py`
+- [X] T027 [US4] Implement prompt engineering and `generate_widescreen_quiz_dataset()` via Gemini REST API in `videoanalizer/quiz/script_service.py`
+- [X] T028 [P] [US4] Implement `SoundService` for automated audio SFX retrieval (Freesound API, web soundboards, curated local fallback) in `videoanalizer/quiz/sound_service.py`
+- [X] T029 [P] [US4] Extend `ImageService` for specialized gaming screenshot, minimap, and silhouette queries in `videoanalizer/quiz/image_service.py`
+- [X] T030 [US4] Implement continuous ambient BGM track playback with automated 18% audio ducking during speech & audio cues in `videoanalizer/quiz/audio_service.py`
+- [X] T031 [US4] Implement REST endpoints (`/api/v1/quiz/widescreen/generate`, `/search-audio`, `/search-image`, `/render`) in `videoanalizer/api/routes_quiz.py`
+- [X] T032 [US4] Build Gradio/FastAPI review and moderation tab (grid of 50 questions across 5 rounds, asset preview, audio audition, filter toggles, file upload) in `videoanalizer/ui/app.py`
 
 **Checkpoint**: End-to-end user journey from topic prompt to moderation UI and batch approval is operational.
 
@@ -125,12 +125,12 @@
 
 **Purpose**: Edge cases (text overflow, missing assets, letterboxing), end-to-end 50-question pipeline, and integration tests.
 
-- [ ] T033 [P] Implement dynamic font autoscaling (26px–38px) for long answer titles (>35 chars) in `templates/quiz-remotion/src/components/WidescreenAnswerPanel.tsx`
-- [ ] T034 [P] Implement branded fallback placeholder card for missing or corrupted asset files in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx`
-- [ ] T035 [P] Implement aspect ratio letterbox/pillarbox preservation without stretching in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx`
-- [ ] T036 Integrate `widescreen_gaming_quiz` pipeline coordination, asset staging, and CLI render dispatch in `videoanalizer/quiz/orchestrator.py`
-- [ ] T037 Implement end-to-end integration test verifying 1-round 3-question render in `tests/integration/quiz/test_widescreen_quiz_orchestrator.py`
-- [ ] T038 Run quickstart validation test render per `specs/008-widescreen-gaming-quiz/quickstart.md`
+- [X] T033 [P] Implement dynamic font autoscaling (26px–38px) for long answer titles (>35 chars) in `templates/quiz-remotion/src/components/WidescreenAnswerPanel.tsx`
+- [X] T034 [P] Implement branded fallback placeholder card for missing or corrupted asset files in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx`
+- [X] T035 [P] Implement aspect ratio letterbox/pillarbox preservation without stretching in `templates/quiz-remotion/src/components/WidescreenAssetContainer.tsx`
+- [X] T036 Integrate `widescreen_gaming_quiz` pipeline coordination, asset staging, and CLI render dispatch in `videoanalizer/quiz/orchestrator.py`
+- [X] T037 Implement end-to-end integration test verifying 1-round 3-question render in `tests/integration/quiz/test_widescreen_quiz_orchestrator.py`
+- [X] T038 Run quickstart validation test render per `specs/008-widescreen-gaming-quiz/quickstart.md`
 
 ---
 

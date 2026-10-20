@@ -318,3 +318,69 @@ class ImageService:
             query,
         )
         return None
+
+    @staticmethod
+    def format_gaming_query(query: str, asset_mode: str) -> str:
+        """Format search queries specific to gaming rounds (screenshots, minimaps, game over, silhouettes)."""
+        q = (query or "").strip()
+        lower = q.lower()
+        if asset_mode == "screenshot":
+            if "screenshot" not in lower and "gameplay" not in lower:
+                return f"{q} gameplay screenshot 1080p"
+            return q
+        elif asset_mode == "game_over":
+            if "death" not in lower and "game over" not in lower and "wasted" not in lower and "died" not in lower:
+                return f"{q} game over screen death"
+            return q
+        elif asset_mode == "minimap":
+            if "minimap" not in lower and "radar" not in lower and "hud" not in lower:
+                return f"{q} minimap radar hud"
+            return q
+        elif asset_mode == "silhouette":
+            if "silhouette" not in lower and "transparent" not in lower:
+                return f"{q} character render transparent png"
+            return q
+        return q
+
+    async def search_and_download_gaming_asset(
+        self,
+        query: str,
+        asset_mode: str,
+        dest_path: Path,
+    ) -> Path | None:
+        """Search and download an asset tailored for widescreen gaming trivia rounds."""
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        sanitized_query = self.format_gaming_query(query, asset_mode)
+        results = await self._search_image_urls(sanitized_query, max_results=8)
+
+        # For silhouettes, prefer transparent png candidates
+        if asset_mode == "silhouette":
+            results = self.sort_transparent_candidates(results)
+
+        for item in results:
+            url = item.get("image") or item.get("thumbnail")
+            if not url:
+                continue
+
+            content = await self._download_bytes(url)
+            if not content:
+                continue
+
+            try:
+                img = Image.open(io.BytesIO(content))
+                img.verify()
+                img = Image.open(io.BytesIO(content))
+
+                if asset_mode == "silhouette":
+                    img = self.clean_fake_background(img)
+
+                img.save(dest_path, "PNG")
+                logger.info("Cached gaming asset (%s) for '%s' at %s", asset_mode, query, dest_path)
+                return dest_path
+            except Exception as e:
+                logger.warning("Image verification failed for gaming asset %s: %s", url, e)
+                continue
+
+        logger.info("No online image found for gaming asset '%s', generating fallback placeholder.", query)
+        return self.create_placeholder(dest_path, label=query)
+

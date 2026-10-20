@@ -2,7 +2,12 @@ import React from "react";
 import { Composition } from "remotion";
 import { QuizChallengeComp } from "./QuizChallenge";
 import { VisualImageQuizComp } from "./VisualImageQuiz";
-import { RemotionRenderProps, VisualQuizRenderProps } from "./types";
+import { WidescreenGamingQuizComp } from "./WidescreenGamingQuiz";
+import {
+  RemotionRenderProps,
+  VisualQuizRenderProps,
+  WidescreenQuizRenderProps,
+} from "./types";
 import "./style.css";
 
 const defaultProps: RemotionRenderProps = {
@@ -246,6 +251,57 @@ export const Root: React.FC = () => {
             fps: props.fps || 60,
             width: props.width || 1080,
             height: props.height || 1920,
+          };
+        }}
+      />
+
+      <Composition<any, WidescreenQuizRenderProps>
+        id="WidescreenGamingQuiz"
+        component={WidescreenGamingQuizComp}
+        durationInFrames={32400}
+        fps={60}
+        width={1920}
+        height={1080}
+        defaultProps={{
+          dataset: {
+            mode: "widescreen_gaming_quiz",
+            title: "50 GAMING QUESTIONS CHALLENGE",
+            language: "ru",
+            guessing_duration_sec: 6.0,
+            reveal_hold_duration_sec: 3.0,
+            intro: {
+              hook_tts: "50 вопросов по играм. 5 уникальных раундов. Сможешь ли ты дойти до ранга God Tier?",
+              duration_sec: 8.0,
+              challenge_title: "50 GAMING QUESTIONS CHALLENGE",
+            },
+            outro: {
+              duration_sec: 15.0,
+              outro_tts: "Напиши свой результат в комментариях и подписывайся на канал!",
+              call_to_action: "COMMENT YOUR SCORE & SUBSCRIBE!",
+              score_tiers: [
+                { tier_name: "Noob", min_score: 0, max_score: 20, badge_color: "#94A3B8" },
+                { tier_name: "Gamer", min_score: 21, max_score: 35, badge_color: "#3B82F6" },
+                { tier_name: "Pro", min_score: 36, max_score: 45, badge_color: "#8B5CF6" },
+                { tier_name: "God Tier", min_score: 46, max_score: 50, badge_color: "#F59E0B" },
+              ],
+            },
+            rounds: [],
+          },
+          fps: 60,
+          width: 1920,
+          height: 1080,
+          total_duration_frames: 32400,
+          timing_slots: [],
+          sfx_ticking_path: "",
+          sfx_chime_path: "",
+          sfx_stinger_path: "",
+        }}
+        calculateMetadata={({ props }) => {
+          return {
+            durationInFrames: props.total_duration_frames || 32400,
+            fps: props.fps || 60,
+            width: props.width || 1920,
+            height: props.height || 1080,
           };
         }}
       />

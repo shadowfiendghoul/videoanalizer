@@ -207,3 +207,106 @@ export interface VisualQuizRenderProps extends Record<string, unknown> {
   banner_height?: number | null;
 }
 
+// ---------------------------------------------------------------------------
+// 008-widescreen-gaming-quiz (16:9 1920x1080 60fps) Types
+// ---------------------------------------------------------------------------
+
+export type AssetDisplayMode =
+  | "screenshot"
+  | "audio_sfx"
+  | "game_over"
+  | "minimap"
+  | "silhouette"
+  | "custom";
+
+export interface WidescreenQuizItem {
+  id: string;
+  item_index: number;
+  global_question_number: number;
+  prompt_text: string;
+  answer_text: string;
+  asset_url?: string | null;
+  asset_path?: string | null;
+  asset_search_query: string;
+  apply_procedural_mask?: boolean;
+  is_approved?: boolean;
+  difficulty_tag?: string | null;
+  audio_cue_duration_sec?: number;
+}
+
+export interface WidescreenQuizRound {
+  round_number: number;
+  round_title: string;
+  asset_mode: AssetDisplayMode;
+  pass_rate_statistic: string;
+  badge_theme_color: string;
+  splash_duration_sec: number;
+  questions: WidescreenQuizItem[];
+}
+
+export interface WidescreenScoreTier {
+  tier_name: string;
+  min_score: number;
+  max_score: number;
+  badge_color: string;
+}
+
+export interface WidescreenIntroConfig {
+  hook_tts: string;
+  duration_sec: number;
+  challenge_title: string;
+}
+
+export interface WidescreenOutroConfig {
+  duration_sec: number;
+  outro_tts: string;
+  call_to_action: string;
+  score_tiers: WidescreenScoreTier[];
+}
+
+export interface WidescreenQuizDataset {
+  mode: "widescreen_gaming_quiz";
+  title: string;
+  language: "ru" | "en";
+  guessing_duration_sec: number;
+  reveal_hold_duration_sec: number;
+  bgm_track_path?: string | null;
+  bgm_ducking_volume?: number;
+  bgm_base_volume?: number;
+  ambient_background_video?: string | null;
+  intro: WidescreenIntroConfig;
+  outro: WidescreenOutroConfig;
+  rounds: WidescreenQuizRound[];
+}
+
+export interface WidescreenTimingSlot {
+  slot_type: "intro" | "splash" | "question" | "outro";
+  round_number?: number | null;
+  question_global_number?: number | null;
+  start_frame: number;
+  duration_frames: number;
+  end_frame: number;
+  timer_start_frame?: number | null;
+  timer_duration_frames?: number | null;
+  reveal_frame?: number | null;
+  audio_cue_start_frame?: number | null;
+  audio_cue_end_frame?: number | null;
+}
+
+export interface WidescreenQuizRenderProps extends Record<string, unknown> {
+  dataset: WidescreenQuizDataset;
+  fps: number;
+  width: number;
+  height: number;
+  total_duration_frames: number;
+  timing_slots: WidescreenTimingSlot[];
+  audio_mix_path?: string | null;
+  bgm_audio_path?: string | null;
+  sfx_ticking_path: string;
+  sfx_chime_path: string;
+  sfx_stinger_path: string;
+  intro_tts_audio_path?: string | null;
+  outro_tts_audio_path?: string | null;
+  ambient_background_path?: string | null;
+}
+
