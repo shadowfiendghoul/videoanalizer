@@ -41,58 +41,26 @@ export const WidescreenAnswerPanel: React.FC<WidescreenAnswerPanelProps> = ({
   }
 
   if (!isRevealed) {
-    return (
-      <div
-        style={{
-          position: "absolute",
-          left: 460,
-          top: 855,
-          width: 1000,
-          height: 90,
-          borderRadius: 18,
-          background: "linear-gradient(180deg, #141A23 0%, #0A0D12 100%)",
-          border: "1.5px dashed rgba(255, 255, 255, 0.15)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(0, 0, 0, 0.5)",
-          zIndex: 10,
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "'Montserrat', 'Inter Tight', sans-serif",
-            fontSize: 20,
-            fontWeight: 800,
-            letterSpacing: "0.2em",
-            color: "#475569",
-            textTransform: "uppercase",
-            textShadow: "0 2px 4px rgba(0, 0, 0, 0.8)",
-          }}
-        >
-          ● &nbsp; ● &nbsp; ● &nbsp; WAITING FOR ANSWER &nbsp; ● &nbsp; ● &nbsp; ●
-        </span>
-      </div>
-    );
+    return null;
   }
 
   return (
     <div
       style={{
         position: "absolute",
-        left: 460,
-        top: 855,
-        width: 1000,
-        height: 90,
-        borderRadius: 18,
+        left: 360,
+        top: 760,
+        width: 1200,
+        height: 96,
+        borderRadius: 24,
         background: "linear-gradient(135deg, #10B981 0%, #047857 100%)",
-        border: "2px solid rgba(255, 255, 255, 0.45)",
-        boxShadow: "0 20px 50px rgba(0, 0, 0, 0.8), 0 0 45px rgba(16, 185, 129, 0.6), inset 0 2px 3px rgba(255, 255, 255, 0.5)",
+        border: "3px solid #FFFFFF",
+        boxShadow: "0 20px 50px rgba(0, 0, 0, 0.85), 0 0 45px rgba(16, 185, 129, 0.65)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         transform: `scale(${scale})`,
-        zIndex: 10,
+        zIndex: 30,
         paddingLeft: 36,
         paddingRight: 36,
       }}

@@ -11,6 +11,10 @@ interface WidescreenAssetContainerProps {
   isRevealed?: boolean;
   themeColor?: string;
   relativeFrame?: number;
+  containerLeft?: number;
+  containerTop?: number;
+  containerWidth?: number;
+  containerHeight?: number;
 }
 
 export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> = ({
@@ -22,6 +26,10 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
   isRevealed = false,
   themeColor = "#00F0FF",
   relativeFrame = 0,
+  containerLeft = 230,
+  containerTop = 130,
+  containerWidth = 1460,
+  containerHeight = 770,
 }) => {
   const frame = relativeFrame;
   const { fps } = useVideoConfig();
@@ -73,14 +81,14 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
     <div
       style={{
         position: "absolute",
-        left: 360,
-        top: 160,
-        width: 1200,
-        height: 600,
-        borderRadius: 32,
+        left: containerLeft,
+        top: containerTop,
+        width: containerWidth,
+        height: containerHeight,
+        borderRadius: 36,
         background: "#080B11",
-        border: "6px solid #FFFFFF",
-        boxShadow: "0 32px 84px rgba(0, 0, 0, 0.85), 0 10px 28px rgba(0, 0, 0, 0.6), 0 0 35px rgba(255, 255, 255, 0.18)",
+        border: "8px solid #FFFFFF",
+        boxShadow: "0 24px 60px rgba(0, 0, 0, 0.8), 0 4px 16px rgba(0, 0, 0, 0.5)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

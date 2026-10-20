@@ -279,16 +279,19 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
                 />
               )}
 
-              {/* Top Status Bar (Round Badge + Question Tracker) */}
+              {/* Top Status Bar (Round Badge + Question Tracker aligned with container) */}
               <WidescreenStatusBar
-                roundTitle={round.round_title}
-                themeColor={round.badge_theme_color}
-                currentQuestionNumber={question.global_question_number ?? question.item_index}
-                totalQuestions={dataset?.total_questions_count ?? 50}
+                roundNumber={round.round_number}
+                currentQuestionInRound={question.item_index}
+                totalQuestionsInRound={round.questions?.length > 1 ? round.questions.length : 10}
+                globalQuestionNumber={question.global_question_number ?? question.item_index}
+                totalQuestionsCount={dataset?.total_questions_count > 2 ? dataset.total_questions_count : 50}
+                containerLeft={230}
+                containerWidth={1460}
                 relativeFrame={relativeFrame}
               />
 
-              {/* Central Asset Container (1200x600 px) */}
+              {/* Central Asset Container (1460x770 px) */}
               <WidescreenAssetContainer
                 assetMode={round.asset_mode}
                 assetPath={question.asset_path || (question as any).local_asset_path}
@@ -298,15 +301,23 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
                 isRevealed={isRevealed}
                 themeColor={round.badge_theme_color}
                 relativeFrame={relativeFrame}
+                containerLeft={230}
+                containerTop={130}
+                containerWidth={1460}
+                containerHeight={770}
               />
 
-              {/* Countdown Timer Bar (1200x18 px) */}
+              {/* Countdown Timer Bar (1460x22 px) */}
               <WidescreenTimerBar
                 relativeFrame={relativeFrame}
                 durationFrames={timerDur}
+                containerLeft={230}
+                containerTop={926}
+                containerWidth={1460}
+                containerHeight={22}
               />
 
-              {/* Answer Reveal Panel (1000x90 px) */}
+              {/* Answer Reveal Panel */}
               <WidescreenAnswerPanel
                 answerText={question.answer_text}
                 relativeFrame={relativeFrame}
