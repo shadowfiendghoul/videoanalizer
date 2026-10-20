@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WidescreenQuizRenderProps",
+  "description": "Props contract passed to Remotion WidescreenGamingQuiz composition (1920x1080 @ 60fps)",
+  "type": "object",
+  "properties": {
+    "fps": {
+      "type": "integer",
+      "default": 60,
+      "enum": [60]
+    },
+    "width": {
+      "type": "integer",
+      "default": 1920,
+      "enum": [1920]
+    },
+    "height": {
+      "type": "integer",
+      "default": 1080,
+      "enum": [1080]
+    },
+    "total_duration_frames": {
+      "type": "integer",
+      "minimum": 300
+    },
+    "sfx_ticking_path": {
+      "type": "string"
+    },
+    "sfx_chime_path": {
+      "type": "string"
+    },
+    "sfx_stinger_path": {
+      "type": "string"
+    },
+    "bgm_audio_path": {
+      "type": ["string", "null"]
+    },
+    "intro_tts_audio_path": {
+      "type": ["string", "null"]
+    },
+    "outro_tts_audio_path": {
+      "type": ["string", "null"]
+    },
+    "ambient_background_path": {
+      "type": ["string", "null"]
+    },
+    "dataset": {
+      "$ref": "#/$defs/WidescreenQuizDataset"
+    },
+    "timing_slots": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/WidescreenTimingSlot"
+      }
+    }
+  },
+  "required": [
+    "fps",
+    "width",
+    "height",
+    "total_duration_frames",
+    "dataset",
+    "timing_slots",
+    "sfx_ticking_path",
+    "sfx_chime_path",
+    "sfx_stinger_path"
+  ],
+  "$defs": {
+    "WidescreenQuizItem": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "item_index": { "type": "integer", "minimum": 1, "maximum": 50 },
+        "global_question_number": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "prompt_text": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "answer_text": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "asset_url": { "type": ["string", "null"] },
+        "asset_path": { "type": ["string", "null"] },
+        "asset_search_query": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "apply_procedural_mask": { "type": "boolean", "default": true },
+        "is_approved": { "type": "boolean", "default": false },
+        "difficulty_tag": { "type": ["string", "null"] },
+        "audio_cue_duration_sec": { "type": "number", "minimum": 0.5, "maximum": 5.0, "default": 4.0 }
+      },
+      "required": ["id", "item_index", "global_question_number", "prompt_text", "answer_text", "asset_search_query"]
+    },
+    "WidescreenQuizRound": {
+      "type": "object",
+      "properties": {
+        "round_number": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "round_title": { "type": "string", "minLength": 2, "maxLength": 50 },
+        "asset_mode": {
+          "type": "string",
+          "enum": ["screenshot", "audio_sfx", "game_over", "minimap", "silhouette", "custom"]
+        },
+        "pass_rate_statistic": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "badge_theme_color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "splash_duration_sec": { "type": "number", "minimum": 2.0, "maximum": 6.0, "default": 4.0 },
+        "questions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/WidescreenQuizItem" },
+          "minItems": 1,
+          "maxItems": 30
+        }
+      },
+      "required": ["round_number", "round_title", "asset_mode", "questions"]
+    },
+    "WidescreenScoreTier": {
+      "type": "object",
+      "properties": {
+        "tier_name": { "type": "string", "minLength": 2, "maxLength": 30 },
+        "min_score": { "type": "integer", "minimum": 0 },
+        "max_score": { "type": "integer", "minimum": 0 },
+        "badge_color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+      },
+      "required": ["tier_name", "min_score", "max_score", "badge_color"]
+    },
+    "WidescreenIntroConfig": {
+      "type": "object",
+      "properties": {
+        "hook_tts": { "type": "string", "minLength": 10, "maxLength": 300 },
+        "duration_sec": { "type": "number", "minimum": 4.0, "maximum": 12.0, "default": 8.0 },
+        "challenge_title": { "type": "string", "minLength": 3, "maxLength": 80 }
+      },
+      "required": ["hook_tts", "challenge_title"]
+    },
+    "WidescreenOutroConfig": {
+      "type": "object",
+      "properties": {
+        "duration_sec": { "type": "number", "minimum": 10.0, "maximum": 25.0, "default": 15.0 },
+        "outro_tts": { "type": "string", "minLength": 10, "maxLength": 400 },
+        "call_to_action": { "type": "string", "minLength": 5, "maxLength": 120 },
+        "score_tiers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/WidescreenScoreTier" },
+          "minItems": 2,
+          "maxItems": 6
+        }
+      },
+      "required": ["outro_tts", "call_to_action", "score_tiers"]
+    },
+    "WidescreenQuizDataset": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "const": "widescreen_gaming_quiz" },
+        "title": { "type": "string", "minLength": 3, "maxLength": 100 },
+        "language": { "type": "string", "enum": ["ru", "en"] },
+        "guessing_duration_sec": { "type": "number", "minimum": 3.0, "maximum": 10.0, "default": 6.0 },
+        "reveal_hold_duration_sec": { "type": "number", "minimum": 1.5, "maximum": 5.0, "default": 3.0 },
+        "bgm_track_path": { "type": ["string", "null"] },
+        "bgm_ducking_volume": { "type": "number", "minimum": 0.05, "maximum": 0.5, "default": 0.18 },
+        "bgm_base_volume": { "type": "number", "minimum": 0.1, "maximum": 1.0, "default": 0.30 },
+        "ambient_background_video": { "type": ["string", "null"] },
+        "intro": { "$ref": "#/$defs/WidescreenIntroConfig" },
+        "outro": { "$ref": "#/$defs/WidescreenOutroConfig" },
+        "rounds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/WidescreenQuizRound" },
+          "minItems": 1,
+          "maxItems": 10
+        }
+      },
+      "required": ["mode", "title", "language", "intro", "outro", "rounds"]
+    },
+    "WidescreenTimingSlot": {
+      "type": "object",
+      "properties": {
+        "slot_type": { "type": "string", "enum": ["intro", "splash", "question", "outro"] },
+        "round_number": { "type": ["integer", "null"] },
+        "question_global_number": { "type": ["integer", "null"] },
+        "start_frame": { "type": "integer", "minimum": 0 },
+        "duration_frames": { "type": "integer", "minimum": 1 },
+        "end_frame": { "type": "integer", "minimum": 1 },
+        "timer_start_frame": { "type": ["integer", "null"] },
+        "timer_duration_frames": { "type": ["integer", "null"] },
+        "reveal_frame": { "type": ["integer", "null"] },
+        "audio_cue_start_frame": { "type": ["integer", "null"] },
+        "audio_cue_end_frame": { "type": ["integer", "null"] }
+      },
+      "required": ["slot_type", "start_frame", "duration_frames", "end_frame"]
+    }
+  }
+}

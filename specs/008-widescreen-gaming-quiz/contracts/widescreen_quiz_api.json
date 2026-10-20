@@ -1,0 +1,209 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "VideoAnalyzer Widescreen Gaming Quiz API",
+    "version": "1.0.0",
+    "description": "API contracts for modular 16:9 widescreen gaming quiz show generation, moderation, audio/image search, and Remotion rendering."
+  },
+  "paths": {
+    "/api/v1/quiz/widescreen/generate": {
+      "post": {
+        "summary": "Generate complete WidescreenQuizDataset using Gemini REST API (@script-service)",
+        "operationId": "generateWidescreenQuiz",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "topic_prompt": {
+                    "type": "string",
+                    "example": "50 Iconic PC & Console Games of All Time across 5 themed rounds"
+                  },
+                  "rounds_count": {
+                    "type": "integer",
+                    "default": 5,
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "questions_per_round": {
+                    "type": "integer",
+                    "default": 10,
+                    "minimum": 1,
+                    "maximum": 20
+                  },
+                  "language": {
+                    "type": "string",
+                    "default": "ru",
+                    "enum": ["ru", "en"]
+                  },
+                  "auto_fetch_assets": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": ["topic_prompt"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully generated dataset with resolved or pending media assets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./remotion_props_schema.json#/$defs/WidescreenQuizDataset"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quiz/widescreen/search-audio": {
+      "post": {
+        "summary": "Search audio sound effect cue from web/Freesound by keyword",
+        "operationId": "searchAudioCue",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": { "type": "string", "example": "Half-Life 2 crowbar hit sound" },
+                  "max_duration_sec": { "type": "number", "default": 4.0 }
+                },
+                "required": ["query"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search candidates found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "candidates": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "source": { "type": "string" },
+                          "title": { "type": "string" },
+                          "preview_url": { "type": "string" },
+                          "duration_sec": { "type": "number" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quiz/widescreen/search-image": {
+      "post": {
+        "summary": "Search image/screenshot candidates by game title and mode",
+        "operationId": "searchImageCandidate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": { "type": "string", "example": "The Witcher 3 Novigrad minimap hud" },
+                  "asset_mode": {
+                    "type": "string",
+                    "enum": ["screenshot", "game_over", "minimap", "silhouette"]
+                  }
+                },
+                "required": ["query"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of candidate image URLs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "candidates": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "thumbnail_url": { "type": "string" },
+                          "image_url": { "type": "string" },
+                          "title": { "type": "string" },
+                          "width": { "type": "integer" },
+                          "height": { "type": "integer" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quiz/widescreen/render": {
+      "post": {
+        "summary": "Initiate Remotion 1080p60 rendering of approved widescreen quiz",
+        "operationId": "renderWidescreenQuiz",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "dataset": {
+                    "$ref": "./remotion_props_schema.json#/$defs/WidescreenQuizDataset"
+                  },
+                  "render_profile": {
+                    "type": "string",
+                    "enum": ["gpu_fast", "cpu_safe"],
+                    "default": "gpu_fast"
+                  }
+                },
+                "required": ["dataset"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Render job queued/started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job_id": { "type": "string" },
+                    "status": { "type": "string", "example": "rendering" },
+                    "total_frames": { "type": "integer" },
+                    "estimated_duration_sec": { "type": "number" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
