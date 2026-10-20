@@ -972,12 +972,14 @@ class ScriptService:
         logger.info("Building curated default 50-question 16:9 gaming quiz dataset.")
         rounds: list[WidescreenQuizRound] = []
 
+        is_en = language == "en"
+
         round_definitions = [
             (
                 1,
-                "РАУНД 01: СКРИНШОТЫ ИГР",
+                "ROUND 01: GAME SCREENSHOTS" if is_en else "РАУНД 01: СКРИНШОТЫ ИГР",
                 AssetDisplayMode.SCREENSHOT,
-                "94% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
+                "94% OF PLAYERS PASS THIS ROUND" if is_en else "94% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
                 "#58A6FF",
                 [
                     ("Grand Theft Auto V", "GTA V gameplay screenshot Los Santos"),
@@ -994,28 +996,28 @@ class ScriptService:
             ),
             (
                 2,
-                "РАУНД 02: ЗВУКИ ОРУЖИЯ И ПРЕДМЕТОВ",
+                "ROUND 02: WEAPON & ITEM SOUNDS" if is_en else "РАУНД 02: ЗВУКИ ОРУЖИЯ И ПРЕДМЕТОВ",
                 AssetDisplayMode.AUDIO_SFX,
-                "78% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
+                "78% OF PLAYERS PASS THIS ROUND" if is_en else "78% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
                 "#00E5FF",
                 [
                     ("AWP (CS:GO / CS2)", "CS AWP sniper rifle gunshot sound"),
                     ("AK-47 (COUNTER-STRIKE)", "CS AK-47 assault rifle gunshot sound"),
-                    ("MINECRAFT (ЗВУК ЕДЫ)", "Minecraft eating apple food sound"),
-                    ("HALF-LIFE (АПТЕЧКА)", "Half-Life wall health station medkit sound"),
+                    ("MINECRAFT (EATING SOUND)" if is_en else "MINECRAFT (ЗВУК ЕДЫ)", "Minecraft eating apple food sound"),
+                    ("HALF-LIFE (MEDKIT HEAL)" if is_en else "HALF-LIFE (АПТЕЧКА)", "Half-Life wall health station medkit sound"),
                     ("DARK SOULS (YOU DIED)", "Dark Souls death sound you died chime"),
                     ("GTA (WASTED)", "GTA San Andreas wasted sound effect"),
-                    ("PAC-MAN (ГИБЕЛЬ)", "Pacman retro arcade death sound"),
-                    ("SUPER MARIO (МОНЕТКА)", "Super Mario Bros coin pickup sound"),
-                    ("SONIC (КОЛЬЦО)", "Sonic the Hedgehog gold ring sound"),
-                    ("PORTAL (ПОРТАЛЬНАЯ ПУШКА)", "Portal gun shot blue orange sound"),
+                    ("PAC-MAN (DEATH SOUND)" if is_en else "PAC-MAN (ГИБЕЛЬ)", "Pacman retro arcade death sound"),
+                    ("SUPER MARIO (COIN PICKUP)" if is_en else "SUPER MARIO (МОНЕТКА)", "Super Mario Bros coin pickup sound"),
+                    ("SONIC (GOLD RING)" if is_en else "SONIC (КОЛЬЦО)", "Sonic the Hedgehog gold ring sound"),
+                    ("PORTAL (PORTAL GUN)" if is_en else "PORTAL (ПОРТАЛЬНАЯ ПУШКА)", "Portal gun shot blue orange sound"),
                 ],
             ),
             (
                 3,
-                "РАУНД 03: ЭКРАНЫ СМЕРТИ (GAME OVER)",
+                "ROUND 03: GAME OVER SCREENS" if is_en else "РАУНД 03: ЭКРАНЫ СМЕРТИ (GAME OVER)",
                 AssetDisplayMode.GAME_OVER,
-                "58% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
+                "58% OF PLAYERS PASS THIS ROUND" if is_en else "58% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
                 "#EF4444",
                 [
                     ("DARK SOULS III", "Dark Souls 3 YOU DIED screen clean"),
@@ -1032,9 +1034,9 @@ class ScriptService:
             ),
             (
                 4,
-                "РАУНД 04: МИНИКАРТЫ И РАДАРЫ",
+                "ROUND 04: RADAR MINIMAPS" if is_en else "РАУНД 04: МИНИКАРТЫ И РАДАРЫ",
                 AssetDisplayMode.MINIMAP,
-                "42% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
+                "42% OF PLAYERS PASS THIS ROUND" if is_en else "42% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
                 "#F59E0B",
                 [
                     ("THE WITCHER 3", "Witcher 3 circular compass minimap radar hud"),
@@ -1051,21 +1053,21 @@ class ScriptService:
             ),
             (
                 5,
-                "РАУНД 05: СИЛУЭТЫ ГЕРОЕВ (БОЖЕСТВЕННЫЙ РАНГ)",
+                "ROUND 05: CHARACTER SILHOUETTES" if is_en else "РАУНД 05: СИЛУЭТЫ ГЕРОЕВ (БОЖЕСТВЕННЫЙ РАНГ)",
                 AssetDisplayMode.SILHOUETTE,
-                "18% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
+                "18% OF PLAYERS PASS THIS ROUND" if is_en else "18% ИГРОКОВ ПРОХОДЯТ ЭТОТ РАУНД",
                 "#8B5CF6",
                 [
-                    ("КРАТОС (GOD OF WAR)", "Kratos Leviathan axe God of War silhouette character render"),
-                    ("МАСТЕР ЧИФ (HALO)", "Master Chief Spartan helmet Halo silhouette"),
-                    ("ГЕРАЛЬТ (ВЕДЬМАК)", "Geralt of Rivia dual swords Witcher silhouette"),
-                    ("ГОРДОН ФРИМЕН (HALF-LIFE)", "Gordon Freeman HEV suit crowbar silhouette"),
-                    ("АРТУР МОРГАН (RDR2)", "Arthur Morgan cowboy hat revolver silhouette"),
-                    ("ЛАРА КРОФТ (TOMB RAIDER)", "Lara Croft dual pistols Tomb Raider silhouette"),
-                    ("ДУМГАЙ (DOOM)", "Doom Slayer Praetor suit shotgun silhouette"),
-                    ("СОЛИД СНЕЙК (MGS)", "Solid Snake headband Metal Gear Solid silhouette"),
-                    ("СТИВ (MINECRAFT)", "Steve Minecraft diamond pickaxe cube silhouette"),
-                    ("СЭНС (UNDERTALE)", "Sans the skeleton blue eye Undertale silhouette"),
+                    ("KRATOS (GOD OF WAR)" if is_en else "КРАТОС (GOD OF WAR)", "Kratos Leviathan axe God of War silhouette character render"),
+                    ("MASTER CHIEF (HALO)" if is_en else "МАСТЕР ЧИФ (HALO)", "Master Chief Spartan helmet Halo silhouette"),
+                    ("GERALT OF RIVIA (THE WITCHER)" if is_en else "ГЕРАЛЬТ (ВЕДЬМАК)", "Geralt of Rivia dual swords Witcher silhouette"),
+                    ("GORDON FREEMAN (HALF-LIFE)" if is_en else "ГОРДОН ФРИМЕН (HALF-LIFE)", "Gordon Freeman HEV suit crowbar silhouette"),
+                    ("ARTHUR MORGAN (RDR2)" if is_en else "АРТУР МОРГАН (RDR2)", "Arthur Morgan cowboy hat revolver silhouette"),
+                    ("LARA CROFT (TOMB RAIDER)" if is_en else "ЛАРА КРОФТ (TOMB RAIDER)", "Lara Croft dual pistols Tomb Raider silhouette"),
+                    ("DOOM SLAYER (DOOM)" if is_en else "ДУМГАЙ (DOOM)", "Doom Slayer Praetor suit shotgun silhouette"),
+                    ("SOLID SNAKE (METAL GEAR SOLID)" if is_en else "СОЛИД СНЕЙК (MGS)", "Solid Snake headband Metal Gear Solid silhouette"),
+                    ("STEVE (MINECRAFT)" if is_en else "СТИВ (MINECRAFT)", "Steve Minecraft diamond pickaxe cube silhouette"),
+                    ("SANS (UNDERTALE)" if is_en else "СЭНС (UNDERTALE)", "Sans the skeleton blue eye Undertale silhouette"),
                 ],
             ),
         ]
@@ -1074,15 +1076,26 @@ class ScriptService:
         for r_num, r_title, r_mode, r_pass, r_color, items_data in round_definitions[:num_rounds]:
             q_items: list[WidescreenQuizItem] = []
             for item_idx, (answer, query) in enumerate(items_data[:questions_per_round], start=1):
-                prompt = "Угадайте игру по скриншоту"
-                if r_mode == AssetDisplayMode.AUDIO_SFX:
-                    prompt = "Угадайте оружие или предмет по звуку"
-                elif r_mode == AssetDisplayMode.GAME_OVER:
-                    prompt = "Из какой игры этот экран смерти?"
-                elif r_mode == AssetDisplayMode.MINIMAP:
-                    prompt = "Назовите игру по миникарте"
-                elif r_mode == AssetDisplayMode.SILHOUETTE:
-                    prompt = "Назовите культового персонажа по силуэту"
+                if is_en:
+                    prompt = "Guess the video game from screenshot"
+                    if r_mode == AssetDisplayMode.AUDIO_SFX:
+                        prompt = "Identify the weapon or item from sound"
+                    elif r_mode == AssetDisplayMode.GAME_OVER:
+                        prompt = "Which game has this Game Over screen?"
+                    elif r_mode == AssetDisplayMode.MINIMAP:
+                        prompt = "Recognize the game from this radar minimap"
+                    elif r_mode == AssetDisplayMode.SILHOUETTE:
+                        prompt = "Name the iconic character from silhouette"
+                else:
+                    prompt = "Угадайте игру по скриншоту"
+                    if r_mode == AssetDisplayMode.AUDIO_SFX:
+                        prompt = "Угадайте оружие или предмет по звуку"
+                    elif r_mode == AssetDisplayMode.GAME_OVER:
+                        prompt = "Из какой игры этот экран смерти?"
+                    elif r_mode == AssetDisplayMode.MINIMAP:
+                        prompt = "Назовите игру по миникарте"
+                    elif r_mode == AssetDisplayMode.SILHOUETTE:
+                        prompt = "Назовите культового персонажа по силуэту"
 
                 q_items.append(
                     WidescreenQuizItem(
@@ -1109,6 +1122,22 @@ class ScriptService:
                 )
             )
 
+        intro_hook = (
+            "50 Gaming Questions. 5 Unique Rounds. Can you reach the God Tier rank? Round one starts right now!"
+            if is_en
+            else "50 игровых вопросов. 5 уникальных раундов. Сможешь ли ты дойти до ранга God Tier? Раунд один начинается прямо сейчас!"
+        )
+        outro_speech = (
+            "Comment your final score down below and subscribe to the channel for part two!"
+            if is_en
+            else "Напиши свой итоговый балл в комментариях под этим видео и подпишись на канал, чтобы не пропустить вторую часть!"
+        )
+        cta = (
+            "COMMENT YOUR SCORE & SUBSCRIBE!"
+            if is_en
+            else "НАПИШИ СВОЙ СЧЕТ В КОММЕНТАРИЯХ & ПОДПИШИСЬ!"
+        )
+
         return WidescreenQuizDataset(
             mode="widescreen_gaming_quiz",
             title="50 GAMING QUESTIONS CHALLENGE",
@@ -1116,14 +1145,14 @@ class ScriptService:
             guessing_duration_sec=6.0,
             reveal_hold_duration_sec=3.0,
             intro=WidescreenIntroConfig(
-                hook_tts="50 игровых вопросов. 5 уникальных раундов. Сможешь ли ты дойти до ранга God Tier? Раунд один начинается прямо сейчас!",
+                hook_tts=intro_hook,
                 duration_sec=8.0,
                 challenge_title="50 GAMING QUESTIONS CHALLENGE",
             ),
             outro=WidescreenOutroConfig(
                 duration_sec=15.0,
-                outro_tts="Напиши свой итоговый балл в комментариях под этим видео и подпишись на канал, чтобы не пропустить вторую часть!",
-                call_to_action="НАПИШИ СВОЙ СЧЕТ В КОММЕНТАРИЯХ & ПОДПИШИСЬ!",
+                outro_tts=outro_speech,
+                call_to_action=cta,
                 score_tiers=[
                     WidescreenScoreTier(tier_name="Noob", min_score=0, max_score=20, badge_color="#94A3B8"),
                     WidescreenScoreTier(tier_name="Gamer", min_score=21, max_score=35, badge_color="#3B82F6"),

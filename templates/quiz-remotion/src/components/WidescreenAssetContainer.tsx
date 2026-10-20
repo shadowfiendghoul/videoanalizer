@@ -1,5 +1,5 @@
 import React from "react";
-import { Img, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { Img, interpolate, spring, staticFile, useVideoConfig } from "remotion";
 import { AssetDisplayMode } from "../types";
 
 interface WidescreenAssetContainerProps {
@@ -20,16 +20,39 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
   promptText,
   applyProceduralMask = true,
   isRevealed = false,
-  themeColor = "#00E5FF",
+  themeColor = "#00F0FF",
   relativeFrame = 0,
 }) => {
   const frame = relativeFrame;
+  const { fps } = useVideoConfig();
+
   const rawSource = assetPath || assetUrl || null;
   const imageSource = rawSource
     ? rawSource.startsWith("http://") || rawSource.startsWith("https://") || rawSource.startsWith("data:")
       ? rawSource
       : staticFile(rawSource)
     : null;
+
+  // 1. Dynamic Spring Entrance (Ease-out bounce)
+  const entrance = spring({
+    frame,
+    fps,
+    config: {
+      damping: 13,
+      mass: 0.65,
+      stiffness: 110,
+    },
+  });
+  const containerScale = interpolate(entrance, [0, 1], [0.88, 1]);
+  const containerTranslateY = interpolate(entrance, [0, 1], [35, 0]);
+  const containerOpacity = interpolate(frame, [0, 6], [0.4, 1], {
+    extrapolateRight: "clamp",
+  });
+
+  // 2. Cyber Flash Burst on Entrance (frames 0 to 14)
+  const flashOpacity = interpolate(frame, [0, 2, 14], [0, 0.85, 0], {
+    extrapolateRight: "clamp",
+  });
 
   // Waveform animation for AUDIO_SFX mode
   const pulseScale = 1 + 0.08 * Math.sin(frame * 0.2);
@@ -51,20 +74,37 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
       style={{
         position: "absolute",
         left: 360,
-        top: 170,
+        top: 160,
         width: 1200,
         height: 600,
-        borderRadius: 20,
-        backgroundColor: "#161B22",
-        border: "2px solid #21262D",
-        boxShadow: "0 12px 36px rgba(0, 0, 0, 0.6)",
+        borderRadius: 22,
+        background: "linear-gradient(180deg, #18202C 0%, #0D1219 100%)",
+        border: `2px solid rgba(0, 240, 255, 0.35)`,
+        boxShadow: `0 24px 64px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 240, 255, 0.18), inset 0 1px 2px rgba(255, 255, 255, 0.2)`,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         overflow: "hidden",
         zIndex: 5,
+        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
+        opacity: containerOpacity,
       }}
     >
+      {/* Dynamic Cyber Flash Overlay */}
+      {flashOpacity > 0.01 && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background: `radial-gradient(ellipse at center, rgba(0, 240, 255, ${flashOpacity}) 0%, rgba(255, 255, 255, ${flashOpacity * 0.6}) 25%, transparent 70%)`,
+            boxShadow: `inset 0 0 60px rgba(0, 240, 255, ${flashOpacity})`,
+            mixBlendMode: "screen",
+            zIndex: 25,
+          }}
+        />
+      )}
+
       {/* 1. AUDIO_SFX Mode */}
       {assetMode === "audio_sfx" && (
         <div
@@ -81,8 +121,8 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
           <div
             style={{
               position: "relative",
-              width: 180,
-              height: 180,
+              width: 200,
+              height: 200,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -93,22 +133,22 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
             <div
               style={{
                 position: "absolute",
-                width: 160,
-                height: 160,
+                width: 180,
+                height: 180,
                 borderRadius: "50%",
                 border: `2px solid ${themeColor}`,
-                opacity: glowOpacity * 0.4,
-                boxShadow: `0 0 30px ${themeColor}`,
+                opacity: glowOpacity * 0.45,
+                boxShadow: `0 0 35px ${themeColor}`,
               }}
             />
             <div
               style={{
                 position: "absolute",
-                width: 120,
-                height: 120,
+                width: 140,
+                height: 140,
                 borderRadius: "50%",
                 border: `2px dashed ${themeColor}`,
-                opacity: glowOpacity * 0.7,
+                opacity: glowOpacity * 0.75,
               }}
             />
 
@@ -118,20 +158,24 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                zIndex: 2,
+                height: 80,
               }}
             >
-              {[0.4, 0.7, 1.0, 0.6, 0.9, 0.5, 0.8].map((hFactor, i) => {
-                const barH = 24 + 48 * Math.abs(Math.sin((frame * 0.25) + i * 0.8)) * hFactor;
+              {[0.4, 0.7, 1.0, 0.85, 0.6, 0.9, 0.5, 0.3].map((baseHeight, i) => {
+                const waveH =
+                  20 +
+                  60 *
+                    baseHeight *
+                    Math.abs(Math.sin((frame + i * 15) * 0.15));
                 return (
                   <div
-                    key={i}
+                    key={`wave_${i}`}
                     style={{
                       width: 8,
-                      height: barH,
-                      backgroundColor: themeColor,
+                      height: waveH,
                       borderRadius: 4,
-                      boxShadow: `0 0 12px ${themeColor}`,
+                      backgroundColor: themeColor,
+                      boxShadow: `0 0 16px ${themeColor}`,
                     }}
                   />
                 );
@@ -141,31 +185,31 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
 
           <div
             style={{
-              marginTop: 24,
-              fontFamily: "system-ui, sans-serif",
-              fontSize: 22,
-              fontWeight: 700,
+              fontFamily: "'Montserrat', 'Inter Tight', sans-serif",
+              fontSize: 24,
+              fontWeight: 900,
               letterSpacing: "0.1em",
-              color: "#8B949E",
+              color: "#FFFFFF",
               textTransform: "uppercase",
+              marginTop: 24,
+              textShadow: `0 0 16px ${themeColor}99, 0 2px 4px rgba(0, 0, 0, 0.9)`,
             }}
           >
-            {promptText || "СЛУШАЙТЕ ЗВУК И УГАДАЙТЕ ПРЕДМЕТ"}
+            LISTEN CAREFULLY...
           </div>
         </div>
       )}
 
-      {/* 2. MINIMAP / RADAR Mode */}
+      {/* 2. MINIMAP Mode (Circular SVG Radar HUD) */}
       {assetMode === "minimap" && imageSource && (
         <div
           style={{
             position: "relative",
             width: 480,
             height: 480,
-            borderRadius: "50%",
-            overflow: "hidden",
-            boxShadow: `0 0 40px rgba(0, 229, 255, 0.3)`,
-            border: `3px solid ${themeColor}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           <Img
@@ -233,9 +277,8 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
               maxWidth: 1140,
               maxHeight: 540,
               objectFit: "contain",
-              borderRadius: 12,
               filter: applyProceduralMask
-                ? `brightness(${silhouetteBrightness}) drop-shadow(0 0 20px rgba(0, 229, 255, ${1 - silhouetteBrightness}))`
+                ? `brightness(${silhouetteBrightness}) drop-shadow(0 0 20px ${themeColor}88)`
                 : "none",
               transition: "filter 0.5s ease-out",
             }}
@@ -252,17 +295,17 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: 30,
+            padding: 24,
           }}
         >
           <Img
             src={imageSource}
             style={{
-              maxWidth: 1140,
-              maxHeight: 540,
+              maxWidth: 1152,
+              maxHeight: 552,
               objectFit: "contain",
-              borderRadius: 12,
-              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.5)",
+              borderRadius: 14,
+              boxShadow: "0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 0, 0, 0.4)",
             }}
           />
         </div>
@@ -282,37 +325,43 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
         >
           <div
             style={{
-              width: 80,
-              height: 80,
-              borderRadius: 16,
-              backgroundColor: "#21262D",
+              width: 88,
+              height: 88,
+              borderRadius: 20,
+              background: "linear-gradient(180deg, #21262D 0%, #161B22 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: 16,
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.5)",
             }}
           >
-            <span style={{ fontSize: 36, color: "#8B949E" }}>🎮</span>
+            <span style={{ fontSize: 40, color: "#8B949E" }}>🎮</span>
           </div>
           <div
             style={{
-              fontFamily: "system-ui, sans-serif",
+              fontFamily: "'Montserrat', 'Inter Tight', sans-serif",
               fontSize: 26,
-              fontWeight: 700,
+              fontWeight: 900,
               color: "#FFFFFF",
               marginBottom: 8,
+              maxWidth: 800,
+              textShadow: "0 2px 6px rgba(0, 0, 0, 0.9)",
             }}
           >
-            {promptText || "ВОПРОС ВИКТОРИНЫ"}
+            {promptText || "GUESS THE GAME"}
           </div>
           <div
             style={{
-              fontFamily: "system-ui, sans-serif",
+              fontFamily: "'Montserrat', 'Inter Tight', sans-serif",
               fontSize: 16,
+              fontWeight: 700,
               color: "#8B949E",
+              letterSpacing: "0.08em",
             }}
           >
-            Медиафайл загружается...
+            MEDIA LOADING...
           </div>
         </div>
       )}

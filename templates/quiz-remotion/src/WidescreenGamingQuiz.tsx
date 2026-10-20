@@ -2,6 +2,7 @@ import React from "react";
 import {
   AbsoluteFill,
   Audio,
+  interpolate,
   Loop,
   OffthreadVideo,
   Sequence,
@@ -251,14 +252,42 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
             activeSlot.reveal_frame !== null &&
             frame >= activeSlot.reveal_frame;
 
+          const timerDur = activeSlot.timer_duration_frames || 360;
+          const panicStart = Math.max(0, timerDur - 120);
+          const isPanic = relativeFrame >= panicStart && relativeFrame < timerDur;
+          const panicPulse = isPanic
+            ? Math.abs(Math.sin((relativeFrame - panicStart) * 0.45))
+            : 0;
+          const panicOpacity = isPanic
+            ? interpolate(relativeFrame, [panicStart, panicStart + 40, timerDur], [0.2, 0.6 + 0.3 * panicPulse, 0.9], {
+                extrapolateRight: "clamp",
+              })
+            : 0;
+
           return (
             <>
+              {/* Edge Panic Vignette (Last 2.0s pulse before answer reveal) */}
+              {isPanic && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    pointerEvents: "none",
+                    zIndex: 8,
+                    opacity: panicOpacity,
+                    background: "radial-gradient(ellipse at center, transparent 35%, rgba(180, 0, 40, 0.35) 70%, rgba(240, 0, 60, 0.8) 100%)",
+                    boxShadow: "inset 0 0 120px rgba(255, 0, 70, 0.65)",
+                  }}
+                />
+              )}
+
               {/* Top Status Bar (Round Badge + Question Tracker) */}
               <WidescreenStatusBar
                 roundTitle={round.round_title}
                 themeColor={round.badge_theme_color}
                 currentQuestionNumber={question.item_index}
                 totalQuestionsInRound={round.questions.length}
+                relativeFrame={relativeFrame}
               />
 
               {/* Central Asset Container (1200x600 px) */}
@@ -273,17 +302,17 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
                 relativeFrame={relativeFrame}
               />
 
-              {/* Countdown Timer Bar (1200x16 px) */}
+              {/* Countdown Timer Bar (1200x18 px) */}
               <WidescreenTimerBar
                 relativeFrame={relativeFrame}
-                durationFrames={activeSlot.timer_duration_frames || 360}
+                durationFrames={timerDur}
               />
 
               {/* Answer Reveal Panel (1000x90 px) */}
               <WidescreenAnswerPanel
                 answerText={question.answer_text}
                 relativeFrame={relativeFrame}
-                revealFrame={activeSlot.timer_duration_frames || 360}
+                revealFrame={timerDur}
               />
             </>
           );

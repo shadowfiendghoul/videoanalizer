@@ -1,5 +1,5 @@
 import React from "react";
-import { interpolate, interpolateColors } from "remotion";
+import { interpolate } from "remotion";
 
 interface WidescreenTimerBarProps {
   relativeFrame: number;
@@ -16,29 +16,41 @@ export const WidescreenTimerBar: React.FC<WidescreenTimerBarProps> = ({
     extrapolateRight: "clamp",
   });
 
-  // Calculate percentage of depletion (0.0 to 1.0)
-  const progress = Math.min(1.0, Math.max(0.0, relativeFrame / durationFrames));
+  // Panic mode: last 2.0 seconds (120 frames at 60fps)
+  const panicStartFrame = Math.max(0, durationFrames - 120);
+  const isPanic = relativeFrame >= panicStartFrame && relativeFrame < durationFrames;
 
-  // Color transitions from Amber (#F59E0B) to Red (#EF4444) in the final 1.5s (progress 0.75 to 1.0)
-  const barColor = interpolateColors(
-    progress,
-    [0, 0.75, 1.0],
-    ["#F59E0B", "#F59E0B", "#EF4444"]
-  );
+  // Rapid heartbeat pulse in panic phase (~2.2 pulses per second)
+  const panicPulse = isPanic
+    ? Math.abs(Math.sin((relativeFrame - panicStartFrame) * 0.45))
+    : 0;
+
+  // Dynamic colors and shadows
+  const barBackground = isPanic
+    ? `linear-gradient(90deg, #E11D48 0%, #FF0055 100%)`
+    : `linear-gradient(90deg, #00B4D8 0%, #00F0FF 100%)`;
+
+  const barShadow = isPanic
+    ? `0 0 ${16 + panicPulse * 16}px #FF0055, 0 0 ${35 + panicPulse * 25}px rgba(255, 0, 85, 0.8)`
+    : `0 0 16px #00F0FF, 0 0 35px rgba(0, 240, 255, 0.55)`;
 
   return (
     <div
       style={{
         position: "absolute",
         left: 360,
-        top: 800,
+        top: 795,
         width: 1200,
-        height: 16,
-        borderRadius: 8,
-        backgroundColor: "#21262D",
-        boxShadow: "inset 0 2px 4px rgba(0, 0, 0, 0.5)",
+        height: 18,
+        borderRadius: 10,
+        backgroundColor: "#0B0E14",
+        border: isPanic
+          ? `1px solid rgba(255, 0, 85, ${0.4 + panicPulse * 0.4})`
+          : "1px solid rgba(0, 240, 255, 0.2)",
+        boxShadow: "inset 0 2px 6px rgba(0, 0, 0, 0.8), 0 6px 20px rgba(0, 0, 0, 0.6)",
         overflow: "hidden",
         zIndex: 10,
+        transition: "border-color 0.15s ease",
       }}
     >
       <div
@@ -46,9 +58,9 @@ export const WidescreenTimerBar: React.FC<WidescreenTimerBarProps> = ({
           width,
           height: "100%",
           borderRadius: 8,
-          backgroundColor: barColor,
-          boxShadow: `0 0 12px ${barColor}`,
-          transition: "background-color 0.1s linear",
+          background: barBackground,
+          boxShadow: barShadow,
+          transition: "box-shadow 0.08s ease",
         }}
       />
     </div>

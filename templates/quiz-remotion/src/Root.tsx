@@ -8,7 +8,12 @@ import {
   VisualQuizRenderProps,
   WidescreenQuizRenderProps,
 } from "./types";
+import { loadFont as loadMontserrat } from "@remotion/google-fonts/Montserrat";
+import { loadFont as loadInterTight } from "@remotion/google-fonts/InterTight";
 import "./style.css";
+
+loadMontserrat("normal", { weights: ["700", "800", "900"] });
+loadInterTight("normal", { weights: ["700", "800", "900"] });
 
 const defaultProps: RemotionRenderProps = {
   challenge: {
