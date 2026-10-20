@@ -259,14 +259,14 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
             ? Math.abs(Math.sin((relativeFrame - panicStart) * 0.45))
             : 0;
           const panicOpacity = isPanic
-            ? interpolate(relativeFrame, [panicStart, panicStart + 40, timerDur], [0.2, 0.6 + 0.3 * panicPulse, 0.9], {
+            ? interpolate(relativeFrame, [panicStart, panicStart + 40, timerDur], [0.05, 0.2 + 0.1 * panicPulse, 0.35], {
                 extrapolateRight: "clamp",
               })
             : 0;
 
           return (
             <>
-              {/* Edge Panic Vignette (Last 2.0s pulse before answer reveal) */}
+              {/* Edge Panic Vignette (Subtle edge tint in final 2.0s before answer reveal) */}
               {isPanic && (
                 <div
                   style={{
@@ -275,8 +275,8 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
                     pointerEvents: "none",
                     zIndex: 8,
                     opacity: panicOpacity,
-                    background: "radial-gradient(ellipse at center, transparent 35%, rgba(180, 0, 40, 0.35) 70%, rgba(240, 0, 60, 0.8) 100%)",
-                    boxShadow: "inset 0 0 120px rgba(255, 0, 70, 0.65)",
+                    background: "radial-gradient(ellipse at center, transparent 70%, rgba(200, 20, 50, 0.12) 88%, rgba(225, 29, 72, 0.3) 100%)",
+                    boxShadow: "inset 0 0 50px rgba(225, 29, 72, 0.2)",
                   }}
                 />
               )}

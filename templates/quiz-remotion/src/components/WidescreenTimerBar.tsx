@@ -25,13 +25,13 @@ export const WidescreenTimerBar: React.FC<WidescreenTimerBarProps> = ({
     ? Math.abs(Math.sin((relativeFrame - panicStartFrame) * 0.45))
     : 0;
 
-  // Dynamic colors and shadows
+  // Dynamic colors and shadows (toned-down red panic)
   const barBackground = isPanic
-    ? `linear-gradient(90deg, #E11D48 0%, #FF0055 100%)`
+    ? `linear-gradient(90deg, #E11D48 0%, #F43F5E 100%)`
     : `linear-gradient(90deg, #00B4D8 0%, #00F0FF 100%)`;
 
   const barShadow = isPanic
-    ? `0 0 ${16 + panicPulse * 16}px #FF0055, 0 0 ${35 + panicPulse * 25}px rgba(255, 0, 85, 0.8)`
+    ? `0 0 ${8 + panicPulse * 6}px #F43F5E, 0 0 ${18 + panicPulse * 8}px rgba(244, 63, 94, 0.4)`
     : `0 0 16px #00F0FF, 0 0 35px rgba(0, 240, 255, 0.55)`;
 
   return (
@@ -45,7 +45,7 @@ export const WidescreenTimerBar: React.FC<WidescreenTimerBarProps> = ({
         borderRadius: 10,
         backgroundColor: "#0B0E14",
         border: isPanic
-          ? `1px solid rgba(255, 0, 85, ${0.4 + panicPulse * 0.4})`
+          ? `1px solid rgba(244, 63, 94, ${0.25 + panicPulse * 0.25})`
           : "1px solid rgba(0, 240, 255, 0.2)",
         boxShadow: "inset 0 2px 6px rgba(0, 0, 0, 0.8), 0 6px 20px rgba(0, 0, 0, 0.6)",
         overflow: "hidden",
