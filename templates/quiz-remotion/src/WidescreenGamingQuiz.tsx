@@ -2,6 +2,8 @@ import React from "react";
 import {
   AbsoluteFill,
   Audio,
+  Loop,
+  OffthreadVideo,
   Sequence,
   useCurrentFrame,
   useVideoConfig,
@@ -32,6 +34,7 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
   sfx_stinger_path,
   intro_tts_audio_path,
   outro_tts_audio_path,
+  ambient_background_path,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -76,6 +79,30 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
         position: "relative",
       }}
     >
+      {/* 0. AMBIENT BACKGROUND VIDEO LAYER (if provided) */}
+      {(ambient_background_path || dataset?.ambient_background_video) && (
+        <AbsoluteFill style={{ zIndex: 0 }}>
+          <Loop durationInFrames={600}>
+            <OffthreadVideo
+              src={resolveSrc(ambient_background_path || dataset.ambient_background_video)!}
+              muted
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          </Loop>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "radial-gradient(circle at center, rgba(13, 17, 23, 0.65) 0%, rgba(7, 9, 13, 0.88) 100%)",
+            }}
+          />
+        </AbsoluteFill>
+      )}
+
       {/* 1. MASTER AUDIO MIX (if pre-rendered by audio_service) */}
       {audio_mix_path && <Audio src={resolveSrc(audio_mix_path)!} />}
 
@@ -237,7 +264,7 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
               {/* Central Asset Container (1200x600 px) */}
               <WidescreenAssetContainer
                 assetMode={round.asset_mode}
-                assetPath={question.asset_path}
+                assetPath={question.asset_path || (question as any).local_asset_path}
                 assetUrl={question.asset_url}
                 promptText={question.prompt_text}
                 applyProceduralMask={question.apply_procedural_mask ?? true}
