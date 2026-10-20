@@ -40,7 +40,7 @@
         "asset_mode": "screenshot",
         "pass_rate_statistic": "94% OF PLAYERS PASS THIS ROUND",
         "badge_theme_color": "#00F0FF",
-        "splash_duration_sec": 4.0,
+        "splash_duration_sec": 3.0,
         "questions": [
           {
             "id": "341ae1455a70",
@@ -55,10 +55,20 @@
             "is_approved": false,
             "difficulty_tag": null,
             "audio_cue_duration_sec": 4.0
-          },
+          }
+        ]
+      },
+      {
+        "round_number": 2,
+        "round_title": "ROUND 02: CYBERPUNK CITIES",
+        "asset_mode": "screenshot",
+        "pass_rate_statistic": "81% OF PLAYERS PASS THIS ROUND",
+        "badge_theme_color": "#EC4899",
+        "splash_duration_sec": 3.0,
+        "questions": [
           {
             "id": "33d497df2658",
-            "item_index": 2,
+            "item_index": 1,
             "global_question_number": 2,
             "prompt_text": "Guess the video game from screenshot",
             "answer_text": "CYBERPUNK 2077",
@@ -107,15 +117,28 @@
       "audio_cue_end_frame": null
     },
     {
-      "slot_type": "question",
-      "round_number": 1,
-      "question_global_number": 2,
+      "slot_type": "splash",
+      "round_number": 2,
+      "question_global_number": null,
       "start_frame": 780,
+      "duration_frames": 180,
+      "end_frame": 960,
+      "timer_start_frame": null,
+      "timer_duration_frames": null,
+      "reveal_frame": null,
+      "audio_cue_start_frame": null,
+      "audio_cue_end_frame": null
+    },
+    {
+      "slot_type": "question",
+      "round_number": 2,
+      "question_global_number": 2,
+      "start_frame": 960,
       "duration_frames": 540,
-      "end_frame": 1320,
-      "timer_start_frame": 780,
+      "end_frame": 1500,
+      "timer_start_frame": 960,
       "timer_duration_frames": 360,
-      "reveal_frame": 1140,
+      "reveal_frame": 1320,
       "audio_cue_start_frame": null,
       "audio_cue_end_frame": null
     },
@@ -123,8 +146,8 @@
       "slot_type": "outro",
       "round_number": null,
       "question_global_number": null,
-      "start_frame": 1320,
-      "duration_frames": 600,
+      "start_frame": 1500,
+      "duration_frames": 420,
       "end_frame": 1920,
       "timer_start_frame": null,
       "timer_duration_frames": null,

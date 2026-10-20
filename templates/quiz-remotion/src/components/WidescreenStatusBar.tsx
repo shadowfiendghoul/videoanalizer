@@ -5,7 +5,8 @@ interface WidescreenStatusBarProps {
   roundTitle: string;
   themeColor?: string;
   currentQuestionNumber: number;
-  totalQuestionsInRound: number;
+  totalQuestionsInRound?: number;
+  totalQuestions?: number;
   relativeFrame?: number;
 }
 
@@ -14,10 +15,12 @@ export const WidescreenStatusBar: React.FC<WidescreenStatusBarProps> = ({
   themeColor = "#00F0FF",
   currentQuestionNumber,
   totalQuestionsInRound,
+  totalQuestions,
   relativeFrame = 60,
 }) => {
+  const total = totalQuestions ?? totalQuestionsInRound ?? 50;
   const currentFormatted = String(currentQuestionNumber).padStart(2, "0");
-  const totalFormatted = String(totalQuestionsInRound).padStart(2, "0");
+  const totalFormatted = String(total).padStart(2, "0");
 
   const entrance = spring({
     frame: relativeFrame,
@@ -31,22 +34,23 @@ export const WidescreenStatusBar: React.FC<WidescreenStatusBarProps> = ({
 
   return (
     <>
-      {/* Top-Left Round Badge (X: 120px, Y: 50px, W: 500px, H: 64px) */}
+      {/* Top-Left Round Badge (Volumetric Yellow Gaming Pill) */}
       <div
         style={{
           position: "absolute",
           left: 120,
-          top: 50,
-          width: 500,
-          height: 64,
-          borderRadius: 16,
-          background: "linear-gradient(180deg, #1C2430 0%, #0F141C 100%)",
-          border: `1.5px solid rgba(255, 255, 255, 0.12)`,
+          top: 46,
+          minWidth: 420,
+          maxWidth: 620,
+          height: 68,
+          borderRadius: 34,
+          background: "linear-gradient(180deg, #FFE033 0%, #F59E0B 100%)",
+          border: "2.5px solid #FEF08A",
           display: "flex",
           alignItems: "center",
-          paddingLeft: 24,
-          paddingRight: 24,
-          boxShadow: `0 16px 36px rgba(0, 0, 0, 0.7), 0 0 24px ${themeColor}25, inset 0 1px 1px rgba(255, 255, 255, 0.25)`,
+          paddingLeft: 26,
+          paddingRight: 28,
+          boxShadow: "0 14px 32px rgba(245, 158, 11, 0.45), 0 4px 14px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.8), inset 0 -3px 4px rgba(180, 83, 9, 0.4)",
           transform: `translateY(${translateY}px)`,
           opacity,
           zIndex: 10,
@@ -55,12 +59,13 @@ export const WidescreenStatusBar: React.FC<WidescreenStatusBarProps> = ({
         <span
           style={{
             display: "inline-block",
-            width: 12,
-            height: 12,
+            width: 14,
+            height: 14,
             borderRadius: "50%",
-            backgroundColor: themeColor,
+            backgroundColor: "#0F172A",
             marginRight: 16,
-            boxShadow: `0 0 14px ${themeColor}, 0 0 24px ${themeColor}`,
+            boxShadow: "0 0 8px rgba(0, 0, 0, 0.35)",
+            flexShrink: 0,
           }}
         />
         <span
@@ -69,33 +74,33 @@ export const WidescreenStatusBar: React.FC<WidescreenStatusBarProps> = ({
             fontWeight: 900,
             fontSize: 22,
             textTransform: "uppercase",
-            color: themeColor,
+            color: "#0F172A",
             letterSpacing: "0.06em",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            textShadow: `0 0 16px ${themeColor}88, 0 2px 4px rgba(0, 0, 0, 0.95)`,
+            textShadow: "0 1px 1px rgba(255, 255, 255, 0.4)",
           }}
         >
           {roundTitle}
         </span>
       </div>
 
-      {/* Top-Right Question Tracker (X: 1460px, Y: 50px, W: 340px, H: 64px) */}
+      {/* Top-Right Question/Total Counter (Volumetric Magenta-Pink Gaming Pill) */}
       <div
         style={{
           position: "absolute",
-          left: 1460,
-          top: 50,
-          width: 340,
-          height: 64,
-          borderRadius: 16,
-          background: "linear-gradient(180deg, #1C2430 0%, #0F141C 100%)",
-          border: "1.5px solid rgba(255, 255, 255, 0.12)",
+          left: 1440,
+          top: 46,
+          width: 360,
+          height: 68,
+          borderRadius: 34,
+          background: "linear-gradient(180deg, #F43F5E 0%, #D946EF 55%, #C026D3 100%)",
+          border: "2.5px solid rgba(255, 255, 255, 0.6)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          boxShadow: "0 16px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(0, 240, 255, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.25)",
+          boxShadow: "0 14px 32px rgba(244, 63, 94, 0.45), 0 4px 14px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.75), inset 0 -3px 4px rgba(134, 25, 143, 0.4)",
           transform: `translateY(${translateY}px)`,
           opacity,
           zIndex: 10,
@@ -105,25 +110,25 @@ export const WidescreenStatusBar: React.FC<WidescreenStatusBarProps> = ({
           style={{
             fontFamily: "'Montserrat', 'Inter Tight', sans-serif",
             fontWeight: 800,
-            fontSize: 22,
+            fontSize: 20,
             letterSpacing: "0.1em",
-            color: "#94A3B8",
-            textShadow: "0 2px 4px rgba(0, 0, 0, 0.8)",
+            color: "rgba(255, 255, 255, 0.95)",
+            textShadow: "0 2px 4px rgba(0, 0, 0, 0.4)",
           }}
         >
-          QUESTION{" "}
+          TOTAL{" "}
           <span
             style={{
               color: "#FFFFFF",
               fontWeight: 900,
               fontSize: 26,
-              textShadow: "0 0 16px rgba(255, 255, 255, 0.8), 0 2px 6px rgba(0, 0, 0, 0.95)",
+              textShadow: "0 2px 8px rgba(0, 0, 0, 0.5)",
             }}
           >
             {currentFormatted}
           </span>
-          <span style={{ color: "#64748B", margin: "0 4px" }}>/</span>
-          <span style={{ color: "#94A3B8", fontWeight: 800 }}>{totalFormatted}</span>
+          <span style={{ color: "rgba(255, 255, 255, 0.7)", margin: "0 4px", fontSize: 22 }}>/</span>
+          <span style={{ color: "rgba(255, 255, 255, 0.95)", fontWeight: 800, fontSize: 22 }}>{totalFormatted}</span>
         </span>
       </div>
     </>

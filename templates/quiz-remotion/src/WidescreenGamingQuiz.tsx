@@ -18,6 +18,8 @@ import { WidescreenAnswerPanel } from "./components/WidescreenAnswerPanel";
 import { WidescreenIntro } from "./components/WidescreenIntro";
 import { WidescreenRoundSplash } from "./components/WidescreenRoundSplash";
 import { WidescreenOutro } from "./components/WidescreenOutro";
+import { WidescreenGamingPattern } from "./components/WidescreenGamingPattern";
+import { WidescreenRoundTransition } from "./components/WidescreenRoundTransition";
 
 const resolveSrc = (src?: string | null) => {
   if (!src) return undefined;
@@ -103,6 +105,9 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
           />
         </AbsoluteFill>
       )}
+
+      {/* Dynamic Geometric Gaming Pattern Overlay (10-15% Shimmering Gamepad Icons) */}
+      <WidescreenGamingPattern />
 
       {/* 1. MASTER AUDIO MIX (if pre-rendered by audio_service) */}
       {audio_mix_path && <Audio src={resolveSrc(audio_mix_path)!} />}
@@ -231,6 +236,8 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
           roundTitle={roundMap.get(activeSlot.round_number || 1)?.round_title || `ROUND ${activeSlot.round_number}`}
           passRateStatistic={roundMap.get(activeSlot.round_number || 1)?.pass_rate_statistic || "90% PASS RATE"}
           themeColor={roundMap.get(activeSlot.round_number || 1)?.badge_theme_color || "#00E5FF"}
+          relativeFrame={frame - activeSlot.start_frame}
+          durationFrames={activeSlot.duration_frames}
         />
       )}
 
@@ -285,8 +292,8 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
               <WidescreenStatusBar
                 roundTitle={round.round_title}
                 themeColor={round.badge_theme_color}
-                currentQuestionNumber={question.item_index}
-                totalQuestionsInRound={round.questions.length}
+                currentQuestionNumber={question.global_question_number ?? question.item_index}
+                totalQuestions={dataset?.total_questions_count ?? 50}
                 relativeFrame={relativeFrame}
               />
 
@@ -318,6 +325,34 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
           );
         })()
       )}
+
+      {/* 4. HIGH-OCTANE ESPORTS ROUND TRANSITIONS (Diagonal Blade Wipe) */}
+      {(() => {
+        // A. If currently in a splash slot (entering or exiting splash)
+        if (activeSlot?.slot_type === "splash") {
+          const relFrame = frame - activeSlot.start_frame;
+          const dur = activeSlot.duration_frames;
+          if (relFrame < 24) {
+            return <WidescreenRoundTransition relativeFrame={relFrame} durationFrames={24} accentColor="#FFE033" />;
+          }
+          if (relFrame >= dur - 24) {
+            return <WidescreenRoundTransition relativeFrame={relFrame - (dur - 24)} durationFrames={24} accentColor="#F43F5E" />;
+          }
+        }
+
+        // B. When starting the first question of a new round (if no preceding splash)
+        if (activeSlot?.slot_type === "question") {
+          const relFrame = frame - activeSlot.start_frame;
+          const currentIdx = timing_slots.findIndex((s) => s === activeSlot);
+          const prevSlot = currentIdx > 0 ? timing_slots[currentIdx - 1] : null;
+          const isNewRound = prevSlot?.round_number !== activeSlot.round_number && prevSlot?.slot_type !== "splash";
+          if (isNewRound && relFrame < 24) {
+            return <WidescreenRoundTransition relativeFrame={relFrame} durationFrames={24} accentColor="#FFE033" />;
+          }
+        }
+
+        return null;
+      })()}
     </AbsoluteFill>
   );
 };

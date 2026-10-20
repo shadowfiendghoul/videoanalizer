@@ -77,10 +77,10 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
         top: 160,
         width: 1200,
         height: 600,
-        borderRadius: 22,
-        background: "linear-gradient(180deg, #18202C 0%, #0D1219 100%)",
-        border: `2px solid rgba(0, 240, 255, 0.35)`,
-        boxShadow: `0 24px 64px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 240, 255, 0.18), inset 0 1px 2px rgba(255, 255, 255, 0.2)`,
+        borderRadius: 32,
+        background: "#080B11",
+        border: "6px solid #FFFFFF",
+        boxShadow: "0 32px 84px rgba(0, 0, 0, 0.85), 0 10px 28px rgba(0, 0, 0, 0.6), 0 0 35px rgba(255, 255, 255, 0.18)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -295,17 +295,15 @@ export const WidescreenAssetContainer: React.FC<WidescreenAssetContainerProps> =
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: 24,
+            overflow: "hidden",
           }}
         >
           <Img
             src={imageSource}
             style={{
-              maxWidth: 1152,
-              maxHeight: 552,
-              objectFit: "contain",
-              borderRadius: 14,
-              boxShadow: "0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 0, 0, 0.4)",
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
             }}
           />
         </div>

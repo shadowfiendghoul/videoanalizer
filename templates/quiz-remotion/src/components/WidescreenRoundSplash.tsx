@@ -6,6 +6,8 @@ interface WidescreenRoundSplashProps {
   roundTitle: string;
   passRateStatistic: string;
   themeColor?: string;
+  relativeFrame?: number;
+  durationFrames?: number;
 }
 
 export const WidescreenRoundSplash: React.FC<WidescreenRoundSplashProps> = ({
@@ -13,12 +15,16 @@ export const WidescreenRoundSplash: React.FC<WidescreenRoundSplashProps> = ({
   roundTitle,
   passRateStatistic,
   themeColor = "#00F0FF",
+  relativeFrame,
+  durationFrames,
 }) => {
-  const frame = useCurrentFrame();
+  const currentFrame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const frame = relativeFrame !== undefined ? relativeFrame : currentFrame;
+  const duration = durationFrames ?? fps * 3;
 
   // Cinematic slow zoom-in from scale 0.95 to 1.05
-  const scale = interpolate(frame, [0, fps * 4], [0.94, 1.06], {
+  const scale = interpolate(frame, [0, duration], [0.94, 1.06], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -26,7 +32,7 @@ export const WidescreenRoundSplash: React.FC<WidescreenRoundSplashProps> = ({
   // Opacity fade in (0-15 frames) and fade out (last 15 frames)
   const opacity = interpolate(
     frame,
-    [0, 15, fps * 4 - 15, fps * 4],
+    [0, 15, duration - 15, duration],
     [0, 1, 1, 0],
     {
       extrapolateLeft: "clamp",
@@ -60,22 +66,21 @@ export const WidescreenRoundSplash: React.FC<WidescreenRoundSplashProps> = ({
           alignItems: "center",
         }}
       >
-        {/* Round Tag */}
+        {/* Round Tag - Volumetric Yellow Pill */}
         <div
           style={{
             fontFamily: "'Montserrat', 'Inter Tight', sans-serif",
             fontSize: 22,
             fontWeight: 900,
-            letterSpacing: "0.22em",
-            color: themeColor,
+            letterSpacing: "0.15em",
+            color: "#0F172A",
             textTransform: "uppercase",
-            marginBottom: 20,
-            padding: "10px 30px",
+            marginBottom: 24,
+            padding: "12px 36px",
             borderRadius: 30,
-            backgroundColor: "rgba(0, 240, 255, 0.1)",
-            border: `1.5px solid ${themeColor}`,
-            boxShadow: `0 0 25px ${themeColor}50, inset 0 1px 1px rgba(255, 255, 255, 0.2)`,
-            textShadow: `0 0 14px ${themeColor}`,
+            background: "linear-gradient(180deg, #FFE033 0%, #F59E0B 100%)",
+            border: "2.5px solid #FEF08A",
+            boxShadow: "0 12px 28px rgba(245, 158, 11, 0.45), 0 4px 12px rgba(0, 0, 0, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.8), inset 0 -2px 4px rgba(180, 83, 9, 0.4)",
           }}
         >
           ROUND {String(roundNumber).padStart(2, "0")}
