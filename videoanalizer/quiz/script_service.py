@@ -266,35 +266,57 @@ RANDOM_VISUAL_QUIZ_THEMES_EN = [
 ]
 
 VISUAL_QUIZ_SYSTEM_PROMPT = """Ты — креативный сценарист вирусных вертикальных викторин в формате «Visual Image Quiz» (Shorts, TikTok, Reels).
-Зритель смотрит на быстро сменяющиеся картинки, а затем последовательно угадывает 10 предметов по фото/логотипам с нарастающей сложностью.
+Зритель смотрит на быстро сменяющиеся картинки в интро (rapid center flip), а затем последовательно угадывает 10 предметов/вопросов по визуальному материалу с нарастающей сложностью.
 
-СТРУКТУРА СЦЕНАРИЯ:
-1. Ровно 10 предметов:
-   - Предметы 1..3: difficulty="easy" (максимально узнаваемые предметы или силуэты).
-   - Предметы 4..6: difficulty="medium" (предметы, знакомые любителям темы).
-   - Предметы 7..9: difficulty="hard" (сложные предметы для экспертов).
-   - Предмет 10: difficulty="master" (редкий или спорный предмет — коммент-ловушка).
+СТРУКТУРА СЦЕНАРИЯ (СТРОГО 10 ПРЕДМЕТОВ):
+- Предметы 1..3: difficulty="easy" (максимально узнаваемые, доступные 95% зрителей).
+- Предметы 4..6: difficulty="medium" (знакомые любителям и фанатам темы).
+- Предметы 7..9: difficulty="hard" (сложные для экспертов, редкие или культовые детали).
+- Предмет 10: difficulty="master" (кульминация/клиффхэнгер: ответ скрыт в комменты).
 
-2. ТРЕБОВАНИЯ К ОЗВУЧКЕ ДИКТОРА (TTS):
-   - Вопрос 1: диктор СРАЗУ задает вопрос БЕЗ слов «Вопрос номер один» (например: «Что это?», «Узнаешь модель?», «Что за логотип?»).
-   - Вопросы 2..9: диктор объявляет номер (например: «Номер два, что это?», «Вопрос три, как называется?»).
-   - Вопрос 10: правильный ответ намеренно скрывается. В поле 'answer_text' строго пиши: "Пиши в коммы". В поле 'answer_tts' диктор интригующе призывает зрителей писать свои догадки в комментариях (например: «А это самый сложный! Напиши свой ответ в комментариях!»).
-   - Все реплики диктора должны быть краткими, энергичными и без лишней воды (до 15 слов на реплику).
+ОСНОВНЫЕ ПРАВИЛА:
 
-3. ПОИСКОВЫЕ ЗАПРОСЫ КАРТИНОК ('image_query'):
-   - Для каждого предмета составь точный, емкий поисковый запрос строго на английском языке (название предмета, бренда или логотипа).
-   - Примеры:
-     "Apple logo"
-     "Nike swoosh logo"
-     "McDonald's golden arches logo"
-     "Ferrari F40"
-   - НЕ добавляй слова вроде 'vector logo', 'transparent png', 'isolated', 'without background' — фон автоматически удаляется алгоритмом!
+1. СТРОГОЕ СОБЛЮДЕНИЕ ПОЛЬЗОВАТЕЛЬСКОГО СПИСКА (USER-PROVIDED ITEMS):
+   - Если пользователь в описании темы перечислил конкретные предметы/вопросы по уровням (например: Easy: A, B, C; Medium: D, E, F; Hard: G, H, I; Master: J):
+     ТЫ ОБЯЗАН СТРОГО И ТОЧНО ИСПОЛЬЗОВАТЬ ИМЕННО ЭТИ ПРЕДМЕТЫ для соответствующих позиций 1..10!
+   - Если для позиции указан выбор (например: «Energy Sword (Halo) или AWP Dragon Lore (CS2)»), выбери один из них.
+   - Запрещено заменять предметы пользователя своими или игнорировать предложенные примеры.
 
-4. ИНТРО-ХУК ('hook_tts'):
-   - КРАТКАЯ энергичная фраза СТРОГО до 5–7 слов (длительность звучания максимум 2.5–2.7 секунды, чтобы всё интро длилось строго до 3 секунд!).
-   - Примеры RU (5-6 слов): «Угадай все эти логотипы! Погнали!», «Сможешь назвать все бренды? Проверим!», «Узнаешь все 10 автомобилей? Попробуй!».
-   - Примеры EN (5-7 words): "Can you guess all these logos? Let's go!", "Name all ten brands! Ready?".
-   - ВНИМАНИЕ: В хуке СТРОГО ЗАПРЕЩЕНО говорить вопросы вроде «Что это?», «Что это за бренд?», «Погнали, что это?» или спрашивать название предметов! Хук ТОЛЬКО бросает вызов и объявляет тему. Вопрос «Что это?» задается только в первом раунде игры.
+2. РАЗЛИЧЕНИЕ ВИЗУАЛЬНОГО ОБЪЕКТА И ПРАВИЛЬНОГО ОТВЕТА («УГАДАЙ X ПО Y»):
+   - Если викторина устроена по принципу косвенного угадывания (например: «Угадай игру по оружию», «Угадай фильм по кадру/предмету», «Угадай персонажа по силуэту/атрибуту»):
+     - В поле 'image_query': пиши точный англоязычный поисковый запрос ПОКАЗЫВАЕМОГО ВИЗУАЛЬНОГО ОБЪЕКТА с названием игры/вселенной (например: "Minecraft diamond sword", "Portal gun", "Pokeball", "God of War Blades of Chaos", "Assassin's Creed Hidden Blade", "Half-Life crowbar", "CoD Zombies Ray Gun", "Doom BFG 9000", "Final Fantasy VII Buster Sword", "Halo Energy Sword").
+     - В поле 'answer_text': пиши то, ЧТО именно зритель должен угадать — ЦЕЛЕВОЙ ОТВЕТ (название игры или фильма) КАПСОМ (например: 'MINECRAFT', 'PORTAL', 'POKÉMON', 'GOD OF WAR', 'ASSASSIN\'S CREED', 'HALF-LIFE', 'CALL OF DUTY', 'DOOM', 'FINAL FANTASY VII', 'HALO').
+       НЕ пиши в answer_text название самого оружия, если тема — угадать игру!
+     - В поле 'prompt_tts': диктор спрашивает именно о целевом ответе (например: «Что за игра?», «Номер два, какая игра?», «Номер три, узнаешь игру?»).
+     - В поле 'answer_tts': диктор четко называет правильный ответ (например: «Это Minecraft!», «Это God of War!»).
+   - Если викторина устроена напрямую (например, «Логотипы брендов», «Суперкары», «Флаги стран»):
+     - 'image_query': сам объект или логотип (например: "Apple logo", "Ferrari F40", "Flag of Brazil").
+     - 'answer_text': название самого объекта/бренда.
+     - 'prompt_tts': «Что за бренд?», «Узнаешь модель?», «Что это?».
+
+3. ПРАВИЛО 10-ГО ПРЕДМЕТА (MASTER-ЛОФУШКА):
+   - difficulty: строго "master".
+   - 'answer_text': строго "Пиши в коммы" (для русского языка) или "Write in comments" (для английского языка).
+   - 'image_query': поисковый запрос 10-го предмета из задания пользователя (например: "Halo Energy Sword" или "CS2 AWP Dragon Lore").
+   - 'answer_tts': диктор интригующе призывает писать свои догадки в комментариях (например: «А это самый сложный! Напиши игру в комментариях!» или «And this is the final level! Drop your guess in the comments!»).
+
+4. РЕПЛИКИ ДИКТОРА (TTS):
+   - Вопрос 1: диктор СРАЗУ задает вопрос по сути БЕЗ вводных слов «Вопрос номер один» (например: «Что за игра?», «Узнаешь модель?», «Что за бренд?»).
+   - Вопросы 2..9: диктор обязательно называет номер и кратко спрашивает (например: «Номер два, что за игра?», «Вопрос три, как называется?», «Номер четыре, откуда это?»).
+   - Все реплики диктора должны быть краткими и динамичными (до 10-12 слов).
+
+5. ИНТРО-ХУК ('hook_tts'):
+   - КРАТКАЯ энергичная фраза СТРОГО до 5–7 слов (длительность звучания максимум 2.5–2.7 секунды).
+   - Хук обязан ТОЧНО соответствовать теме:
+     - Для темы «Угадай игру по оружию»: «Угадай игру по оружию! Погнали!» или "Guess the game by weapon! Let's go!".
+     - Для темы про фильмы: «Угадай все фильмы по кадру!».
+     - Для темы про автомобили: «Узнаешь все 10 автомобилей? Попробуй!».
+     - Для темы про логотипы: «Угадай все эти логотипы! Погнали!».
+   - ВНИМАНИЕ: Запрещено говорить слово «логотипы», если викторина не про логотипы!
+
+6. ПОИСКОВЫЕ ЗАПРОСЫ КАРТИНОК ('image_query'):
+   - Составь точный, емкий поисковый запрос строго на английском языке (название предмета, персонажа, логотипа или модели).
+   - Запрещено добавлять технические слова вроде 'vector logo', 'transparent png', 'isolated', 'without background'.
 
 Верни строго валидный JSON по схеме VisualQuizDataset."""
 
@@ -785,29 +807,41 @@ class ScriptService:
         is_en = (language or "ru").lower().startswith("en")
         if not theme or not theme.strip():
             chosen_theme = random.choice(RANDOM_VISUAL_QUIZ_THEMES_EN if is_en else RANDOM_VISUAL_QUIZ_THEMES)
+            clean_title = chosen_theme
         else:
             chosen_theme = theme.strip()
+            first_line = chosen_theme.split("\n")[0].strip()
+            if ":" in first_line:
+                clean_title = first_line.split(":")[0].strip()
+            else:
+                clean_title = first_line or chosen_theme
+            clean_title = clean_title.strip("«»\"' ")
 
         exclusion_clause = self.exclusions_manager.get_prompt_exclusion_clause(max_items=80)
         if is_en:
             prompt_parts = [
-                f"Visual Quiz Theme: '{chosen_theme}'.",
+                f"Visual Quiz Theme & Requirements:\n{chosen_theme}",
                 "Language of voiceover and UI: English (en).",
                 "Generate a viral script with exactly 10 items of increasing difficulty (3 easy, 3 medium, 3 hard, 1 master cliffhanger).",
-                "CRITICAL RULES FOR ENGLISH:",
-                "- All answer_text, prompt_tts, answer_tts, and hook_tts MUST BE IN NATURAL ENGLISH.",
-                "- For Question 1: narrator immediately asks the question without saying 'Question 1' (e.g. 'What brand is this?' or 'Can you guess this logo?').",
-                "- For Questions 2-9: narrator announces question number (e.g. 'Number two, what is this?', 'Question three, what's this brand?').",
-                "- For Question 10: set answer_text strictly to 'Write in comments', difficulty='master'. For answer_tts, the narrator intriguingly challenges the viewer to guess in comments (e.g. 'And this is the final level! Drop your guess in the comments!').",
-                "- In hook_tts: energetic short challenge in English STRICTLY 5-7 words, under 3.0 seconds (e.g. 'Can you guess all these logos? Let's go!' or 'Name all ten brands! Ready?'). Do NOT exceed 7 words. Do NOT ask 'what is this' in the hook.",
+                "CRITICAL INSTRUCTIONS:",
+                "- If specific items, questions, or tiers (Easy, Medium, Hard, Master) are listed in the user prompt, YOU MUST STRICTLY USE THOSE EXACT ITEMS for the corresponding levels 1..10!",
+                "- Understand what is shown in 'image_query' vs what is answered in 'answer_text'. For example, in 'Guess the game by weapon', image_query is the weapon with game context (e.g. 'Minecraft Diamond Sword') and answer_text is the game title (e.g. 'MINECRAFT')!",
+                "- For Question 1: narrator immediately asks the question without saying 'Question 1' (e.g. 'What game is this?' or 'Guess the game!').",
+                "- For Questions 2-9: narrator announces question number (e.g. 'Number two, what game is this?').",
+                "- For Question 10: set answer_text strictly to 'Write in comments', difficulty='master'. For answer_tts, narrator intriguingly challenges viewer to guess in comments.",
+                "- In hook_tts: energetic short challenge matching the exact theme, STRICTLY 5-7 words, under 3.0 seconds (e.g. 'Guess the game by weapon! Let's go!'). Do NOT use the word 'logos' unless the theme is actually about brand logos.",
             ]
         else:
             prompt_parts = [
-                f"Тема визуальной викторины: «{chosen_theme}».",
+                f"Тема и требования к визуальной викторине:\n{chosen_theme}",
                 f"Язык озвучки и интерфейса: {language}.",
-                "Сгенерируй вирусный сценарий из 10 предметов с нарастающей сложностью (3 easy, 3 medium, 3 hard, 1 master-ловушка). "
-                "Для вопроса 1 диктор сразу задает вопрос без фразы 'Вопрос 1'. Для вопроса 10 ответ скрыт с призывом писать в комментарии. "
-                "Для интро hook_tts напиши краткий энергичный вызов СТРОГО до 5-7 слов (максимум 2.5-2.7 секунды речи, например: 'Угадай все эти логотипы! Погнали!').",
+                "Сгенерируй вирусный сценарий из 10 предметов с нарастающей сложностью (3 easy, 3 medium, 3 hard, 1 master-ловушка).",
+                "КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:",
+                "- Если в описании темы выше перечислены конкретные предметы/вопросы по уровням (Easy, Medium, Hard, Master) — ТЫ ОБЯЗАН СТРОГО ИСПОЛЬЗОВАТЬ ИМЕННО ЭТИ ПРЕДМЕТЫ для соответствующих позиций 1..10!",
+                "- Различай показываемый объект и правильный ответ: если тема «Угадай игру по оружию», в 'image_query' ищи само оружие на английском (например: 'Minecraft diamond sword', 'Portal gun', 'God of War Blades of Chaos', 'Half-Life crowbar'), а в 'answer_text' пиши правильный ответ — название самой игры (например: 'MINECRAFT', 'PORTAL', 'GOD OF WAR', 'HALF-LIFE') капсом!",
+                "- В репликах диктора ('prompt_tts'): спрашивай именно о целевом ответе (например: 'Что за игра?', 'Номер два, какая игра?', 'Номер три, узнаешь игру?').",
+                "- Для вопроса 1 диктор сразу задает вопрос без фразы 'Вопрос 1'. Для вопроса 10 ответ скрыт ('Пиши в коммы', difficulty='master') с интригующим призывом писать догадки в комментарии.",
+                "- В интро hook_tts напиши краткий энергичный вызов СТРОГО до 5-7 слов, строго соответствующий теме (например: 'Угадай игру по оружию! Погнали!'). Запрещено говорить 'логотипы', если тема не про логотипы!",
             ]
         if exclusion_clause:
             prompt_parts.append(exclusion_clause)
@@ -822,7 +856,7 @@ class ScriptService:
         )
 
         # Force structural integrity
-        dataset.theme = chosen_theme
+        dataset.theme = clean_title or dataset.theme or chosen_theme
         dataset.mode = "visual_image_quiz"
         dataset.language = "en" if is_en else "ru"
         dataset.interstitials = []
@@ -833,12 +867,12 @@ class ScriptService:
             cleaned_hook = dataset.hook_tts
             if is_en:
                 cleaned_hook = re.sub(r'[, -]*\b(let\'?s go[, -]*)?what is (this|that|it)(\s+brand)?\??', '', cleaned_hook, flags=re.IGNORECASE).strip()
-                if not cleaned_hook:
-                    cleaned_hook = "Can you guess all these logos? Let's go!"
+                if not cleaned_hook or ("logo" in cleaned_hook.lower() and "logo" not in clean_title.lower()):
+                    cleaned_hook = f"Guess all {clean_title}! Let's go!" if len(clean_title.split()) <= 4 else "Guess them all! Let's go!"
             else:
                 cleaned_hook = re.sub(r'[, -]*\b(погнали[, -]*)?что это(\s+за\s+[^.!?]+)?\??', '', cleaned_hook, flags=re.IGNORECASE).strip()
-                if not cleaned_hook:
-                    cleaned_hook = "Угадай все эти логотипы! Погнали!"
+                if not cleaned_hook or ("логотип" in cleaned_hook.lower() and "логотип" not in clean_title.lower()):
+                    cleaned_hook = f"Угадай {clean_title}! Погнали!" if len(clean_title.split()) <= 4 else "Угадай всё! Погнали!"
 
             # Enforce max 6-7 words budget so speech finishes cleanly under 3.0s
             words = cleaned_hook.split()
