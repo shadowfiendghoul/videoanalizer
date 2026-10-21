@@ -5,9 +5,11 @@ import contextlib
 import json
 import logging
 import shutil
+import sys
 import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile, status
@@ -103,6 +105,69 @@ class SessionState:
             self.session_temp = None
 
 
+def _patch_win32_asyncio() -> None:
+    """Silence harmless WinError 10054 on client disconnects in Windows asyncio."""
+    if sys.platform != "win32":
+        return
+
+    import asyncio.proactor_events
+    import socket
+
+    def _call_connection_lost_patched(
+        self: asyncio.proactor_events._ProactorBasePipeTransport,
+        exc: BaseException | None,
+    ) -> None:
+        if self._called_connection_lost:
+            return
+        try:
+            self._protocol.connection_lost(exc)
+        finally:
+            if hasattr(self._sock, "shutdown") and self._sock.fileno() != -1:
+                with contextlib.suppress(OSError):
+                    self._sock.shutdown(socket.SHUT_RDWR)
+            with contextlib.suppress(OSError):
+                self._sock.close()
+            self._sock = None
+            server = self._server
+            if server is not None:
+                server._detach(self)
+                self._server = None
+            self._called_connection_lost = True
+
+    asyncio.proactor_events._ProactorBasePipeTransport._call_connection_lost = (
+        _call_connection_lost_patched
+    )
+
+
+_patch_win32_asyncio()
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Configure loop exception handler to silence premature socket drops on streaming."""
+    with contextlib.suppress(Exception):
+        loop = asyncio.get_running_loop()
+        orig_handler = loop.get_exception_handler()
+
+        def _custom_exception_handler(
+            current_loop: asyncio.AbstractEventLoop,
+            context: dict[str, Any],
+        ) -> None:
+            exc = context.get("exception")
+            if isinstance(exc, (ConnectionResetError, BrokenPipeError, ConnectionAbortedError)):
+                return
+            if isinstance(exc, OSError) and getattr(exc, "winerror", None) in (10053, 10054, 10038):
+                return
+            if orig_handler:
+                orig_handler(current_loop, context)
+            else:
+                current_loop.default_exception_handler(context)
+
+        loop.set_exception_handler(_custom_exception_handler)
+
+    yield
+
+
 # Instantiate singletons
 progress_mgr = ProgressManager()
 state = SessionState()
@@ -111,6 +176,7 @@ app = FastAPI(
     title="VideoAnalyzer",
     description="AI-powered funny moments detector and TikTok/Shorts vertical video generator",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
