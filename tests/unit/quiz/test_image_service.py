@@ -49,21 +49,22 @@ async def test_search_and_download_failure_fallback(tmp_path: Path) -> None:
 
 
 def test_format_transparent_query_strips_redundant_keywords() -> None:
-    """Verify format_transparent_query does not add redundant background keywords and cleans them if present."""
-    # 1. Plain query is preserved without junk appended
-    assert ImageService.format_transparent_query("Apple logo") == "Apple logo"
-    assert ImageService.format_transparent_query("Ferrari F40") == "Ferrari F40"
+    """Verify format_transparent_query cleans cluttered noise and appends 'white background png'."""
+    # 1. Plain query has 'white background png' appended
+    assert ImageService.format_transparent_query("Apple logo") == "Apple logo white background png"
+    assert ImageService.format_transparent_query("Ferrari F40") == "Ferrari F40 white background png"
 
-    # 2. Boilerplate noise keywords are stripped
+    # 2. Boilerplate noise keywords are stripped and replaced with 'white background png'
     noisy_query = "Apple vector logo transparent png isolated without background"
-    assert ImageService.format_transparent_query(noisy_query) == "Apple"
+    assert ImageService.format_transparent_query(noisy_query) == "Apple white background png"
 
     noisy_query2 = "Nike swoosh logo without background"
-    assert ImageService.format_transparent_query(noisy_query2) == "Nike swoosh logo"
+    assert ImageService.format_transparent_query(noisy_query2) == "Nike swoosh logo white background png"
 
-    noisy_query3 = "McDonald's isolated without background"
-    assert ImageService.format_transparent_query(noisy_query3) == "McDonald's"
+    # 3. If white background png is already present, it is not duplicated
+    already_clean = "Minecraft diamond sword white background png"
+    assert ImageService.format_transparent_query(already_clean) == "Minecraft diamond sword white background png"
 
-    # 3. Empty query returns default fallback
-    assert ImageService.format_transparent_query("") == "logo"
+    # 4. Empty query returns default fallback
+    assert ImageService.format_transparent_query("") == "logo white background png"
 

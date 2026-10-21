@@ -316,7 +316,8 @@ VISUAL_QUIZ_SYSTEM_PROMPT = """Ты — креативный сценарист 
 
 6. ПОИСКОВЫЕ ЗАПРОСЫ КАРТИНОК ('image_query'):
    - Составь точный, емкий поисковый запрос строго на английском языке (название предмета, персонажа, логотипа или модели).
-   - Запрещено добавлять технические слова вроде 'vector logo', 'transparent png', 'isolated', 'without background'.
+   - Всегда добавляй в конец запроса 'white background png' (например: "Minecraft diamond sword white background png", "Portal gun white background png", "Apple logo white background png") — на белом фоне алгоритм идеально вырезает чистый контур!
+   - Запрещено использовать длинный мусор вроде 'vector logo transparent png isolated without background'.
 
 Верни строго валидный JSON по схеме VisualQuizDataset."""
 
@@ -825,7 +826,7 @@ class ScriptService:
                 "Generate a viral script with exactly 10 items of increasing difficulty (3 easy, 3 medium, 3 hard, 1 master cliffhanger).",
                 "CRITICAL INSTRUCTIONS:",
                 "- If specific items, questions, or tiers (Easy, Medium, Hard, Master) are listed in the user prompt, YOU MUST STRICTLY USE THOSE EXACT ITEMS for the corresponding levels 1..10!",
-                "- Understand what is shown in 'image_query' vs what is answered in 'answer_text'. For example, in 'Guess the game by weapon', image_query is the weapon with game context (e.g. 'Minecraft Diamond Sword') and answer_text is the game title (e.g. 'MINECRAFT')!",
+                "- Understand what is shown in 'image_query' vs what is answered in 'answer_text'. For example, in 'Guess the game by weapon', image_query is the weapon with game context and 'white background png' (e.g. 'Minecraft Diamond Sword white background png') and answer_text is the game title (e.g. 'MINECRAFT')!",
                 "- For Question 1: narrator immediately asks the question without saying 'Question 1' (e.g. 'What game is this?' or 'Guess the game!').",
                 "- For Questions 2-9: narrator announces question number (e.g. 'Number two, what game is this?').",
                 "- For Question 10: set answer_text strictly to 'Write in comments', difficulty='master'. For answer_tts, narrator intriguingly challenges viewer to guess in comments.",
@@ -838,7 +839,7 @@ class ScriptService:
                 "Сгенерируй вирусный сценарий из 10 предметов с нарастающей сложностью (3 easy, 3 medium, 3 hard, 1 master-ловушка).",
                 "КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:",
                 "- Если в описании темы выше перечислены конкретные предметы/вопросы по уровням (Easy, Medium, Hard, Master) — ТЫ ОБЯЗАН СТРОГО ИСПОЛЬЗОВАТЬ ИМЕННО ЭТИ ПРЕДМЕТЫ для соответствующих позиций 1..10!",
-                "- Различай показываемый объект и правильный ответ: если тема «Угадай игру по оружию», в 'image_query' ищи само оружие на английском (например: 'Minecraft diamond sword', 'Portal gun', 'God of War Blades of Chaos', 'Half-Life crowbar'), а в 'answer_text' пиши правильный ответ — название самой игры (например: 'MINECRAFT', 'PORTAL', 'GOD OF WAR', 'HALF-LIFE') капсом!",
+                "- Различай показываемый объект и правильный ответ: если тема «Угадай игру по оружию», в 'image_query' ищи само оружие на английском с добавлением 'white background png' (например: 'Minecraft diamond sword white background png', 'Portal gun white background png', 'God of War Blades of Chaos white background png'), а в 'answer_text' пиши правильный ответ — название самой игры (например: 'MINECRAFT', 'PORTAL', 'GOD OF WAR', 'HALF-LIFE') капсом!",
                 "- В репликах диктора ('prompt_tts'): спрашивай именно о целевом ответе (например: 'Что за игра?', 'Номер два, какая игра?', 'Номер три, узнаешь игру?').",
                 "- Для вопроса 1 диктор сразу задает вопрос без фразы 'Вопрос 1'. Для вопроса 10 ответ скрыт ('Пиши в коммы', difficulty='master') с интригующим призывом писать догадки в комментарии.",
                 "- В интро hook_tts напиши краткий энергичный вызов СТРОГО до 5-7 слов, строго соответствующий теме (например: 'Угадай игру по оружию! Погнали!'). Запрещено говорить 'логотипы', если тема не про логотипы!",
