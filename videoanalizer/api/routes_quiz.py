@@ -609,6 +609,10 @@ def _format_bg_friendly_name(stem: str) -> str:
     lower = stem.lower()
     if "minecraft" in lower:
         return "Minecraft Parkour"
+    elif "forza" in lower:
+        return "Forza Horizon — Ночное шоссе (Forza Night Highway)"
+    elif "gta" in lower and ("night" in lower or "highway" in lower):
+        return "GTA 5 — Ночное шоссе (GTA 5 Night Highway)"
     elif "gta" in lower:
         return "GTA 5 Mega Ramp"
     elif "subway" in lower:
