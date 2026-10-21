@@ -176,7 +176,10 @@ class ImageService:
 
     @staticmethod
     def clean_fake_background(img: Image.Image) -> Image.Image:
-        """Automatically detect and remove fake checkerboard, solid white, and dark backgrounds from logos."""
+        """Automatically detect and remove solid white, solid dark, and fake checkerboard backgrounds,
+
+        strictly preserving white, light-colored, and metallic parts of foreground objects.
+        """
         try:
             import numpy as np
             import scipy.ndimage as ndi
@@ -186,39 +189,61 @@ class ImageService:
         img_rgba = img.convert("RGBA")
         arr = np.array(img_rgba)
 
-        # If already has alpha transparency (more than 5% transparent pixels), keep as is
+        # 1. If image already has genuine alpha transparency (>5% pixels with alpha < 200), keep as-is
         if np.mean(arr[:, :, 3] < 200) > 0.05:
             return img_rgba
-
-        r, g, b = arr[:, :, 0].astype(int), arr[:, :, 1].astype(int), arr[:, :, 2].astype(int)
-        max_c = np.maximum(np.maximum(r, g), b)
-        min_c = np.minimum(np.minimum(r, g), b)
 
         h, w = arr.shape[:2]
         if h < 10 or w < 10:
             return img_rgba
 
-        # Neutral light pixels (white or light-grey checkerboard)
-        is_neutral_light = (min_c >= 150) & ((max_c - min_c) <= 30)
-        # Neutral dark pixels (solid black or dark grey border)
-        is_neutral_dark = (max_c <= 40) & ((max_c - min_c) <= 20)
+        rgb = arr[:, :, :3].astype(float)
 
-        corners = [(0, 0), (0, w - 1), (h - 1, 0), (h - 1, w - 1)]
-        corner_count_light = sum(is_neutral_light[y, x] for y, x in corners)
-        corner_count_dark = sum(is_neutral_dark[y, x] for y, x in corners)
+        # Sample 1-pixel perimeter border
+        border = np.concatenate([rgb[0, :], rgb[-1, :], rgb[:, 0], rgb[:, -1]])
+        corners = np.array([rgb[0, 0], rgb[0, -1], rgb[-1, 0], rgb[-1, -1]])
 
-        if corner_count_light >= 2:
-            target_bg = is_neutral_light
-        elif corner_count_dark >= 2:
-            target_bg = is_neutral_dark
+        corners_spread = np.max(np.max(corners, axis=0) - np.min(corners, axis=0))
+        border_median = np.median(border, axis=0)
+
+        r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+        max_c = np.maximum(np.maximum(r, g), b)
+        min_c = np.minimum(np.minimum(r, g), b)
+        sat = max_c - min_c
+
+        # Case A: Solid White Background (typical when searching 'white background png')
+        if np.min(border_median) >= 238 and corners_spread <= 16:
+            diff = np.max(np.abs(rgb - border_median), axis=-1)
+            border_spread = float(np.max(border) - np.min(border))
+            tol = max(6.0, min(14.0, border_spread + 2.0))
+            is_bg_candidate = (diff <= tol) & (sat <= 10)
+
+        # Case B: Solid Dark Background
+        elif np.max(border_median) <= 35 and corners_spread <= 16:
+            diff = np.max(np.abs(rgb - border_median), axis=-1)
+            border_spread = float(np.max(border) - np.min(border))
+            tol = max(8.0, min(18.0, border_spread + 4.0))
+            is_bg_candidate = (diff <= tol) & (sat <= 12)
+
+        # Case C: Fake Checkerboard Background (strictly alternating ~255 and ~204 neutral squares)
         else:
-            return img_rgba
+            is_checker_light = (min_c >= 242) & (sat <= 4)
+            is_checker_dark = (min_c >= 190) & (max_c <= 218) & (sat <= 4)
+            is_checker = is_checker_light | is_checker_dark
 
-        labeled, num_features = ndi.label(target_bg)
+            corner_matches = sum(
+                is_checker[y, x] for y, x in [(0, 0), (0, w - 1), (h - 1, 0), (h - 1, w - 1)]
+            )
+            if corner_matches >= 3 and np.mean(is_checker[0, :]) > 0.5:
+                is_bg_candidate = is_checker
+            else:
+                return img_rgba
+
+        # Flood fill: ONLY connected components that touch the outer border
+        labeled, num_features = ndi.label(is_bg_candidate)
         if num_features == 0:
             return img_rgba
 
-        # Background labels touching outer border
         border_labels = np.unique(
             np.concatenate([labeled[0, :], labeled[-1, :], labeled[:, 0], labeled[:, -1]])
         )
@@ -227,8 +252,9 @@ class ImageService:
             return img_rgba
 
         mask = np.isin(labeled, border_labels)
-        # Safety check: if mask would erase more than 96% of the image, abort and keep original
-        if np.mean(mask) > 0.96:
+
+        # Safety check: if mask would erase more than 96% or less than 2% of image, keep original
+        if np.mean(mask) > 0.96 or np.mean(mask) < 0.02:
             return img_rgba
 
         arr[mask, 3] = 0

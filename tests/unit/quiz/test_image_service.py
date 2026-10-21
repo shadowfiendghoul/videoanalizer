@@ -68,3 +68,43 @@ def test_format_transparent_query_strips_redundant_keywords() -> None:
     # 4. Empty query returns default fallback
     assert ImageService.format_transparent_query("") == "logo white background png"
 
+
+def test_clean_fake_background_preserves_white_object_parts() -> None:
+    """Verify that solid white background is removed while white/light parts of objects are preserved."""
+    import numpy as np
+    from PIL import ImageDraw
+
+    # 1. Pokeball on pure white background
+    img = Image.new("RGB", (100, 100), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    # White bottom (245) and red top (220, 20, 20) with pure white center button (255)
+    draw.pieslice([20, 20, 80, 80], 0, 180, fill=(245, 245, 245))
+    draw.pieslice([20, 20, 80, 80], 180, 360, fill=(220, 20, 20))
+    draw.ellipse([45, 45, 55, 55], fill=(255, 255, 255), outline=(20, 20, 20))
+
+    cleaned = ImageService.clean_fake_background(img)
+    arr = np.array(cleaned)
+
+    # Background at corners must be transparent
+    assert arr[5, 5, 3] == 0
+    assert arr[95, 95, 3] == 0
+    # White bottom of Pokeball must be opaque (preserved)
+    assert arr[65, 50, 3] == 255
+    # Red top of Pokeball must be opaque
+    assert arr[35, 50, 3] == 255
+    # Center pure white button must be opaque
+    assert arr[50, 50, 3] == 255
+
+    # 2. Portal Gun on solid white with white highlight
+    pg = Image.new("RGB", (100, 100), (255, 255, 255))
+    draw_pg = ImageDraw.Draw(pg)
+    draw_pg.rectangle([30, 40, 70, 60], fill=(242, 242, 242), outline=(100, 100, 100))
+    draw_pg.ellipse([40, 45, 60, 55], fill=(255, 255, 255))
+
+    cleaned_pg = ImageService.clean_fake_background(pg)
+    arr_pg = np.array(cleaned_pg)
+    assert arr_pg[5, 5, 3] == 0
+    assert arr_pg[50, 35, 3] == 255
+    assert arr_pg[50, 50, 3] == 255
+
+
