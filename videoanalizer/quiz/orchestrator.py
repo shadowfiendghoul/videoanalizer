@@ -879,6 +879,12 @@ class QuizOrchestrator:
             shutil.copy2(raw_sfx.reveal_ding, sfx_target_dir / "reveal_ding.wav")
             shutil.copy2(raw_sfx.level_up, sfx_target_dir / "level_up.wav")
 
+            whoosh_src = self.config.sfx_dir / "whoosh.mp3"
+            if not whoosh_src.exists():
+                whoosh_src = self.config.sfx_dir / "whoosh.wav"
+            if whoosh_src.exists():
+                shutil.copy2(whoosh_src, sfx_target_dir / "whoosh.mp3")
+
             heartbeat_panic_rel = None
             if raw_sfx.heartbeat_panic and Path(raw_sfx.heartbeat_panic).exists():
                 shutil.copy2(raw_sfx.heartbeat_panic, sfx_target_dir / "heartbeat_panic.wav")
@@ -1298,10 +1304,13 @@ class QuizOrchestrator:
                 (tick_file, tick_file),
                 ("reveal_ding.wav", "reveal_ding.wav"),
                 ("sub_bass_stinger.wav", "sub_bass_stinger.wav"),
+                ("whoosh.mp3", "whoosh.mp3"),
             ]:
                 src_sfx = self.config.sfx_dir / sfx_name
                 if not src_sfx.exists() and sfx_name.endswith(".wav"):
                     src_sfx = self.config.sfx_dir / sfx_name.replace(".wav", ".mp3")
+                elif not src_sfx.exists() and sfx_name.endswith(".mp3"):
+                    src_sfx = self.config.sfx_dir / sfx_name.replace(".mp3", ".wav")
                 if src_sfx.exists():
                     shutil.copy2(src_sfx, sfx_public_dir / target_name)
 

@@ -351,6 +351,24 @@ def ensure_default_sfx(sfx_dir: Path) -> None:
                 data.extend(struct.pack("<h", int(max(-32768, min(32767, sample)))))
             f.writeframes(data)
 
+    whoosh_mp3 = sfx_dir / "whoosh.mp3"
+    whoosh_path = sfx_dir / "whoosh.wav"
+    if not whoosh_mp3.exists() and not whoosh_path.exists():
+        # Fast swoosh / whoosh sound (0.3s)
+        n_samples = int(sample_rate * 0.3)
+        with wave.open(str(whoosh_path), "w") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(sample_rate)
+            data = bytearray()
+            for i in range(n_samples):
+                t = i / sample_rate
+                env = math.sin(math.pi * (i / n_samples))
+                freq = 200.0 + 800.0 * (t / 0.3)
+                val = math.sin(2 * math.pi * freq * t) * env * 25000
+                data.extend(struct.pack("<h", int(max(-32767, min(32767, val)))))
+            f.writeframes(data)
+
     return SfxPaths(
         timer_tick=str(chosen_tick),
         reveal_ding=str(ding_path),
@@ -975,6 +993,13 @@ class AudioService:
         hook_end_frame = int(round(hook_dur_sec * fps))
         audio_events.append((hook_audio_path, 0.0, 0.0))
 
+        # Add whoosh sound effect at the beginning of the visual quiz
+        whoosh_sfx = self.config.sfx_dir / "whoosh.mp3"
+        if not whoosh_sfx.exists():
+            whoosh_sfx = self.config.sfx_dir / "whoosh.wav"
+        if whoosh_sfx.exists():
+            audio_events.append((whoosh_sfx, 0.0, 0.0))
+
         # Add Rapid Card / Cash Counter Flip SFX during intro at gentle, balanced volume (-15 dB)
         card_flip_sfx = self.config.sfx_dir / "card_flip_rapid.wav"
         if card_flip_sfx.exists():
@@ -1257,8 +1282,15 @@ class AudioService:
             tick_path = sfx_dir / "timer_tick.wav"
         ding_path = sfx_dir / "reveal_ding.wav"
         stinger_path = sfx_dir / "sub_bass_stinger.wav"
+        whoosh_path = sfx_dir / "whoosh.mp3"
+        if not whoosh_path.exists():
+            whoosh_path = sfx_dir / "whoosh.wav"
 
         audio_events: list[tuple[Path, float, float]] = []
+
+        # Play whoosh sound right at the start of the quiz (0.0s)
+        if whoosh_path.exists():
+            audio_events.append((whoosh_path, 0.0, 0.0))
 
         selected_voice = (
             voice_config.narrator_voice

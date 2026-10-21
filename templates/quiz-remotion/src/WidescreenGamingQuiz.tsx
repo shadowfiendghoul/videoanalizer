@@ -142,6 +142,11 @@ export const WidescreenGamingQuizComp: React.FC<WidescreenQuizRenderProps> = ({
             />
           )}
 
+          {/* Intro Whoosh SFX */}
+          <Sequence from={0} durationInFrames={30}>
+            <Audio src={resolveSrc("sfx/whoosh.mp3")!} volume={1.0} />
+          </Sequence>
+
           {/* Intro TTS */}
           {intro_tts_audio_path && timing_slots.find((s) => s.slot_type === "intro") && (
             <Sequence
