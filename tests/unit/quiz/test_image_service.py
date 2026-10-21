@@ -46,3 +46,24 @@ async def test_search_and_download_failure_fallback(tmp_path: Path) -> None:
         result = await service.search_and_download("NonExistentXYZ123456", target_path)
         assert result is None
         assert not target_path.exists()
+
+
+def test_format_transparent_query_strips_redundant_keywords() -> None:
+    """Verify format_transparent_query does not add redundant background keywords and cleans them if present."""
+    # 1. Plain query is preserved without junk appended
+    assert ImageService.format_transparent_query("Apple logo") == "Apple logo"
+    assert ImageService.format_transparent_query("Ferrari F40") == "Ferrari F40"
+
+    # 2. Boilerplate noise keywords are stripped
+    noisy_query = "Apple vector logo transparent png isolated without background"
+    assert ImageService.format_transparent_query(noisy_query) == "Apple"
+
+    noisy_query2 = "Nike swoosh logo without background"
+    assert ImageService.format_transparent_query(noisy_query2) == "Nike swoosh logo"
+
+    noisy_query3 = "McDonald's isolated without background"
+    assert ImageService.format_transparent_query(noisy_query3) == "McDonald's"
+
+    # 3. Empty query returns default fallback
+    assert ImageService.format_transparent_query("") == "logo"
+

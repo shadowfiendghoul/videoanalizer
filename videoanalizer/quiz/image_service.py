@@ -44,17 +44,26 @@ class ImageService:
 
     @staticmethod
     def format_transparent_query(query: str) -> str:
-        """Format and enforce transparent PNG search keywords for logo and icon queries."""
+        """Sanitize search query, removing redundant background-removal keywords since backgrounds are removed procedurally."""
         q = (query or "").strip()
-        lower = q.lower()
-        parts = [q] if q else ["logo"]
-        if "transparent" not in lower:
-            parts.append("transparent")
-        if "png" not in lower:
-            parts.append("png")
-        if "without background" not in lower and "no background" not in lower:
-            parts.append("without background")
-        return " ".join(parts)
+        if not q:
+            return "logo"
+
+        import re
+        noise_patterns = [
+            r"\bvector\s+logo\s+transparent\s+png\s+isolated\s+without\s+background\b",
+            r"\btransparent\s+png\s+isolated\s+without\s+background\b",
+            r"\bisolated\s+without\s+background\b",
+            r"\bwithout\s+background\b",
+            r"\bno\s+background\b",
+            r"\btransparent\s+png\b",
+            r"\bisolated\b",
+        ]
+        for pattern in noise_patterns:
+            q = re.sub(pattern, "", q, flags=re.IGNORECASE)
+
+        cleaned = " ".join(q.split())
+        return cleaned or (query.strip() if query else "logo")
 
     @staticmethod
     def sort_transparent_candidates(results: list[dict[str, str]]) -> list[dict[str, str]]:
