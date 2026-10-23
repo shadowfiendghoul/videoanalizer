@@ -62,18 +62,17 @@ export const IntroHookCard: React.FC<IntroHookCardProps> = ({
         style={{
           transform: `scale(${currentScale})`,
           transformOrigin: "center center",
-          backgroundColor: "rgba(10, 15, 29, 0.90)",
-          borderColor: "rgba(245, 158, 11, 0.7)",
-          boxShadow: "0 25px 60px rgba(0, 0, 0, 0.9), 0 0 45px rgba(245, 158, 11, 0.35)",
+          background: "linear-gradient(145deg, rgba(15, 23, 42, 0.94) 0%, rgba(9, 14, 26, 0.96) 100%)",
+          boxShadow: "0 35px 80px rgba(0, 0, 0, 0.9), 0 0 50px rgba(245, 158, 11, 0.25)",
         }}
-        className="w-full max-w-[940px] rounded-[36px] p-8 border-2 backdrop-blur-2xl flex flex-col items-center text-center relative overflow-hidden"
+        className="w-full max-w-[940px] rounded-[36px] p-8 backdrop-blur-2xl flex flex-col items-center text-center relative overflow-hidden"
       >
         {/* Glow ambient background sphere */}
-        <div className="absolute -top-24 -left-24 w-56 h-56 rounded-full bg-amber-500/25 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-56 h-56 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -left-24 w-64 h-64 rounded-full bg-amber-500/25 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-64 h-64 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
 
         {/* Top Challenge Badge */}
-        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-2xl bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-400/40 shadow-lg mb-4">
+        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-2xl bg-gradient-to-r from-amber-500/25 to-amber-600/20 shadow-lg mb-4">
           <span className="text-2xl animate-bounce">👑</span>
           <span className="text-amber-400 font-mono font-black text-sm md:text-base tracking-widest uppercase">
             9 ВОПРОСОВ НА IQ

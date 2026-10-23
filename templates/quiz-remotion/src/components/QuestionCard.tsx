@@ -47,11 +47,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
       }}
     >
       <div
-        className="w-full max-w-[960px] min-h-[380px] p-8 rounded-3xl backdrop-blur-2xl border flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden"
+        className="w-full max-w-[960px] min-h-[380px] p-8 rounded-3xl backdrop-blur-2xl flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden"
         style={{
-          background: "rgba(15, 23, 42, 0.82)",
-          borderColor: "rgba(255, 255, 255, 0.15)",
-          boxShadow: `0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px ${themeColor}22`,
+          background: "linear-gradient(145deg, rgba(15, 23, 42, 0.90) 0%, rgba(9, 14, 26, 0.94) 100%)",
+          boxShadow: `0 25px 60px rgba(0, 0, 0, 0.75), 0 0 40px ${themeColor}22`,
         }}
       >
         {/* Subtle decorative glow orb behind */}
@@ -62,11 +61,15 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
         {isVisual ? (
           <div className="flex flex-col items-center justify-center w-full gap-6">
-            {/* Visual Asset Container (Flags / Logos / Landmarks) */}
-            <div className="w-[600px] h-[320px] rounded-2xl bg-black/40 border border-white/10 flex items-center justify-center p-3 overflow-hidden shadow-inner">
+            {/* Visual Asset Presentation (Clean borderless floating image with glow & shadow) */}
+            <div className="relative w-full max-w-[620px] h-[320px] flex items-center justify-center p-2">
+              <div
+                className="absolute inset-0 rounded-3xl blur-2xl opacity-25 pointer-events-none"
+                style={{ backgroundColor: themeColor }}
+              />
               <Img
                 src={resolvedImage!}
-                className="max-w-full max-h-full object-contain drop-shadow-xl"
+                className="max-w-full max-h-full object-contain relative z-10 drop-shadow-[0_16px_36px_rgba(0,0,0,0.85)] filter"
               />
             </div>
             {/* Prompt text below image */}

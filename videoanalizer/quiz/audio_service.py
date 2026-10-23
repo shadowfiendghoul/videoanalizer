@@ -515,20 +515,9 @@ class AudioService:
             base_voice = "ru-RU-SvetlanaNeural"
             af_filter = "asetrate=44100*1.28,atempo=1/1.28,equalizer=f=3000:t=q:w=1:g=3"
 
+        # Strict voice consistency: do NOT add alternative voices so the voice
+        # never drifts or switches mid-video between questions.
         voices_to_try = [base_voice]
-
-        if "ru-" in base_voice.lower():
-            for ru_voice in ("ru-RU-SvetlanaNeural", "ru-RU-DmitryNeural"):
-                if ru_voice not in voices_to_try:
-                    voices_to_try.append(ru_voice)
-        elif "en-" in base_voice.lower():
-            for en_voice in (
-                "en-US-GuyNeural",
-                "en-US-JennyNeural",
-                "en-US-ChristopherNeural",
-            ):
-                if en_voice not in voices_to_try:
-                    voices_to_try.append(en_voice)
 
         audio_bytes = bytearray()
         words: list[WordCue] = []
@@ -543,49 +532,48 @@ class AudioService:
 
         ensure_latest_edge_tts()
 
-        for v in voices_to_try:
-            max_attempts = 2 if len(voices_to_try) > 1 else 3
-            for attempt in range(max_attempts):
-                try:
-                    communicate = edge_tts.Communicate(tts_text, v, rate=rate_arg)
-                    audio_bytes.clear()
-                    words.clear()
-                    detected_speech_start_ms = None
-                    detected_speech_duration_ms = None
-                    async for chunk in communicate.stream():
-                        if chunk["type"] == "audio":
-                            audio_bytes.extend(chunk["data"])
-                        elif chunk["type"] == "WordBoundary":
-                            start_ms = chunk["offset"] // 10000
-                            dur_ms = chunk["duration"] // 10000
-                            word_text = chunk["text"]
-                            words.append(
-                                WordCue(
-                                    word=word_text,
-                                    start_ms=start_ms,
-                                    end_ms=start_ms + dur_ms,
-                                )
+        # Retry persistently with base_voice to guarantee 100% voice consistency across the video
+        max_attempts = 25
+        for attempt in range(max_attempts):
+            try:
+                communicate = edge_tts.Communicate(tts_text, base_voice, rate=rate_arg)
+                audio_bytes.clear()
+                words.clear()
+                detected_speech_start_ms = None
+                detected_speech_duration_ms = None
+                async for chunk in communicate.stream():
+                    if chunk["type"] == "audio":
+                        audio_bytes.extend(chunk["data"])
+                    elif chunk["type"] == "WordBoundary":
+                        start_ms = chunk["offset"] // 10000
+                        dur_ms = chunk["duration"] // 10000
+                        word_text = chunk["text"]
+                        words.append(
+                            WordCue(
+                                word=word_text,
+                                start_ms=start_ms,
+                                end_ms=start_ms + dur_ms,
                             )
-                        elif chunk["type"] == "SentenceBoundary":
-                            detected_speech_start_ms = chunk["offset"] // 10000
-                            detected_speech_duration_ms = chunk["duration"] // 10000
-                    if audio_bytes:
-                        synthesized_successfully = True
-                        break
-                except Exception as e:
-                    if "403" in str(e) or "Handshake" in str(e):
-                        ensure_latest_edge_tts()
-                    logger.info(
-                        "Voice %s attempt %d/%d note for '%s': %s (retrying)",
-                        v,
-                        attempt + 1,
-                        max_attempts,
-                        text[:30],
-                        e,
-                    )
-                    await asyncio.sleep(0.3 * (attempt + 1))
-            if synthesized_successfully:
-                break
+                        )
+                    elif chunk["type"] == "SentenceBoundary":
+                        detected_speech_start_ms = chunk["offset"] // 10000
+                        detected_speech_duration_ms = chunk["duration"] // 10000
+                if audio_bytes:
+                    synthesized_successfully = True
+                    break
+            except Exception as e:
+                if "403" in str(e) or "Handshake" in str(e):
+                    ensure_latest_edge_tts()
+                logger.warning(
+                    "Voice %s attempt %d/%d for '%s': %s (retrying)",
+                    base_voice,
+                    attempt + 1,
+                    max_attempts,
+                    text[:30],
+                    e,
+                )
+                sleep_dur = 0.01 if "pytest" in sys.modules else min(0.3 * (attempt + 1), 2.0)
+                await asyncio.sleep(sleep_dur)
 
         if not synthesized_successfully or not audio_bytes:
             effective_allow_fallback = (

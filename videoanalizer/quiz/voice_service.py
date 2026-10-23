@@ -6,6 +6,7 @@ import math
 import shutil
 import struct
 import subprocess
+import sys
 import wave
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -17,7 +18,7 @@ import edge_tts
 import numpy as np
 import soundfile as sf
 
-from videoanalizer.quiz.audio_service import probe_audio_duration_ms
+from videoanalizer.quiz.audio_service import ensure_latest_edge_tts, probe_audio_duration_ms
 from videoanalizer.quiz.models import (
     RvcModelInfo,
     SynthesizedSpeechResult,
@@ -275,20 +276,18 @@ class VoiceService:
         words: list[WordTiming] = []
         last_err: Exception | None = None
 
-        # Candidate voices: if DmitryNeural fails on Latin brands, fallback to SvetlanaNeural
+        # Strict voice consistency: synthesize only with candidate_voice, never switch to another voice
         candidate_voice = cfg.base_voice
-        fallback_voice = (
-            "ru-RU-SvetlanaNeural"
-            if "dmitry" in (cfg.base_voice or "").lower()
-            else "ru-RU-DmitryNeural"
-        )
 
-        # Retry up to 8 times to handle sporadic websocket handshakes or voice incompatibility
-        for attempt in range(8):
+        ensure_latest_edge_tts()
+
+        # Retry persistently with candidate_voice to handle transient network hiccups
+        max_attempts = 25
+        for attempt in range(max_attempts):
             try:
                 audio_bytes.clear()
                 words.clear()
-                active_voice = candidate_voice if attempt < 4 else fallback_voice
+                active_voice = candidate_voice
                 communicate = edge_tts.Communicate(clean_text, active_voice, rate=rate_arg)
                 async for chunk in communicate.stream():
                     if chunk["type"] == "audio":
@@ -307,10 +306,17 @@ class VoiceService:
                     break
             except Exception as e:
                 last_err = e
-                logger.debug(
-                    "Edge-TTS attempt %d failed: %s. Retrying...", attempt + 1, e
+                if "403" in str(e) or "Handshake" in str(e):
+                    ensure_latest_edge_tts()
+                logger.warning(
+                    "Edge-TTS voice %s attempt %d/%d failed: %s. Retrying...",
+                    candidate_voice,
+                    attempt + 1,
+                    max_attempts,
+                    e,
                 )
-                await asyncio.sleep(0.35 * (attempt + 1))
+                sleep_dur = 0.01 if "pytest" in sys.modules else min(0.3 * (attempt + 1), 2.0)
+                await asyncio.sleep(sleep_dur)
 
         if not audio_bytes:
             if not cfg.allow_fallback:

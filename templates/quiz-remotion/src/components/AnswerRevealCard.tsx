@@ -39,15 +39,14 @@ export const AnswerRevealCard: React.FC<AnswerRevealCardProps> = ({
       }}
     >
       <div
-        className="w-full max-w-[960px] p-8 rounded-3xl backdrop-blur-2xl border-2 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden"
+        className="w-full max-w-[960px] p-8 rounded-3xl backdrop-blur-2xl flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden"
         style={{
-          background: "rgba(10, 15, 30, 0.92)",
-          borderColor: "#22C55E",
-          boxShadow: "0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(34, 197, 94, 0.4)",
+          background: "linear-gradient(145deg, rgba(15, 23, 42, 0.94) 0%, rgba(9, 14, 26, 0.96) 100%)",
+          boxShadow: "0 30px 70px rgba(0, 0, 0, 0.85), 0 0 45px rgba(34, 197, 94, 0.35)",
         }}
       >
         {/* Ambient Green Glow Orb */}
-        <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-emerald-500/30 blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-emerald-500/25 blur-3xl pointer-events-none" />
 
         {/* Badge Header */}
         <div className="flex items-center gap-2 px-6 py-2 rounded-full bg-emerald-500 text-slate-950 font-black text-sm uppercase tracking-widest shadow-lg mb-4">
@@ -67,7 +66,7 @@ export const AnswerRevealCard: React.FC<AnswerRevealCardProps> = ({
 
         {/* Fun Fact Section */}
         {funFact && (
-          <div className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 text-slate-200 text-lg font-medium leading-relaxed mb-4 text-center">
+          <div className="w-full p-4 rounded-2xl bg-white/5 text-slate-200 text-lg font-medium leading-relaxed mb-4 text-center">
             💡 <span className="font-semibold text-emerald-400">Fact:</span> {funFact}
           </div>
         )}
