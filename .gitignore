@@ -89,5 +89,8 @@ data/
 /*.wav
 -encoders
 
+# Temporary remotion preview frames
+templates/quiz-remotion/*.png
+
 
 

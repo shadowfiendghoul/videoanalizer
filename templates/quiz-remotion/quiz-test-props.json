@@ -1,0 +1,322 @@
+{
+  "challenge": {
+    "topic": "Тест на эрудицию",
+    "language": "ru",
+    "total_questions": 9,
+    "tiers": [
+      {
+        "tier_level": "easy",
+        "tier_index": 1,
+        "theme_color": "#22C55E",
+        "questions": [
+          {
+            "question_number": 1,
+            "difficulty": "easy",
+            "tier_index": 1,
+            "question_text": "Из какой игры этот культовый арт?",
+            "correct_answer": "Grand Theft Auto V",
+            "fun_fact": "GTA V заработала рекордный 1 миллиард долларов всего за первые три дня продаж!",
+            "image_query": "GTA V art",
+            "local_image_path": "images/test_gta.png"
+          },
+          {
+            "question_number": 2,
+            "difficulty": "easy",
+            "tier_index": 1,
+            "question_text": "В какой стране находится пирамида Хеопса?",
+            "correct_answer": "Египет",
+            "fun_fact": "Пирамида Хеопса — единственное уцелевшее чудо света.",
+            "image_query": null,
+            "local_image_path": null
+          },
+          {
+            "question_number": 3,
+            "difficulty": "easy",
+            "tier_index": 1,
+            "question_text": "Какой океан самый большой на Земле?",
+            "correct_answer": "Тихий океан",
+            "fun_fact": "Он занимает треть всей поверхности планеты.",
+            "image_query": null,
+            "local_image_path": null
+          }
+        ]
+      },
+      {
+        "tier_level": "medium",
+        "tier_index": 2,
+        "theme_color": "#F59E0B",
+        "questions": [
+          {
+            "question_number": 4,
+            "difficulty": "medium",
+            "tier_index": 2,
+            "question_text": "Столица Австралии?",
+            "correct_answer": "Канберра",
+            "fun_fact": "Канберра была построена как компромисс между Сиднеем и Мельбурном.",
+            "image_query": null,
+            "local_image_path": null
+          },
+          {
+            "question_number": 5,
+            "difficulty": "medium",
+            "tier_index": 2,
+            "question_text": "Какая планета ближе всего к Солнцу?",
+            "correct_answer": "Меркурий",
+            "fun_fact": "Год на Меркурии длится всего 88 земных дней.",
+            "image_query": null,
+            "local_image_path": null
+          },
+          {
+            "question_number": 6,
+            "difficulty": "medium",
+            "tier_index": 2,
+            "question_text": "Какой пролив разделяет Испанию и Марокко?",
+            "correct_answer": "Гибралтарский",
+            "fun_fact": "Ширина пролива в самом узком месте всего 14 км.",
+            "image_query": null,
+            "local_image_path": null
+          }
+        ]
+      },
+      {
+        "tier_level": "hard",
+        "tier_index": 3,
+        "theme_color": "#EF4444",
+        "questions": [
+          {
+            "question_number": 7,
+            "difficulty": "hard",
+            "tier_index": 3,
+            "question_text": "Какой химический элемент назван в честь бога подземного царства?",
+            "correct_answer": "Плутоний",
+            "fun_fact": "Плутоний был открыт в 1940 году Гленном Сиборгом.",
+            "image_query": null,
+            "local_image_path": null
+          },
+          {
+            "question_number": 8,
+            "difficulty": "hard",
+            "tier_index": 3,
+            "question_text": "В каком году произошел первый полет человека в космос?",
+            "correct_answer": "1961",
+            "fun_fact": "Юрий Гагарин провел на орбите 108 минут.",
+            "image_query": null,
+            "local_image_path": null
+          },
+          {
+            "question_number": 9,
+            "difficulty": "hard",
+            "tier_index": 3,
+            "question_text": "Какое море не имеет берегов?",
+            "correct_answer": "Саргассово море",
+            "fun_fact": "Его границы образуют четыре океанических течения.",
+            "image_query": null,
+            "local_image_path": null
+          }
+        ]
+      }
+    ]
+  },
+  "cue_sheet": {
+    "total_duration_ms": 60000,
+    "total_duration_frames": 3600,
+    "intro_hook_text": "ТОЛЬКО 1% ОТВЕТИТ НА ВСЕ 9 ВОПРОСОВ!",
+    "intro_hook_duration_frames": 180,
+    "intro_hook_duration_ms": 3000,
+    "intro_hook_words": [
+      { "word": "ТОЛЬКО", "start_ms": 0, "end_ms": 400 },
+      { "word": "1%", "start_ms": 400, "end_ms": 800 },
+      { "word": "ОТВЕТИТ", "start_ms": 800, "end_ms": 1300 },
+      { "word": "НА", "start_ms": 1300, "end_ms": 1600 },
+      { "word": "ВСЕ", "start_ms": 1600, "end_ms": 1900 },
+      { "word": "9", "start_ms": 1900, "end_ms": 2200 },
+      { "word": "ВОПРОСОВ!", "start_ms": 2200, "end_ms": 2800 }
+    ],
+    "cues": [
+      {
+        "question_number": 1,
+        "start_frame": 180,
+        "question_audio_file": "",
+        "question_duration_ms": 2000,
+        "question_words": [
+          { "word": "Из", "start_ms": 0, "end_ms": 300 },
+          { "word": "какой", "start_ms": 300, "end_ms": 600 },
+          { "word": "игры", "start_ms": 600, "end_ms": 900 },
+          { "word": "этот", "start_ms": 900, "end_ms": 1200 },
+          { "word": "арт?", "start_ms": 1200, "end_ms": 1600 }
+        ],
+        "think_start_frame": 300,
+        "think_duration_ms": 3000,
+        "reveal_frame": 480,
+        "answer_audio_file": "",
+        "answer_duration_ms": 2000,
+        "answer_words": [
+          { "word": "Grand", "start_ms": 0, "end_ms": 400 },
+          { "word": "Theft", "start_ms": 400, "end_ms": 800 },
+          { "word": "Auto", "start_ms": 800, "end_ms": 1200 },
+          { "word": "V", "start_ms": 1200, "end_ms": 1600 }
+        ],
+        "end_frame": 660
+      },
+      {
+        "question_number": 2,
+        "start_frame": 660,
+        "question_audio_file": "",
+        "question_duration_ms": 2000,
+        "question_words": [],
+        "think_start_frame": 780,
+        "think_duration_ms": 3000,
+        "reveal_frame": 960,
+        "answer_audio_file": "",
+        "answer_duration_ms": 2000,
+        "answer_words": [],
+        "end_frame": 1140
+      },
+      {
+        "question_number": 3,
+        "start_frame": 1140,
+        "question_audio_file": "",
+        "question_duration_ms": 2000,
+        "question_words": [],
+        "think_start_frame": 1260,
+        "think_duration_ms": 3000,
+        "reveal_frame": 1440,
+        "answer_audio_file": "",
+        "answer_duration_ms": 2000,
+        "answer_words": [],
+        "end_frame": 1620
+      },
+      {
+        "question_number": 4,
+        "start_frame": 1620,
+        "question_audio_file": "",
+        "question_duration_ms": 2000,
+        "question_words": [],
+        "think_start_frame": 1740,
+        "think_duration_ms": 3000,
+        "reveal_frame": 1920,
+        "answer_audio_file": "",
+        "answer_duration_ms": 2000,
+        "answer_words": [],
+        "end_frame": 2100
+      },
+      {
+        "question_number": 5,
+        "start_frame": 2100,
+        "question_audio_file": "",
+        "question_duration_ms": 2000,
+        "question_words": [],
+        "think_start_frame": 2220,
+        "think_duration_ms": 3000,
+        "reveal_frame": 2400,
+        "answer_audio_file": "",
+        "answer_duration_ms": 2000,
+        "answer_words": [],
+        "end_frame": 2580
+      },
+      {
+        "question_number": 6,
+        "start_frame": 2580,
+        "question_audio_file": "",
+        "question_duration_ms": 2000,
+        "question_words": [],
+        "think_start_frame": 2700,
+        "think_duration_ms": 3000,
+        "reveal_frame": 2880,
+        "answer_audio_file": "",
+        "answer_duration_ms": 2000,
+        "answer_words": [],
+        "end_frame": 3060
+      },
+      {
+        "question_number": 7,
+        "start_frame": 3060,
+        "question_audio_file": "",
+        "question_duration_ms": 2000,
+        "question_words": [],
+        "think_start_frame": 3180,
+        "think_duration_ms": 3000,
+        "reveal_frame": 3360,
+        "answer_audio_file": "",
+        "answer_duration_ms": 2000,
+        "answer_words": [],
+        "end_frame": 3540
+      },
+      {
+        "question_number": 8,
+        "start_frame": 3540,
+        "question_audio_file": "",
+        "question_duration_ms": 2000,
+        "question_words": [],
+        "think_start_frame": 3660,
+        "think_duration_ms": 3000,
+        "reveal_frame": 3840,
+        "answer_audio_file": "",
+        "answer_duration_ms": 2000,
+        "answer_words": [],
+        "end_frame": 4020
+      },
+      {
+        "question_number": 9,
+        "start_frame": 4020,
+        "question_audio_file": "",
+        "question_duration_ms": 2000,
+        "question_words": [],
+        "think_start_frame": 4140,
+        "think_duration_ms": 3000,
+        "reveal_frame": 4320,
+        "answer_audio_file": "",
+        "answer_duration_ms": 2000,
+        "answer_words": [],
+        "end_frame": 4500
+      }
+    ]
+  },
+  "background_video_path": "bg.mp4",
+  "background_music_path": null,
+  "background_music_volume": 0.18,
+  "banner_image_path": null,
+  "sfx_paths": {
+    "timer_tick": "assets/sfx/timer_tick.wav",
+    "reveal_ding": "assets/sfx/reveal_ding.wav",
+    "level_up": "assets/sfx/level_up.wav",
+    "heartbeat_panic": "assets/sfx/heartbeat_panic.wav",
+    "streak_fire": "assets/sfx/streak_fire.wav",
+    "rank_levelup": "assets/sfx/rank_levelup.wav",
+    "comment_buzzer": "assets/sfx/comment_buzzer.wav"
+  },
+  "retention": {
+    "enabled": true,
+    "rank_bar_enabled": true,
+    "rank_tiers": [
+      { "min_question": 1, "max_question": 3, "rank_title": "NPC", "rank_color": "#64748B", "rank_icon": "🤖", "iq_label": "IQ < 90" },
+      { "min_question": 4, "max_question": 6, "rank_title": "Нормис", "rank_color": "#22C55E", "rank_icon": "🥉", "iq_label": "IQ 90-110" },
+      { "min_question": 7, "max_question": 8, "rank_title": "Эрудит", "rank_color": "#A855F7", "rank_icon": "🥈", "iq_label": "IQ 111-129" },
+      { "min_question": 9, "max_question": 9, "rank_title": "1% Гениев", "rank_color": "#F59E0B", "rank_icon": "👑", "iq_label": "IQ 130+" }
+    ],
+    "stress_timer_enabled": true,
+    "stress_tiers": [
+      { "tier_level": "easy", "think_duration_sec": 3.0, "theme_color": "#00A3FF", "sfx_file": "assets/sfx/timer_tick.wav", "panic_vignette": false },
+      { "tier_level": "medium", "think_duration_sec": 2.5, "theme_color": "#F59E0B", "sfx_file": "assets/sfx/timer_tick.wav", "panic_vignette": false },
+      { "tier_level": "hard", "think_duration_sec": 1.8, "theme_color": "#EF4444", "sfx_file": "assets/sfx/heartbeat_panic.wav", "panic_vignette": true }
+    ],
+    "streak_fire": {
+      "enabled": true,
+      "fire_color_normal": "#FF5500",
+      "fire_color_ultra": "#38BDF8",
+      "ultra_threshold": 7,
+      "sfx_pitch_step": 0.05
+    },
+    "comment_trap": {
+      "enabled": true,
+      "trap_question_number": 8,
+      "outro_challenge_text": "Если набрал 8+ — ты соврал. Пиши честный счет в комменты! 👇",
+      "duration_frames": 90
+    },
+    "seamless_loop": true,
+    "anti_cheat_callout": true
+  },
+  "fps": 60,
+  "width": 1080,
+  "height": 1920
+}
