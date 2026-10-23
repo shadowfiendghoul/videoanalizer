@@ -79,6 +79,10 @@ assets/music/
 !assets/backgrounds/buttercup_daisies.mp4
 !assets/backgrounds/pastel/
 !assets/backgrounds/pastel/*.mp4
+!assets/backgrounds/pastel_16x9/
+!assets/backgrounds/pastel_16x9/*.mp4
+!assets/backgrounds/minimalist_16x9/
+!assets/backgrounds/minimalist_16x9/*.mp4
 
 # Large ML / Voice model checkpoints
 assets/models/

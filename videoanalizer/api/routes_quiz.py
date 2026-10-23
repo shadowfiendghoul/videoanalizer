@@ -619,9 +619,29 @@ def _format_bg_friendly_name(stem: str) -> str:
         return "Subway Surfers"
     elif "earth" in lower or "space" in lower:
         return "Земля из космоса (Earth Night)"
+    elif "topograph" in lower:
+        return "Тёмная топография (Dark Topography 16:9)"
+    elif "cyber_grid" in lower:
+        return "Кибер-сетка 3D (Cyber Grid 3D 16:9)"
+    elif "aurora" in lower:
+        return "Северное сияние (Aurora Borealis 16:9)"
+    elif "digital_rain" in lower or "rain" in lower:
+        return "Цифровой дождь Матрицы (Digital Rain Matrix 16:9)"
+    elif "hexagon" in lower:
+        return "Неоновые гексагоны (Geometric Hexagons 16:9)"
+    elif "starfield" in lower:
+        return "Космическое звездное поле (Minimal Starfield 16:9)"
+    elif "synthwave" in lower or "sunset" in lower:
+        return "Ретровейв закат (Synthwave Sunset 16:9)"
+    elif "ribbon" in lower or "sine" in lower:
+        return "Шелковые синусоиды (Flowing Sine Ribbons 16:9)"
+    elif "dot_matrix" in lower or "isometric" in lower:
+        return "Изометрическая матрица точек (Isometric Dot Matrix 16:9)"
+    elif "crimson" in lower or "nebula" in lower:
+        return "Багровая туманность (Crimson Nebula Liquid 16:9)"
     elif "pink" in lower or "lightning" in lower:
         return "Розовые молнии (Pink Lightning)"
-    elif "mint" in lower or "star" in lower:
+    elif "mint" in lower:
         return "Мятные звёздочки (Mint Stars)"
     elif "lavender" in lower or "heart" in lower:
         return "Лавандовые сердца (Lavender Hearts)"
