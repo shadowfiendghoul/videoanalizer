@@ -57,22 +57,16 @@ export const IntroHookCard: React.FC<IntroHookCardProps> = ({
       {/* Intro voiceover audio */}
       {audioFile && <Audio src={resolveAssetUrl(audioFile)} volume={1.0} />}
 
-      {/* Main Viral Hook Badge & Card */}
+      {/* Main Viral Hook Badge & Text (no box/frame, direct floating typography) */}
       <div
         style={{
           transform: `scale(${currentScale})`,
           transformOrigin: "center center",
-          background: "linear-gradient(145deg, rgba(15, 23, 42, 0.94) 0%, rgba(9, 14, 26, 0.96) 100%)",
-          boxShadow: "0 35px 80px rgba(0, 0, 0, 0.9), 0 0 50px rgba(245, 158, 11, 0.25)",
         }}
-        className="w-full max-w-[940px] rounded-[36px] p-8 backdrop-blur-2xl flex flex-col items-center text-center relative overflow-hidden"
+        className="w-full max-w-[960px] flex flex-col items-center text-center relative pointer-events-none"
       >
-        {/* Glow ambient background sphere */}
-        <div className="absolute -top-24 -left-24 w-64 h-64 rounded-full bg-amber-500/25 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-64 h-64 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
-
         {/* Top Challenge Badge */}
-        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-2xl bg-gradient-to-r from-amber-500/25 to-amber-600/20 shadow-lg mb-4">
+        <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-black/60 backdrop-blur-md shadow-2xl mb-6">
           <span className="text-2xl animate-bounce">👑</span>
           <span className="text-amber-400 font-mono font-black text-sm md:text-base tracking-widest uppercase">
             9 ВОПРОСОВ НА IQ
@@ -80,12 +74,12 @@ export const IntroHookCard: React.FC<IntroHookCardProps> = ({
           <span className="text-xl">🧠</span>
         </div>
 
-        {/* Hook text in large punchy typography */}
+        {/* Hook text in large punchy typography directly over background */}
         <h1
           style={{
-            fontSize: "clamp(34px, 4.2vw, 54px)",
-            lineHeight: 1.2,
-            textShadow: "0 4px 18px rgba(0, 0, 0, 0.9), 0 0 25px rgba(245, 158, 11, 0.4)",
+            fontSize: "clamp(38px, 4.8vw, 64px)",
+            lineHeight: 1.15,
+            textShadow: "0 6px 20px rgba(0, 0, 0, 0.95), 0 0 35px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.9)",
           }}
           className="text-white font-black tracking-wide uppercase drop-shadow-2xl"
         >
@@ -93,7 +87,7 @@ export const IntroHookCard: React.FC<IntroHookCardProps> = ({
         </h1>
 
         {/* Pulsing sub-label */}
-        <div className="mt-4 flex items-center gap-2 text-emerald-400 font-mono text-sm font-bold tracking-wider uppercase">
+        <div className="mt-6 flex items-center gap-2.5 px-5 py-2 rounded-full bg-black/50 backdrop-blur-sm text-emerald-400 font-mono text-sm font-bold tracking-wider uppercase shadow-xl">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping inline-block" />
           <span>Начинаем через секунду...</span>
         </div>

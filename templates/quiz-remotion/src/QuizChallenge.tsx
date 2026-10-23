@@ -58,34 +58,32 @@ export const QuizChallengeComp: React.FC<RemotionRenderProps> = ({
         </Sequence>
       )}
 
-      {/* 2. Persistent Left-Side 1-9 Question & Answer Ladder */}
-      <QuestionLadder
-        challenge={challenge}
-        cueSheet={cue_sheet}
-        currentFrame={currentGlobalFrame}
-      />
-
-      {/* 3. Top Status Rank/IQ Bar (Y=150px) */}
-      <RankStatusBar
-        currentFrame={currentGlobalFrame}
-        cueSheet={cue_sheet}
-        retention={retention}
-        language={challenge.language as any}
-      />
-
-      {/* 4. Top-Center Level Tier Banner (УРОВЕНЬ: ЛЕГКИЙ/СРЕДНИЙ/ТЯЖЕЛЫЙ) */}
-      <LevelHeader
-        cueSheet={cue_sheet}
-        currentFrame={currentGlobalFrame}
-        language={challenge.language}
-      />
-
-      {/* 5. Top-Right Combo Streak Flame Counter */}
-      <StreakFire
-        currentFrame={currentGlobalFrame}
-        cueSheet={cue_sheet}
-        streakConfig={retention?.streak_fire}
-      />
+      {/* 2-5. Gameplay HUD (Question Ladder, Rank Bar, Level Banner, Streak) - starts after intro hook */}
+      {currentGlobalFrame >= (cue_sheet.intro_hook_duration_frames || 0) && (
+        <>
+          <QuestionLadder
+            challenge={challenge}
+            cueSheet={cue_sheet}
+            currentFrame={currentGlobalFrame}
+          />
+          <RankStatusBar
+            currentFrame={currentGlobalFrame}
+            cueSheet={cue_sheet}
+            retention={retention}
+            language={challenge.language as any}
+          />
+          <LevelHeader
+            cueSheet={cue_sheet}
+            currentFrame={currentGlobalFrame}
+            language={challenge.language}
+          />
+          <StreakFire
+            currentFrame={currentGlobalFrame}
+            cueSheet={cue_sheet}
+            streakConfig={retention?.streak_fire}
+          />
+        </>
+      )}
 
       {/* 6. Sequence each question's audio, stress timer, and captions */}
       {cue_sheet.cues.map((cue, idx) => {
