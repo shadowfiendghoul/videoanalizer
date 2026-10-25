@@ -12,8 +12,16 @@ import { loadFont as loadMontserrat } from "@remotion/google-fonts/Montserrat";
 import { loadFont as loadInterTight } from "@remotion/google-fonts/InterTight";
 import "./style.css";
 
-loadMontserrat("normal", { weights: ["700", "800", "900"] });
-loadInterTight("normal", { weights: ["700", "800", "900"] });
+loadMontserrat("normal", {
+  weights: ["700", "800", "900"],
+  subsets: ["latin", "cyrillic"],
+  ignoreTooManyRequestsWarning: true,
+});
+loadInterTight("normal", {
+  weights: ["700", "800", "900"],
+  subsets: ["latin", "cyrillic"],
+  ignoreTooManyRequestsWarning: true,
+});
 
 const defaultProps: RemotionRenderProps = {
   challenge: {

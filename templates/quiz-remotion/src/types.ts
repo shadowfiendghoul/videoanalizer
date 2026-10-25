@@ -268,6 +268,7 @@ export interface WidescreenQuizDataset {
   mode: "widescreen_gaming_quiz";
   title: string;
   language: "ru" | "en";
+  total_questions_count?: number;
   guessing_duration_sec: number;
   reveal_hold_duration_sec: number;
   bgm_track_path?: string | null;

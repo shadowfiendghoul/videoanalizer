@@ -629,8 +629,13 @@ class QuizOrchestrator:
 
         effective_profile = profile or self.config.render_profile
 
-        # Dynamic concurrency: scaled to 75-80% CPU logical cores with RAM quota guard
+        # Dynamic concurrency: scaled to 75-80% CPU logical cores with RAM quota guard.
+        # On Windows, high concurrency (>4) causes compositor pipe buffer overflow (EPIPE)
+        # and handle exhaustion. Cap concurrency safely on Windows.
         concurrency = calculate_optimal_concurrency(effective_profile)
+        if sys.platform == "win32":
+            max_win_concurrency = 4 if effective_profile == RenderProfile.GPU_FAST else 2
+            concurrency = min(max_win_concurrency, concurrency)
 
         args = [
             "render",
@@ -646,6 +651,8 @@ class QuizOrchestrator:
             f"--x264-preset={self.config.remotion_x264_preset}",
             "--pixel-format=yuv420p",
             "--overwrite",
+            "--disallow-parallel-encoding",
+            "--disable-web-security",
         ]
 
         # In GPU_FAST profile, enable Chromium GPU ANGLE rasterization & bundle caching

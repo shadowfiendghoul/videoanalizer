@@ -30,7 +30,7 @@ Config.overrideFfmpegCommand(({ args }) => {
           newArgs.splice(crfIdx, 2);
         }
         if (presetIdx !== -1) {
-          newArgs.splice(presetIdx, 2, "-preset", "p1", "-tune", "ull", "-rc", "cbr", "-b:v", "12M");
+          newArgs.splice(presetIdx, 2, "-preset", "p4", "-rc", "vbr", "-cq", "20", "-b:v", "12M");
         }
       } else if (hwEncoder === "h264_videotoolbox" && process.platform === "darwin") {
         newArgs[codecIdx + 1] = "h264_videotoolbox";
