@@ -12,6 +12,7 @@ import wave
 from pathlib import Path
 from typing import Any
 
+import aiohttp
 import edge_tts
 
 from videoanalizer.quiz.config import QuizConfig, get_quiz_config
@@ -525,18 +526,34 @@ class AudioService:
         detected_speech_start_ms: int | None = None
         detected_speech_duration_ms: int | None = None
 
-        # Pre-sanitize text: colons and hyphens cause DmitryNeural to fail
+        # Pre-sanitize text: colons, brackets, and hyphens cause DmitryNeural to fail
         # with 'No audio was received'
-        tts_text = text.replace(":", " ").replace("—", " ").replace("-", " ")
-        tts_text = " ".join(tts_text.split())
+        tts_text = text.replace(":", " ").replace(";", " ").replace("—", " ").replace("–", " ").replace("-", " ")
+        tts_text = tts_text.replace("(", " ").replace(")", " ").replace("[", " ").replace("]", " ")
+        tts_tokens = tts_text.split()
+        if len(tts_tokens) <= 3:
+            tts_text = tts_text.replace("!", "").replace("?", "").strip()
+        tts_text = " ".join(tts_text.split()).strip()
+        if tts_text and not tts_text.endswith((".", "!", "?")):
+            tts_text += "."
+
+        has_latin = bool(re.search(r"[a-zA-Z]", tts_text))
+        active_voice = (
+            "ru-RU-SvetlanaNeural"
+            if (has_latin and "dmitry" in base_voice.lower())
+            else base_voice
+        )
 
         ensure_latest_edge_tts()
 
-        # Retry persistently with base_voice to guarantee 100% voice consistency across the video
+        # Retry persistently with active_voice to guarantee audio synthesis
         max_attempts = 25
         for attempt in range(max_attempts):
             try:
-                communicate = edge_tts.Communicate(tts_text, base_voice, rate=rate_arg)
+                connector = aiohttp.TCPConnector(resolver=aiohttp.ThreadedResolver())
+                communicate = edge_tts.Communicate(
+                    tts_text, active_voice, rate=rate_arg, connector=connector
+                )
                 audio_bytes.clear()
                 words.clear()
                 detected_speech_start_ms = None
@@ -564,9 +581,20 @@ class AudioService:
             except Exception as e:
                 if "403" in str(e) or "Handshake" in str(e):
                     ensure_latest_edge_tts()
+                if (
+                    "NoAudioReceived" in type(e).__name__
+                    or "No audio was received" in str(e)
+                ) and "dmitry" in active_voice.lower():
+                    logger.warning(
+                        "Voice %s received NoAudioReceived on '%s'. Switching to ru-RU-SvetlanaNeural.",
+                        active_voice,
+                        text[:30],
+                    )
+                    active_voice = "ru-RU-SvetlanaNeural"
+                    continue
                 logger.warning(
                     "Voice %s attempt %d/%d for '%s': %s (retrying)",
-                    base_voice,
+                    active_voice,
                     attempt + 1,
                     max_attempts,
                     text[:30],

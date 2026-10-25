@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import math
+import re
 import shutil
 import struct
 import subprocess
@@ -14,6 +15,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from qwen_tts import Qwen3TTSModel
 
+import aiohttp
 import edge_tts
 import numpy as np
 import soundfile as sf
@@ -262,11 +264,14 @@ class VoiceService:
         # Replace em-dashes, en-dashes and word hyphens with spaces (e.g. 'Кока-Кола' -> 'Кока Кола')
         clean_text = text.replace("—", " ").replace("–", " ").replace("-", " ")
         clean_text = clean_text.replace(":", ", ").replace(";", ", ")
+        clean_text = clean_text.replace("(", " ").replace(")", " ").replace("[", " ").replace("]", " ")
         words_tokens = clean_text.split()
         # Edge-TTS DmitryNeural frequently crashes on short 1-3 word answers with trailing '!' or '?'
         if len(words_tokens) <= 3:
             clean_text = clean_text.replace("!", "").replace("?", "").strip()
         clean_text = " ".join(clean_text.split()).strip()
+        if clean_text and not clean_text.endswith((".", "!", "?")):
+            clean_text += "."
 
         # Calculate rate argument (+X% or -X%)
         pct = int(round((cfg.speech_rate - 1.0) * 100))
@@ -276,19 +281,29 @@ class VoiceService:
         words: list[WordTiming] = []
         last_err: Exception | None = None
 
-        # Strict voice consistency: synthesize only with candidate_voice, never switch to another voice
+        # Voice consistency: use base_voice. If Dmitry is selected but text contains Latin words
+        # (e.g. game or brand names like 'Minecraft', 'Portal'), Azure Speech has no Latin vocab for Dmitry
+        # and returns NoAudioReceived. We use ru-RU-SvetlanaNeural which natively speaks Latin/English phrases.
         candidate_voice = cfg.base_voice
+        has_latin = bool(re.search(r"[a-zA-Z]", clean_text))
+        active_voice = (
+            "ru-RU-SvetlanaNeural"
+            if (has_latin and "dmitry" in candidate_voice.lower())
+            else candidate_voice
+        )
 
         ensure_latest_edge_tts()
 
-        # Retry persistently with candidate_voice to handle transient network hiccups
+        # Retry persistently to handle transient network hiccups
         max_attempts = 25
         for attempt in range(max_attempts):
             try:
                 audio_bytes.clear()
                 words.clear()
-                active_voice = candidate_voice
-                communicate = edge_tts.Communicate(clean_text, active_voice, rate=rate_arg)
+                connector = aiohttp.TCPConnector(resolver=aiohttp.ThreadedResolver())
+                communicate = edge_tts.Communicate(
+                    clean_text, active_voice, rate=rate_arg, connector=connector
+                )
                 async for chunk in communicate.stream():
                     if chunk["type"] == "audio":
                         audio_bytes.extend(chunk["data"])
@@ -308,9 +323,21 @@ class VoiceService:
                 last_err = e
                 if "403" in str(e) or "Handshake" in str(e):
                     ensure_latest_edge_tts()
+                # DmitryNeural lacks Latin vocab and throws NoAudioReceived on English names/terms
+                if (
+                    "NoAudioReceived" in type(e).__name__
+                    or "No audio was received" in str(e)
+                ) and "dmitry" in active_voice.lower():
+                    logger.warning(
+                        "Voice %s failed with NoAudioReceived on '%s'. Switching to ru-RU-SvetlanaNeural.",
+                        active_voice,
+                        clean_text[:40],
+                    )
+                    active_voice = "ru-RU-SvetlanaNeural"
+                    continue
                 logger.warning(
                     "Edge-TTS voice %s attempt %d/%d failed: %s. Retrying...",
-                    candidate_voice,
+                    active_voice,
                     attempt + 1,
                     max_attempts,
                     e,
