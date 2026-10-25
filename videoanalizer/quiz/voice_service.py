@@ -10,7 +10,7 @@ import subprocess
 import sys
 import wave
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from qwen_tts import Qwen3TTSModel
@@ -31,6 +31,35 @@ from videoanalizer.quiz.models import (
 from videoanalizer.quiz.rvc_engine import RvcInferenceEngine
 
 logger = logging.getLogger(__name__)
+
+VIRTUAL_VOICE_PRESETS: dict[str, dict[str, Any]] = {
+    "ru-RU-SvetlanaEnergetic": {
+        "base_voice": "ru-RU-SvetlanaNeural",
+        "rate_multiplier": 1.15,
+        "af_filter": None,
+    },
+    "ru-RU-MaleBaritone": {
+        "base_voice": "ru-RU-SvetlanaNeural",
+        "rate_multiplier": 1.0,
+        "af_filter": (
+            "asetrate=44100*0.82,atempo=1/0.82,"
+            "equalizer=f=150:t=q:w=1:g=4,equalizer=f=2500:t=q:w=1:g=2"
+        ),
+    },
+    "ru-RU-EpicAnnouncer": {
+        "base_voice": "ru-RU-SvetlanaNeural",
+        "rate_multiplier": 1.0,
+        "af_filter": (
+            "asetrate=44100*0.74,atempo=1/0.74,"
+            "equalizer=f=100:t=q:w=1.2:g=7,aecho=0.8:0.7:40:0.25"
+        ),
+    },
+    "ru-RU-ChibiCartoon": {
+        "base_voice": "ru-RU-SvetlanaNeural",
+        "rate_multiplier": 1.0,
+        "af_filter": "asetrate=44100*1.28,atempo=1/1.28,equalizer=f=3000:t=q:w=1:g=3",
+    },
+}
 
 
 def compress_speech_pauses(
@@ -273,24 +302,44 @@ class VoiceService:
         if clean_text and not clean_text.endswith((".", "!", "?")):
             clean_text += "."
 
-        # Calculate rate argument (+X% or -X%)
-        pct = int(round((cfg.speech_rate - 1.0) * 100))
-        rate_arg = f"{pct:+d}%"
-
-        audio_bytes = bytearray()
-        words: list[WordTiming] = []
-        last_err: Exception | None = None
+        # Resolve virtual voice presets (e.g. ru-RU-ChibiCartoon, ru-RU-MaleBaritone)
+        raw_voice = cfg.base_voice
+        af_filter: str | None = None
+        effective_rate = cfg.speech_rate
+        if raw_voice in VIRTUAL_VOICE_PRESETS:
+            preset = VIRTUAL_VOICE_PRESETS[raw_voice]
+            candidate_voice = preset["base_voice"]
+            af_filter = preset.get("af_filter")
+            effective_rate *= preset.get("rate_multiplier", 1.0)
+        else:
+            candidate_voice = raw_voice
 
         # Voice consistency: use base_voice. If Dmitry is selected but text contains Latin words
         # (e.g. game or brand names like 'Minecraft', 'Portal'), Azure Speech has no Latin vocab for Dmitry
         # and returns NoAudioReceived. We use ru-RU-SvetlanaNeural which natively speaks Latin/English phrases.
-        candidate_voice = cfg.base_voice
         has_latin = bool(re.search(r"[a-zA-Z]", clean_text))
         active_voice = (
             "ru-RU-SvetlanaNeural"
             if (has_latin and "dmitry" in candidate_voice.lower())
             else candidate_voice
         )
+
+        # Rate handling:
+        # ru-RU-DmitryNeural rejects any custom rate (!= +0%) on Microsoft Azure with NoAudioReceived.
+        # To preserve Dmitry's voice and speed, we synthesize Dmitry at +0% and apply atempo in FFmpeg.
+        # Svetlana and other voices support native SSML rate directly.
+        if "dmitry" in active_voice.lower():
+            rate_arg = "+0%"
+            if abs(effective_rate - 1.0) >= 0.02:
+                tempo_str = f"atempo={effective_rate:.3f}"
+                af_filter = f"{af_filter},{tempo_str}" if af_filter else tempo_str
+        else:
+            pct = int(round((effective_rate - 1.0) * 100))
+            rate_arg = f"{pct:+d}%"
+
+        audio_bytes = bytearray()
+        words: list[WordTiming] = []
+        last_err: Exception | None = None
 
         ensure_latest_edge_tts()
 
@@ -323,6 +372,16 @@ class VoiceService:
                 last_err = e
                 if "403" in str(e) or "Handshake" in str(e):
                     ensure_latest_edge_tts()
+                # Invalid voice name: fall back immediately without wasting 25 attempts
+                if "Invalid voice" in str(e):
+                    logger.warning(
+                        "Voice %s is invalid in Edge-TTS. Falling back immediately to ru-RU-SvetlanaNeural.",
+                        active_voice,
+                    )
+                    active_voice = "ru-RU-SvetlanaNeural"
+                    pct = int(round((effective_rate - 1.0) * 100))
+                    rate_arg = f"{pct:+d}%"
+                    continue
                 # DmitryNeural lacks Latin vocab and throws NoAudioReceived on English names/terms
                 if (
                     "NoAudioReceived" in type(e).__name__
@@ -334,6 +393,8 @@ class VoiceService:
                         clean_text[:40],
                     )
                     active_voice = "ru-RU-SvetlanaNeural"
+                    pct = int(round((effective_rate - 1.0) * 100))
+                    rate_arg = f"{pct:+d}%"
                     continue
                 logger.warning(
                     "Edge-TTS voice %s attempt %d/%d failed: %s. Retrying...",
@@ -363,6 +424,23 @@ class VoiceService:
         temp_mp3 = output_path.with_suffix(".temp.mp3")
         temp_mp3.write_bytes(audio_bytes)
 
+        # Apply acoustic filters (virtual presets or Dmitry atempo tempo scaling)
+        if af_filter:
+            flt_mp3 = output_path.with_suffix(".flt.mp3")
+            cmd = [
+                self._ffmpeg_bin,
+                "-y",
+                "-i",
+                str(temp_mp3),
+                "-af",
+                af_filter,
+                str(flt_mp3),
+            ]
+            subprocess.run(cmd, check=True, capture_output=True)  # noqa: S603
+            if temp_mp3.exists():
+                temp_mp3.unlink()
+            temp_mp3 = flt_mp3
+
         # If target is WAV, transcode to normalized PCM WAV
         if output_path.suffix.lower() == ".wav":
             cmd = [
@@ -386,6 +464,12 @@ class VoiceService:
                 shutil.move(str(temp_mp3), str(output_path))
 
         duration_ms = probe_audio_duration_ms(output_path)
+        # If atempo was applied via FFmpeg to Dmitry, adjust word timings proportionally
+        if "dmitry" in active_voice.lower() and abs(effective_rate - 1.0) >= 0.02 and effective_rate > 0:
+            tempo_ratio = 1.0 / effective_rate
+            for w in words:
+                w.start_ms = int(round(w.start_ms * tempo_ratio))
+                w.end_ms = int(round(w.end_ms * tempo_ratio))
 
         if not words and duration_ms > 0:
             tokens = text.split()

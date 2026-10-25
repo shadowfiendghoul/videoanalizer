@@ -77,7 +77,7 @@ async def test_voice_service_edge_tts_mode(tmp_path: Path) -> None:
     out_file = tmp_path / "test_edge.wav"
     config = VoiceConfig(
         voice_mode=VoiceMode.EDGE_TTS,
-        base_voice="ru-RU-DmitryNeural",
+        base_voice="ru-RU-SvetlanaNeural",
         speech_rate=1.15,
     )
 
@@ -256,3 +256,79 @@ async def test_voice_service_qwen3_rvc_mode(tmp_path: Path) -> None:
         assert len(result.words) == 3
         mock_model.generate_voice_clone.assert_called_once()
         mock_rvc.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_voice_service_dmitry_rate_via_ffmpeg(tmp_path: Path) -> None:
+    """Verify ru-RU-DmitryNeural uses +0% for Edge-TTS and applies atempo in FFmpeg."""
+    svc = VoiceService()
+    out_file = tmp_path / "test_dmitry_atempo.wav"
+    config = VoiceConfig(
+        voice_mode=VoiceMode.EDGE_TTS,
+        base_voice="ru-RU-DmitryNeural",
+        speech_rate=1.15,
+    )
+
+    mock_words = ["Привет", "мир"]
+    mock_stream = MockAsyncStream(mock_words)
+
+    with patch("edge_tts.Communicate") as mock_comm, patch(
+        "videoanalizer.quiz.voice_service.probe_audio_duration_ms", return_value=1000
+    ), patch("subprocess.run") as mock_subproc:
+        instance = MagicMock()
+        instance.stream = MagicMock(return_value=mock_stream)
+        mock_comm.return_value = instance
+
+        result = await svc.synthesize(
+            text="Привет мир",
+            output_path=out_file,
+            config=config,
+        )
+
+        assert result.voice_mode_used == VoiceMode.EDGE_TTS
+        # Edge-TTS must receive rate +0% for Dmitry to prevent Azure NoAudioReceived crashes
+        _, kwargs = mock_comm.call_args
+        assert kwargs.get("rate") == "+0%"
+        # FFmpeg must be invoked with atempo filter
+        assert mock_subproc.called
+        all_cmd_args = " ".join(
+            " ".join(str(c) for c in call[0][0]) for call in mock_subproc.call_args_list
+        )
+        assert "atempo=1.15" in all_cmd_args
+
+
+@pytest.mark.asyncio
+async def test_voice_service_chibi_virtual_preset(tmp_path: Path) -> None:
+    """Verify ru-RU-ChibiCartoon maps to Svetlana and applies chibi acoustic equalizer filter."""
+    svc = VoiceService()
+    out_file = tmp_path / "test_chibi.wav"
+    config = VoiceConfig(
+        voice_mode=VoiceMode.EDGE_TTS,
+        base_voice="ru-RU-ChibiCartoon",
+    )
+
+    mock_words = ["Привет"]
+    mock_stream = MockAsyncStream(mock_words)
+
+    with patch("edge_tts.Communicate") as mock_comm, patch(
+        "videoanalizer.quiz.voice_service.probe_audio_duration_ms", return_value=800
+    ), patch("subprocess.run") as mock_subproc:
+        instance = MagicMock()
+        instance.stream = MagicMock(return_value=mock_stream)
+        mock_comm.return_value = instance
+
+        result = await svc.synthesize(
+            text="Привет",
+            output_path=out_file,
+            config=config,
+        )
+
+        assert result.voice_mode_used == VoiceMode.EDGE_TTS
+        # Must call SvetlanaNeural
+        args, _ = mock_comm.call_args
+        assert args[1] == "ru-RU-SvetlanaNeural"
+        # Must apply chibi filter
+        all_cmd_args = " ".join(
+            " ".join(str(c) for c in call[0][0]) for call in mock_subproc.call_args_list
+        )
+        assert "asetrate=44100*1.28" in all_cmd_args

@@ -493,28 +493,21 @@ class AudioService:
                     words.append(WordCue(word=tok, start_ms=i * step, end_ms=(i + 1) * step))
             return duration_ms, words
 
-        rate_arg = "+0%"
-        af_filter: str | None = None
-        base_voice = voice
+        from videoanalizer.quiz.voice_service import VIRTUAL_VOICE_PRESETS
 
-        if voice == "ru-RU-SvetlanaEnergetic":
-            base_voice = "ru-RU-SvetlanaNeural"
-            rate_arg = "+15%"
-        elif voice == "ru-RU-MaleBaritone":
-            base_voice = "ru-RU-SvetlanaNeural"
-            af_filter = (
-                "asetrate=44100*0.82,atempo=1/0.82,"
-                "equalizer=f=150:t=q:w=1:g=4,equalizer=f=2500:t=q:w=1:g=2"
-            )
-        elif voice == "ru-RU-EpicAnnouncer":
-            base_voice = "ru-RU-SvetlanaNeural"
-            af_filter = (
-                "asetrate=44100*0.74,atempo=1/0.74,"
-                "equalizer=f=100:t=q:w=1.2:g=7,aecho=0.8:0.7:40:0.25"
-            )
-        elif voice == "ru-RU-ChibiCartoon":
-            base_voice = "ru-RU-SvetlanaNeural"
-            af_filter = "asetrate=44100*1.28,atempo=1/1.28,equalizer=f=3000:t=q:w=1:g=3"
+        af_filter: str | None = None
+        effective_rate = 1.0
+        if voice_config is not None:
+            effective_rate = voice_config.speech_rate
+
+        raw_voice = voice
+        if raw_voice in VIRTUAL_VOICE_PRESETS:
+            preset = VIRTUAL_VOICE_PRESETS[raw_voice]
+            base_voice = preset["base_voice"]
+            af_filter = preset.get("af_filter")
+            effective_rate *= preset.get("rate_multiplier", 1.0)
+        else:
+            base_voice = raw_voice
 
         # Strict voice consistency: do NOT add alternative voices so the voice
         # never drifts or switches mid-video between questions.
@@ -543,6 +536,19 @@ class AudioService:
             if (has_latin and "dmitry" in base_voice.lower())
             else base_voice
         )
+
+        # Rate handling:
+        # ru-RU-DmitryNeural rejects any custom rate (!= +0%) on Microsoft Azure with NoAudioReceived.
+        # To preserve Dmitry's voice and speed, we synthesize Dmitry at +0% and apply atempo in FFmpeg.
+        # Svetlana and other voices support native SSML rate directly.
+        if "dmitry" in active_voice.lower():
+            rate_arg = "+0%"
+            if abs(effective_rate - 1.0) >= 0.02:
+                tempo_str = f"atempo={effective_rate:.3f}"
+                af_filter = f"{af_filter},{tempo_str}" if af_filter else tempo_str
+        else:
+            pct = int(round((effective_rate - 1.0) * 100))
+            rate_arg = f"{pct:+d}%"
 
         ensure_latest_edge_tts()
 
@@ -581,6 +587,15 @@ class AudioService:
             except Exception as e:
                 if "403" in str(e) or "Handshake" in str(e):
                     ensure_latest_edge_tts()
+                if "Invalid voice" in str(e):
+                    logger.warning(
+                        "Voice %s is invalid in Edge-TTS. Falling back immediately to ru-RU-SvetlanaNeural.",
+                        active_voice,
+                    )
+                    active_voice = "ru-RU-SvetlanaNeural"
+                    pct = int(round((effective_rate - 1.0) * 100))
+                    rate_arg = f"{pct:+d}%"
+                    continue
                 if (
                     "NoAudioReceived" in type(e).__name__
                     or "No audio was received" in str(e)
@@ -591,6 +606,8 @@ class AudioService:
                         text[:30],
                     )
                     active_voice = "ru-RU-SvetlanaNeural"
+                    pct = int(round((effective_rate - 1.0) * 100))
+                    rate_arg = f"{pct:+d}%"
                     continue
                 logger.warning(
                     "Voice %s attempt %d/%d for '%s': %s (retrying)",
