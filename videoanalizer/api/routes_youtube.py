@@ -41,6 +41,16 @@ class YouTubeUploadRequest(BaseModel):
         description="Optional scheduled publication datetime (RFC 3339 or ISO-8601 string)",
     )
     made_for_kids: bool = Field(default=False, description="Whether content is made for kids")
+    channel_id: str | None = Field(default=None, description="Optional target channel ID or title override")
+
+
+class SwitchAccountRequest(BaseModel):
+    channel_id: str = Field(..., description="Target YouTube channel ID")
+
+
+class DisconnectAccountRequest(BaseModel):
+    channel_id: str | None = Field(default=None, description="Specific channel ID to disconnect")
+
 
 
 def _resolve_video_path(video_path: str | None, job_id: str | None) -> Path:
@@ -197,11 +207,25 @@ async def oauth_callback(code: str = Query(...)) -> HTMLResponse:
         return HTMLResponse(content=err_html, status_code=400)
 
 
+@router.post("/switch-account")
+async def switch_youtube_account(payload: SwitchAccountRequest) -> dict[str, Any]:
+    """Switch currently active YouTube channel."""
+    service = get_youtube_service()
+    success = service.set_active_account(payload.channel_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Канал '{payload.channel_id}' не найден в подключенных аккаунтах.",
+        )
+    return {"status": "ok", "active_channel_id": payload.channel_id}
+
+
 @router.post("/disconnect")
-async def disconnect_youtube() -> dict[str, str]:
+async def disconnect_youtube(payload: DisconnectAccountRequest | None = None) -> dict[str, str]:
     """Disconnect YouTube account and remove stored tokens."""
     service = get_youtube_service()
-    service.disconnect()
+    cid = payload.channel_id if payload else None
+    service.disconnect(channel_id=cid)
     return {"status": "ok", "message": "YouTube аккаунт успешно отключен."}
 
 
@@ -214,6 +238,7 @@ def _run_youtube_upload_task(
     privacy_status: str,
     publish_at: str | None,
     made_for_kids: bool,
+    channel_id: str | None = None,
 ) -> None:
     """Synchronous worker running in background thread for resumable chunk upload."""
     service = get_youtube_service()
@@ -239,6 +264,7 @@ def _run_youtube_upload_task(
             privacy_status=privacy_status,
             publish_at=publish_at,
             made_for_kids=made_for_kids,
+            channel_id=channel_id,
             progress_callback=progress_callback,
         )
 
@@ -268,7 +294,7 @@ async def start_youtube_upload(
 ) -> dict[str, Any]:
     """Start asynchronous YouTube video upload."""
     service = get_youtube_service()
-    if not service.get_credentials():
+    if not service.get_credentials(channel_id=payload.channel_id):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="YouTube аккаунт не подключен. Авторизуйтесь перед загрузкой.",
@@ -283,6 +309,7 @@ async def start_youtube_upload(
         "progress_percent": 0.0,
         "stage": "В очереди на загрузку",
         "title": payload.title,
+        "channel_id": payload.channel_id or service.get_active_account_id(),
         "video_path": str(resolved_path),
         "created_at": datetime.now(UTC).isoformat(),
         "result": None,
@@ -299,6 +326,7 @@ async def start_youtube_upload(
         privacy_status=payload.privacy_status,
         publish_at=payload.publish_at,
         made_for_kids=payload.made_for_kids,
+        channel_id=payload.channel_id,
     )
 
     return {

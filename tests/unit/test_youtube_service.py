@@ -185,7 +185,8 @@ def test_api_load_plan_from_file_path(tmp_path: Path):
             "theme": "Суперкары мира",
             "name": "Тест для автолюбителей #shorts",
             "desc": "Угадай по фарам!",
-            "publish_at": "2026-10-29 18:00"
+            "publish_at": "2026-10-29 18:00",
+            "channel": "AutoQuiz"
         }
     ]
     plan_file.write_text(json.dumps(plan_data), encoding="utf-8")
@@ -198,4 +199,36 @@ def test_api_load_plan_from_file_path(tmp_path: Path):
     assert data["items"][0]["topic"] == "Суперкары мира"
     assert data["items"][0]["title"] == "Тест для автолюбителей #shorts"
     assert data["items"][0]["date"] == "2026-10-29 18:00"
+    assert data["items"][0]["channel"] == "AutoQuiz"
+
+
+def test_multi_account_management(yt_service: YouTubeService):
+    acc1 = {
+        "channel": {"id": "UC_channel_1", "title": "Первый Канал", "custom_url": "@channel1"},
+        "token": {"token": "tok1", "refresh_token": "ref1", "token_uri": "https://oauth2.googleapis.com/token"}
+    }
+    acc2 = {
+        "channel": {"id": "UC_channel_2", "title": "Второй Канал", "custom_url": "@channel2"},
+        "token": {"token": "tok2", "refresh_token": "ref2", "token_uri": "https://oauth2.googleapis.com/token"}
+    }
+    (yt_service.accounts_dir / "UC_channel_1.json").write_text(json.dumps(acc1), encoding="utf-8")
+    (yt_service.accounts_dir / "UC_channel_2.json").write_text(json.dumps(acc2), encoding="utf-8")
+
+    accounts = yt_service.list_accounts()
+    assert len(accounts) == 2
+    titles = [a["title"] for a in accounts]
+    assert "Первый Канал" in titles
+    assert "Второй Канал" in titles
+
+    # Switch active
+    assert yt_service.set_active_account("UC_channel_2") is True
+    assert yt_service.get_active_account_id() == "UC_channel_2"
+
+    # Disconnect active (UC_channel_2) -> should fallback to UC_channel_1
+    assert yt_service.disconnect("UC_channel_2") is True
+    remaining = yt_service.list_accounts()
+    assert len(remaining) == 1
+    assert remaining[0]["id"] == "UC_channel_1"
+    assert yt_service.get_active_account_id() == "UC_channel_1"
+
 

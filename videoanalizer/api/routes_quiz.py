@@ -280,6 +280,8 @@ class QuizPlanItem(BaseModel):
     date: str | None = Field(default=None, description="Scheduled publication date/time (RFC 3339 or ISO)")
     tags: list[str] = Field(default_factory=list, description="YouTube search tags")
     hook_tts: str | None = Field(default=None, description="Optional custom intro hook phrase")
+    channel: str | None = Field(default=None, description="Optional target YouTube channel name or ID")
+
 
 
 class LoadPlanRequest(BaseModel):
@@ -1228,6 +1230,7 @@ async def load_quiz_plan(request: LoadPlanRequest) -> LoadPlanResponse:
             tags_list = []
 
         hook_val = (entry.get("hook_tts") or entry.get("hook") or "").strip() or None
+        channel_val = (entry.get("channel") or entry.get("channel_id") or "").strip() or None
 
         parsed_items.append(
             QuizPlanItem(
@@ -1237,6 +1240,7 @@ async def load_quiz_plan(request: LoadPlanRequest) -> LoadPlanResponse:
                 date=date_val,
                 tags=tags_list,
                 hook_tts=hook_val,
+                channel=channel_val,
             )
         )
 

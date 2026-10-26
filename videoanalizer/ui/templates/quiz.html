@@ -2039,7 +2039,7 @@
       <div class="p-5 sm:p-6 overflow-y-auto space-y-5 text-xs text-slate-300">
 
         <!-- Channel Account Bar -->
-        <div id="yt-channel-card" class="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between gap-3">
+        <div id="yt-channel-card" class="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between gap-3 flex-wrap">
           <div class="flex items-center space-x-3 min-w-0">
             <img id="yt-channel-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full border border-white/20 hidden object-cover shrink-0">
             <div id="yt-channel-avatar-placeholder" class="w-10 h-10 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center shrink-0">
@@ -2051,11 +2051,18 @@
             </div>
           </div>
           <div class="shrink-0 flex items-center gap-2">
+            <!-- Channel Switcher Dropdown (when multiple accounts connected) -->
+            <select id="yt-account-select" onchange="switchYouTubeAccount(this.value)" class="bg-black/60 border border-white/[0.1] rounded-lg px-2.5 py-1 text-xs text-white hidden cursor-pointer focus:outline-none focus:border-red-500/50">
+            </select>
+            <button id="btn-yt-add-account" type="button" onclick="startYouTubeOAuthFlow()" class="px-2.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 text-xs font-semibold border border-white/[0.1] transition-all hidden cursor-pointer" title="Подключить еще один канал YouTube">
+              <i data-lucide="plus" class="w-3.5 h-3.5 inline mr-1 text-red-400"></i>
+              <span>+ Канал</span>
+            </button>
             <button id="btn-yt-connect" type="button" onclick="startYouTubeOAuthFlow()" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition-all flex items-center space-x-1 hidden cursor-pointer">
               <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
               <span>Войти через Google</span>
             </button>
-            <button id="btn-yt-disconnect" type="button" onclick="disconnectYouTubeAccount()" class="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 font-medium text-xs border border-white/[0.1] transition-all hidden cursor-pointer" title="Отключить аккаунт">
+            <button id="btn-yt-disconnect" type="button" onclick="disconnectYouTubeAccount()" class="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 font-medium text-xs border border-white/[0.1] transition-all hidden cursor-pointer" title="Отключить выбранный аккаунт">
               <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
             </button>
           </div>
@@ -6547,16 +6554,20 @@
       const titleEl = document.getElementById('yt-channel-title');
       const subEl = document.getElementById('yt-channel-sub');
       const connectBtn = document.getElementById('btn-yt-connect');
+      const addAccountBtn = document.getElementById('btn-yt-add-account');
       const disconnectBtn = document.getElementById('btn-yt-disconnect');
       const secretsBox = document.getElementById('yt-setup-secrets-box');
       const submitBtn = document.getElementById('btn-confirm-youtube-upload');
+      const accountSelect = document.getElementById('yt-account-select');
 
       if (!st) return;
 
       if (!st.configured) {
         secretsBox?.classList.remove('hidden');
         connectBtn?.classList.add('hidden');
+        addAccountBtn?.classList.add('hidden');
         disconnectBtn?.classList.add('hidden');
+        accountSelect?.classList.add('hidden');
         avatarImg?.classList.add('hidden');
         avatarPh?.classList.remove('hidden');
         if (titleEl) titleEl.textContent = 'Ключи YouTube API не настроены';
@@ -6584,7 +6595,24 @@
         const customUrl = st.channel.custom_url ? ` (${st.channel.custom_url})` : '';
         if (subEl) subEl.textContent = subs + customUrl;
 
-        connectBtn?.classList.add('hidden');
+        // Render multi-account select
+        if (st.accounts && st.accounts.length > 0) {
+          if (accountSelect) {
+            accountSelect.innerHTML = st.accounts.map(acc => `
+              <option value="${acc.id}" ${acc.id === st.active_channel_id ? 'selected' : ''}>
+                ${acc.title} ${acc.custom_url ? '(' + acc.custom_url + ')' : ''}
+              </option>
+            `).join('');
+            accountSelect.classList.remove('hidden');
+          }
+          addAccountBtn?.classList.remove('hidden');
+          connectBtn?.classList.add('hidden');
+        } else {
+          accountSelect?.classList.add('hidden');
+          addAccountBtn?.classList.add('hidden');
+          connectBtn?.classList.remove('hidden');
+        }
+
         disconnectBtn?.classList.remove('hidden');
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -6593,6 +6621,8 @@
       } else {
         avatarImg?.classList.add('hidden');
         avatarPh?.classList.remove('hidden');
+        accountSelect?.classList.add('hidden');
+        addAccountBtn?.classList.add('hidden');
         if (titleEl) titleEl.textContent = 'Канал не подключен';
         if (subEl) subEl.textContent = st.error ? `Ошибка: ${st.error}` : 'Нажмите "Войти через Google" для привязки канала';
         connectBtn?.classList.remove('hidden');
@@ -6603,6 +6633,20 @@
         }
       }
       lucide.createIcons();
+    }
+
+    async function switchYouTubeAccount(channelId) {
+      try {
+        const res = await fetch('/api/v1/youtube/switch-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel_id: channelId })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        await checkYouTubeStatus();
+      } catch (err) {
+        alert('Не удалось переключить канал: ' + err.message);
+      }
     }
 
     async function uploadSecretsFile() {
@@ -6664,9 +6708,15 @@
     }
 
     async function disconnectYouTubeAccount() {
-      if (!confirm('Отключить привязанный канал YouTube?')) return;
+      const activeId = currentYtStatus ? currentYtStatus.active_channel_id : null;
+      const title = currentYtStatus && currentYtStatus.channel ? currentYtStatus.channel.title : 'канал';
+      if (!confirm(`Отключить канал "${title}"?`)) return;
       try {
-        await fetch('/api/v1/youtube/disconnect', { method: 'POST' });
+        await fetch('/api/v1/youtube/disconnect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel_id: activeId })
+        });
         await checkYouTubeStatus();
       } catch (err) {
         console.warn('Disconnect error:', err);
@@ -6853,6 +6903,8 @@
         .map(t => t.trim())
         .filter(Boolean);
 
+      const selectedChannelId = document.getElementById('yt-account-select')?.value || null;
+
       const payload = {
         title: title,
         description: descInput?.value || '',
@@ -6860,6 +6912,7 @@
         privacy_status: effectivePrivacy,
         publish_at: publishAt,
         made_for_kids: madeForKidsInput ? madeForKidsInput.checked : false,
+        channel_id: selectedChannelId,
       };
 
       if (currentUploadTarget?.jobId) {
@@ -7065,6 +7118,7 @@
           <div class="min-w-0">
             <div class="font-bold text-white truncate">${idx + 1}. ${it.title || it.topic}</div>
             <div class="text-[10px] text-cyan-300 truncate">Тема: ${it.topic}</div>
+            ${it.channel ? `<div class="text-[10px] text-red-300 font-medium truncate">Канал: ${it.channel}</div>` : ''}
           </div>
           <span class="text-[10px] font-mono text-amber-300 shrink-0">${it.date || 'Без даты'}</span>
         </div>
@@ -7176,6 +7230,7 @@
           publish_at: plan.date || null,
           privacy_status: plan.date ? 'private' : 'public',
           made_for_kids: false,
+          channel_id: plan.channel || null,
         };
 
         const res = await fetch('/api/v1/youtube/upload', {
