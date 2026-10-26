@@ -1350,16 +1350,25 @@
           </div>
 
           <!-- Download Action -->
-          <div id="download-box" class="w-full hidden space-y-3">
+          <div id="download-box" class="w-full hidden space-y-2.5">
             <a 
               id="download-link" 
               href="#" 
               download 
-              class="w-full py-3 px-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-white text-xs font-semibold border border-white/[0.15] transition-all flex items-center justify-center space-x-2"
+              class="w-full py-3 px-4 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-white text-xs font-semibold border border-white/[0.15] transition-all flex items-center justify-center space-x-2 shadow-sm"
             >
               <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
               <span>Скачать готовый MP4 (1080x1920)</span>
             </a>
+            <button
+              id="btn-upload-youtube-current"
+              type="button"
+              onclick="openYouTubeUploadCurrentVideo()"
+              class="w-full py-3 px-4 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-100 text-xs font-semibold border border-red-500/30 hover:border-red-500/50 transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
+            >
+              <i data-lucide="youtube" class="w-4 h-4 text-red-400"></i>
+              <span>Опубликовать на YouTube</span>
+            </button>
           </div>
         </div>
       </section>
@@ -1817,6 +1826,245 @@
             <span>Запустить очередь (<span id="wizard-approved-stat">0/0</span>)</span>
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: YouTube Video Upload & Publication -->
+  <div id="youtube-upload-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 hidden">
+    <div class="glass-panel max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-red-500/40 shadow-2xl bg-[#0c0e14]">
+      <!-- Header -->
+      <div class="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-white/[0.02]">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-red-600/20 text-red-400 flex items-center justify-center border border-red-500/30">
+            <i data-lucide="youtube" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+              <span>Публикация на YouTube</span>
+              <span id="yt-modal-mode-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 font-mono">Shorts / Video</span>
+            </h3>
+            <p class="text-[11px] text-slate-400">Прямая загрузка, настройка метаданных и отложенная публикация</p>
+          </div>
+        </div>
+        <button 
+          type="button" 
+          onclick="closeYouTubeUploadModal()" 
+          class="p-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
+        >
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Scrollable Body -->
+      <div class="p-5 sm:p-6 overflow-y-auto space-y-5 text-xs text-slate-300">
+
+        <!-- Channel Account Bar -->
+        <div id="yt-channel-card" class="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between gap-3">
+          <div class="flex items-center space-x-3 min-w-0">
+            <img id="yt-channel-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full border border-white/20 hidden object-cover shrink-0">
+            <div id="yt-channel-avatar-placeholder" class="w-10 h-10 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center shrink-0">
+              <i data-lucide="user" class="w-5 h-5"></i>
+            </div>
+            <div class="min-w-0">
+              <div id="yt-channel-title" class="font-bold text-white text-xs truncate">Проверка статуса подключения...</div>
+              <div id="yt-channel-sub" class="text-[11px] text-slate-400 truncate">Загрузка информации...</div>
+            </div>
+          </div>
+          <div class="shrink-0 flex items-center gap-2">
+            <button id="btn-yt-connect" type="button" onclick="startYouTubeOAuthFlow()" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition-all flex items-center space-x-1 hidden cursor-pointer">
+              <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+              <span>Войти через Google</span>
+            </button>
+            <button id="btn-yt-disconnect" type="button" onclick="disconnectYouTubeAccount()" class="px-2.5 py-1.5 rounded-lg bg-white/[0.05] hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 font-medium text-xs border border-white/[0.1] transition-all hidden cursor-pointer" title="Отключить аккаунт">
+              <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Setup client_secrets.json Warning & Form (if not configured) -->
+        <div id="yt-setup-secrets-box" class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 space-y-3 hidden">
+          <div class="flex items-start space-x-2.5">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5"></i>
+            <div>
+              <p class="font-bold text-xs text-white">Требуется client_secrets.json</p>
+              <p class="text-[11px] text-amber-300/80 mt-1 leading-relaxed">
+                Для работы YouTube API скачайте файл OAuth 2.0 Client ID (тип "Desktop app" или "Web application") из Google Cloud Console и загрузите сюда.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 pt-1">
+            <input type="file" id="yt-secrets-file-input" accept=".json" class="text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-500/20 file:text-amber-300 hover:file:bg-amber-500/30 cursor-pointer">
+            <button type="button" onclick="uploadSecretsFile()" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold text-xs cursor-pointer">
+              Загрузить
+            </button>
+          </div>
+        </div>
+
+        <!-- Metadata Form -->
+        <div id="yt-upload-fields" class="space-y-4">
+          <!-- Video Title -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Название видео (Title)</label>
+              <span id="yt-title-char-count" class="text-[10px] text-slate-500 font-mono">0 / 100</span>
+            </div>
+            <input 
+              type="text" 
+              id="yt-input-title" 
+              maxlength="100" 
+              placeholder="Увлекательная викторина #shorts" 
+              class="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white text-xs focus:outline-none focus:border-red-500/60 transition-all font-medium"
+              oninput="updateYtTitleCount()"
+            >
+          </div>
+
+          <!-- Description -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Описание (Description)</label>
+              <span id="yt-desc-char-count" class="text-[10px] text-slate-500 font-mono">0 / 5000</span>
+            </div>
+            <textarea 
+              id="yt-input-description" 
+              rows="3" 
+              maxlength="5000" 
+              placeholder="Сможешь ответить на все вопросы? Пиши свой результат в комментариях! 👇&#10;&#10;#shorts #викторина #факты" 
+              class="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white text-xs focus:outline-none focus:border-red-500/60 transition-all resize-y leading-relaxed"
+              oninput="updateYtDescCount()"
+            ></textarea>
+          </div>
+
+          <!-- Tags -->
+          <div class="space-y-1.5">
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Теги (через запятую)</label>
+            <input 
+              type="text" 
+              id="yt-input-tags" 
+              placeholder="shorts, викторина, факты, топ, quiz" 
+              class="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white text-xs focus:outline-none focus:border-red-500/60 transition-all"
+            >
+          </div>
+
+          <!-- Privacy & Schedule Mode -->
+          <div class="space-y-2">
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">Режим публикации</label>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button type="button" onclick="selectYtPrivacy('public')" id="yt-priv-public" class="yt-priv-btn p-2.5 rounded-xl border border-white/[0.1] bg-white/[0.04] text-center transition-all cursor-pointer hover:border-white/20">
+                <div class="font-bold text-white text-xs">⚡ Сразу в паблик</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Видно всем</div>
+              </button>
+              <button type="button" onclick="selectYtPrivacy('scheduled')" id="yt-priv-scheduled" class="yt-priv-btn p-2.5 rounded-xl border border-red-500/50 bg-red-500/15 text-center transition-all cursor-pointer">
+                <div class="font-bold text-red-200 text-xs">📅 По таймеру</div>
+                <div class="text-[10px] text-red-300/80 mt-0.5">Отложенная</div>
+              </button>
+              <button type="button" onclick="selectYtPrivacy('unlisted')" id="yt-priv-unlisted" class="yt-priv-btn p-2.5 rounded-xl border border-white/[0.1] bg-white/[0.04] text-center transition-all cursor-pointer hover:border-white/20">
+                <div class="font-bold text-white text-xs">🔗 По ссылке</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Только по URL</div>
+              </button>
+              <button type="button" onclick="selectYtPrivacy('private')" id="yt-priv-private" class="yt-priv-btn p-2.5 rounded-xl border border-white/[0.1] bg-white/[0.04] text-center transition-all cursor-pointer hover:border-white/20">
+                <div class="font-bold text-white text-xs">🔒 Приватное</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Только автор</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Scheduled Publish Date & Time Picker Container -->
+          <div id="yt-schedule-container" class="p-4 rounded-xl bg-red-950/20 border border-red-500/30 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span class="text-xs font-bold text-white flex items-center space-x-1.5">
+                  <i data-lucide="calendar" class="w-3.5 h-3.5 text-red-400"></i>
+                  <span>Дата и время выхода ролика:</span>
+                </span>
+                <p class="text-[10px] text-slate-400 mt-0.5">YouTube опубликует видео автоматически в указанное время</p>
+              </div>
+              <input 
+                type="datetime-local" 
+                id="yt-input-publish-at" 
+                class="px-3 py-1.5 rounded-lg bg-black/60 border border-red-500/40 text-red-200 text-xs font-mono focus:outline-none focus:border-red-400"
+              >
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              <span class="text-[10px] text-slate-400 font-semibold mr-1">Быстрый выбор:</span>
+              <button type="button" onclick="setYtSchedulePreset('plus_2h')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[11px] text-slate-200 border border-white/[0.08] transition-all cursor-pointer">+2 часа</button>
+              <button type="button" onclick="setYtSchedulePreset('today_18')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[11px] text-slate-200 border border-white/[0.08] transition-all cursor-pointer">Сегодня 18:00</button>
+              <button type="button" onclick="setYtSchedulePreset('tomorrow_12')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[11px] text-slate-200 border border-white/[0.08] transition-all cursor-pointer">Завтра 12:00</button>
+              <button type="button" onclick="setYtSchedulePreset('tomorrow_18')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[11px] text-slate-200 border border-white/[0.08] transition-all cursor-pointer">Завтра 18:00</button>
+              <button type="button" onclick="setYtSchedulePreset('after_tomorrow_18')" class="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[11px] text-slate-200 border border-white/[0.08] transition-all cursor-pointer">Послезавтра 18:00</button>
+            </div>
+          </div>
+
+          <!-- Audience / Kids setting -->
+          <div class="flex items-center space-x-2 pt-1">
+            <input type="checkbox" id="yt-input-made-for-kids" class="rounded bg-white/10 border-white/20 text-red-600 focus:ring-0 cursor-pointer">
+            <label for="yt-input-made-for-kids" class="text-xs text-slate-300 cursor-pointer">
+              Видео для детей (YouTube Kids)
+            </label>
+          </div>
+        </div>
+
+        <!-- Upload Progress & Status Alert -->
+        <div id="yt-upload-status-box" class="p-4 rounded-xl bg-black/50 border border-white/[0.1] space-y-3 hidden">
+          <div class="flex items-center justify-between text-xs">
+            <span id="yt-upload-status-title" class="font-bold text-white flex items-center space-x-2">
+              <span id="yt-upload-spinner" class="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin inline-block"></span>
+              <span id="yt-upload-status-text">Загрузка на YouTube...</span>
+            </span>
+            <span id="yt-upload-status-pct" class="font-mono text-red-400 font-bold">0%</span>
+          </div>
+
+          <div class="w-full bg-white/[0.08] h-2 rounded-full overflow-hidden">
+            <div id="yt-upload-progress-bar" class="bg-gradient-to-r from-red-600 to-amber-500 h-full w-0 transition-all duration-300"></div>
+          </div>
+
+          <!-- Success Box with Links -->
+          <div id="yt-upload-success-links" class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 space-y-2 hidden">
+            <div class="font-bold text-xs flex items-center space-x-1.5 text-emerald-300">
+              <i data-lucide="check-circle" class="w-4 h-4"></i>
+              <span>Видео успешно опубликовано!</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+              <a id="yt-success-watch-link" href="#" target="_blank" class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center space-x-1.5">
+                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                <span>Смотреть видео</span>
+              </a>
+              <a id="yt-success-shorts-link" href="#" target="_blank" class="px-3 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.15] text-slate-200 font-bold text-xs flex items-center space-x-1.5">
+                <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                <span>Открыть как Shorts</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Error Message Box -->
+          <div id="yt-upload-error-box" class="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs hidden">
+            <span id="yt-upload-error-text"></span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="px-5 py-3.5 border-t border-white/[0.08] flex items-center justify-between shrink-0 bg-white/[0.02] gap-3">
+        <button 
+          type="button" 
+          onclick="closeYouTubeUploadModal()" 
+          class="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+        >
+          Отмена
+        </button>
+
+        <button 
+          id="btn-confirm-youtube-upload" 
+          type="button" 
+          onclick="submitYouTubeUpload()" 
+          class="px-5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold shadow-lg shadow-red-600/25 transition-all flex items-center space-x-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+          <span>Опубликовать видео</span>
+        </button>
       </div>
     </div>
   </div>
@@ -3578,6 +3826,11 @@
             const dlLink = document.getElementById('download-link');
             dlLink.href = videoUrl;
             document.getElementById('download-box').classList.remove('hidden');
+            activeCurrentVideo = {
+              jobId: jobId,
+              videoUrl: videoUrl,
+              topic: (job && job.topic) || document.getElementById('topic-input')?.value || '',
+            };
 
             // Refresh generation history library
             loadGenerationHistory();
@@ -4255,6 +4508,12 @@
         }
         if (placeholder) placeholder.classList.add('hidden');
         if (downloadBox) downloadBox.classList.remove('hidden');
+        activeCurrentVideo = {
+          jobId: result.job_id,
+          videoUrl: result.download_url,
+          videoPath: result.video_path,
+          topic: (typeof activeVisualDataset !== 'undefined' && activeVisualDataset?.theme) || (typeof currentVisualDataset !== 'undefined' && currentVisualDataset?.theme) || '',
+        };
         if (downloadLink) {
           downloadLink.href = result.download_url;
           downloadLink.setAttribute('download', result.download_url.split('/').pop() || 'visual_quiz.mp4');
@@ -4699,6 +4958,12 @@
           downloadLink.classList.remove('hidden');
           downloadLink.setAttribute('href', result.download_url);
           downloadLink.setAttribute('download', result.download_url.split('/').pop() || 'widescreen_quiz.mp4');
+          activeCurrentVideo = {
+            jobId: result.job_id,
+            videoUrl: result.download_url,
+            videoPath: result.video_path,
+            topic: (typeof activeWidescreenDataset !== 'undefined' && activeWidescreenDataset?.theme) || (typeof currentWidescreenDataset !== 'undefined' && currentWidescreenDataset?.theme) || '',
+          };
         }
         if (stateBadge) {
           stateBadge.textContent = '1920x1080 MP4 (60fps)';
@@ -5803,6 +6068,15 @@
               <i data-lucide="download" class="w-3.5 h-3.5"></i>
               <span>MP4</span>
             </a>
+            <button
+              type="button"
+              onclick="openYouTubeUploadModal({ jobId: '${it.item_id}', videoPath: '${(it.video_path || '').replace(/\\/g, '\\\\')}', topic: '${(it.topic || '').replace(/'/g, "\\'")}' })"
+              class="px-2.5 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 text-[11px] font-semibold transition-all flex items-center space-x-1 shrink-0 cursor-pointer"
+              title="Опубликовать на YouTube"
+            >
+              <i data-lucide="youtube" class="w-3.5 h-3.5 text-red-400"></i>
+              <span>YouTube</span>
+            </button>
           `;
         } else if (it.status === 'pending') {
           actionHtml = `
@@ -5988,6 +6262,14 @@
               <i data-lucide="download" class="w-3.5 h-3.5"></i>
               <span>Скачать MP4 видео</span>
             </a>
+            <button
+              type="button"
+              onclick="openYouTubeUploadModal({ jobId: '${it.job_id || it.history_id}', videoPath: '${(it.video_path || '').replace(/\\/g, '\\\\')}', topic: '${safeTopicAttr}' })"
+              class="w-full py-2 px-3 rounded-xl bg-red-600/15 hover:bg-red-600/25 text-red-200 text-xs font-semibold border border-red-500/30 hover:border-red-500/50 transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
+            >
+              <i data-lucide="youtube" class="w-3.5 h-3.5 text-red-400"></i>
+              <span>Опубликовать на YouTube</span>
+            </button>
           </div>
         `;
         grid.appendChild(card);
@@ -6019,6 +6301,473 @@
       }
     }
 
+    // =========================================================================
+    // YouTube Direct Upload & Scheduled Publishing Integration
+    // =========================================================================
+    let activeCurrentVideo = null;
+    let currentUploadTarget = null;
+    let currentYtPrivacy = 'scheduled';
+    let currentYtStatus = null;
+    let ytUploadPollTimer = null;
+
+    function openYouTubeUploadCurrentVideo() {
+      if (!activeCurrentVideo) {
+        alert('Сначала сгенерируйте видеоролик.');
+        return;
+      }
+      openYouTubeUploadModal(activeCurrentVideo);
+    }
+
+    async function checkYouTubeStatus() {
+      try {
+        const res = await fetch('/api/v1/youtube/status');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        currentYtStatus = await res.json();
+        renderYouTubeStatus(currentYtStatus);
+        return currentYtStatus;
+      } catch (err) {
+        console.warn('YouTube status fetch failed:', err);
+        return null;
+      }
+    }
+
+    function renderYouTubeStatus(st) {
+      const avatarImg = document.getElementById('yt-channel-avatar');
+      const avatarPh = document.getElementById('yt-channel-avatar-placeholder');
+      const titleEl = document.getElementById('yt-channel-title');
+      const subEl = document.getElementById('yt-channel-sub');
+      const connectBtn = document.getElementById('btn-yt-connect');
+      const disconnectBtn = document.getElementById('btn-yt-disconnect');
+      const secretsBox = document.getElementById('yt-setup-secrets-box');
+      const submitBtn = document.getElementById('btn-confirm-youtube-upload');
+
+      if (!st) return;
+
+      if (!st.configured) {
+        secretsBox?.classList.remove('hidden');
+        connectBtn?.classList.add('hidden');
+        disconnectBtn?.classList.add('hidden');
+        avatarImg?.classList.add('hidden');
+        avatarPh?.classList.remove('hidden');
+        if (titleEl) titleEl.textContent = 'Ключи YouTube API не настроены';
+        if (subEl) subEl.textContent = 'Загрузите client_secrets.json ниже для авторизации';
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.title = 'Требуется настроить client_secrets.json и войти в аккаунт';
+        }
+        return;
+      }
+
+      secretsBox?.classList.add('hidden');
+
+      if (st.authenticated && st.channel) {
+        if (st.channel.avatar_url) {
+          avatarImg.src = st.channel.avatar_url;
+          avatarImg?.classList.remove('hidden');
+          avatarPh?.classList.add('hidden');
+        } else {
+          avatarImg?.classList.add('hidden');
+          avatarPh?.classList.remove('hidden');
+        }
+        if (titleEl) titleEl.textContent = st.channel.title || 'Подключенный канал';
+        const subs = st.channel.subscriber_count ? `${Number(st.channel.subscriber_count).toLocaleString()} подписчиков` : 'Канал активен';
+        const customUrl = st.channel.custom_url ? ` (${st.channel.custom_url})` : '';
+        if (subEl) subEl.textContent = subs + customUrl;
+
+        connectBtn?.classList.add('hidden');
+        disconnectBtn?.classList.remove('hidden');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.removeAttribute('title');
+        }
+      } else {
+        avatarImg?.classList.add('hidden');
+        avatarPh?.classList.remove('hidden');
+        if (titleEl) titleEl.textContent = 'Канал не подключен';
+        if (subEl) subEl.textContent = st.error ? `Ошибка: ${st.error}` : 'Нажмите "Войти через Google" для привязки канала';
+        connectBtn?.classList.remove('hidden');
+        disconnectBtn?.classList.add('hidden');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.title = 'Авторизуйтесь через Google для загрузки видео';
+        }
+      }
+      lucide.createIcons();
+    }
+
+    async function uploadSecretsFile() {
+      const input = document.getElementById('yt-secrets-file-input');
+      if (!input || !input.files || input.files.length === 0) {
+        alert('Выберите файл client_secrets.json');
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', input.files[0]);
+
+      try {
+        const res = await fetch('/api/v1/youtube/client-secrets', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
+        alert('Ключи успешно загружены! Теперь нажмите "Войти через Google".');
+        await checkYouTubeStatus();
+      } catch (err) {
+        alert('Ошибка загрузки client_secrets: ' + err.message);
+      }
+    }
+
+    async function startYouTubeOAuthFlow() {
+      try {
+        const res = await fetch('/api/v1/youtube/auth-url');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Не удалось получить ссылку авторизации');
+
+        const width = 600;
+        const height = 750;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        const popup = window.open(
+          data.auth_url,
+          'YouTubeAuth',
+          `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no`
+        );
+
+        const messageHandler = (e) => {
+          if (e.data && e.data.type === 'YOUTUBE_AUTH_SUCCESS') {
+            window.removeEventListener('message', messageHandler);
+            checkYouTubeStatus();
+          }
+        };
+        window.addEventListener('message', messageHandler);
+
+        const timer = setInterval(() => {
+          if (!popup || popup.closed) {
+            clearInterval(timer);
+            checkYouTubeStatus();
+          }
+        }, 1500);
+      } catch (err) {
+        alert('Ошибка запуска авторизации: ' + err.message);
+      }
+    }
+
+    async function disconnectYouTubeAccount() {
+      if (!confirm('Отключить привязанный канал YouTube?')) return;
+      try {
+        await fetch('/api/v1/youtube/disconnect', { method: 'POST' });
+        await checkYouTubeStatus();
+      } catch (err) {
+        console.warn('Disconnect error:', err);
+      }
+    }
+
+    function selectYtPrivacy(mode) {
+      currentYtPrivacy = mode;
+      const allBtns = document.querySelectorAll('.yt-priv-btn');
+      allBtns.forEach(btn => {
+        btn.classList.remove('border-red-500/50', 'bg-red-500/15');
+        btn.classList.add('border-white/[0.1]', 'bg-white/[0.04]');
+        const titleDiv = btn.querySelector('.font-bold');
+        if (titleDiv) {
+          titleDiv.classList.remove('text-red-200');
+          titleDiv.classList.add('text-white');
+        }
+      });
+
+      const activeBtn = document.getElementById(`yt-priv-${mode}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('border-white/[0.1]', 'bg-white/[0.04]');
+        activeBtn.classList.add('border-red-500/50', 'bg-red-500/15');
+        const titleDiv = activeBtn.querySelector('.font-bold');
+        if (titleDiv) {
+          titleDiv.classList.remove('text-white');
+          titleDiv.classList.add('text-red-200');
+        }
+      }
+
+      const scheduleBox = document.getElementById('yt-schedule-container');
+      if (mode === 'scheduled') {
+        scheduleBox?.classList.remove('hidden');
+        const publishInput = document.getElementById('yt-input-publish-at');
+        if (publishInput && !publishInput.value) {
+          setYtSchedulePreset('plus_2h');
+        }
+      } else {
+        scheduleBox?.classList.add('hidden');
+      }
+    }
+
+    function _formatDateForLocalInput(dt) {
+      const year = dt.getFullYear();
+      const month = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      const hours = String(dt.getHours()).padStart(2, '0');
+      const mins = String(dt.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${mins}`;
+    }
+
+    function setYtSchedulePreset(preset) {
+      const input = document.getElementById('yt-input-publish-at');
+      if (!input) return;
+
+      const now = new Date();
+      let target = new Date();
+
+      if (preset === 'plus_2h') {
+        target = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      } else if (preset === 'today_18') {
+        target.setHours(18, 0, 0, 0);
+        if (target <= now) {
+          target.setHours(21, 0, 0, 0);
+          if (target <= now) {
+            target = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            target.setHours(18, 0, 0, 0);
+          }
+        }
+      } else if (preset === 'tomorrow_12') {
+        target = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        target.setHours(12, 0, 0, 0);
+      } else if (preset === 'tomorrow_18') {
+        target = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        target.setHours(18, 0, 0, 0);
+      } else if (preset === 'after_tomorrow_18') {
+        target = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+        target.setHours(18, 0, 0, 0);
+      }
+
+      input.value = _formatDateForLocalInput(target);
+    }
+
+    function updateYtTitleCount() {
+      const input = document.getElementById('yt-input-title');
+      const countEl = document.getElementById('yt-title-char-count');
+      if (input && countEl) {
+        countEl.textContent = `${input.value.length} / 100`;
+      }
+    }
+
+    function updateYtDescCount() {
+      const input = document.getElementById('yt-input-description');
+      const countEl = document.getElementById('yt-desc-char-count');
+      if (input && countEl) {
+        countEl.textContent = `${input.value.length} / 5000`;
+      }
+    }
+
+    function openYouTubeUploadModal(target) {
+      currentUploadTarget = target || {};
+      const modal = document.getElementById('youtube-upload-modal');
+      if (!modal) return;
+
+      const rawTopic = (currentUploadTarget.topic || '').trim();
+      let defaultTitle = rawTopic ? `${rawTopic} #shorts #викторина` : 'Увлекательная викторина #shorts';
+      if (defaultTitle.length > 100) {
+        defaultTitle = defaultTitle.slice(0, 97) + '...';
+      }
+
+      const defaultDesc = `Сможешь ответить на все вопросы без ошибок? Проверь свои знания и пиши результат в комментариях! 👇\n\nПодписывайся на канал за новыми ежедневными викторинами и тестами!\n\n#shorts #викторина #факты #топ #тест #quiz`;
+      const defaultTags = 'shorts, викторина, тест, факты, топ, кино, quiz';
+
+      const titleInput = document.getElementById('yt-input-title');
+      const descInput = document.getElementById('yt-input-description');
+      const tagsInput = document.getElementById('yt-input-tags');
+      const statusBox = document.getElementById('yt-upload-status-box');
+      const successLinks = document.getElementById('yt-upload-success-links');
+      const errorBox = document.getElementById('yt-upload-error-box');
+
+      if (titleInput) titleInput.value = defaultTitle;
+      if (descInput) descInput.value = defaultDesc;
+      if (tagsInput) tagsInput.value = defaultTags;
+
+      updateYtTitleCount();
+      updateYtDescCount();
+      selectYtPrivacy('scheduled');
+      setYtSchedulePreset('plus_2h');
+
+      statusBox?.classList.add('hidden');
+      successLinks?.classList.add('hidden');
+      errorBox?.classList.add('hidden');
+
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+      checkYouTubeStatus();
+    }
+
+    function closeYouTubeUploadModal() {
+      const modal = document.getElementById('youtube-upload-modal');
+      if (modal) modal.classList.add('hidden');
+      if (ytUploadPollTimer) {
+        clearInterval(ytUploadPollTimer);
+        ytUploadPollTimer = null;
+      }
+    }
+
+    async function submitYouTubeUpload() {
+      const titleInput = document.getElementById('yt-input-title');
+      const descInput = document.getElementById('yt-input-description');
+      const tagsInput = document.getElementById('yt-input-tags');
+      const publishAtInput = document.getElementById('yt-input-publish-at');
+      const madeForKidsInput = document.getElementById('yt-input-made-for-kids');
+
+      const title = (titleInput?.value || '').trim();
+      if (!title) {
+        alert('Введите название видео.');
+        titleInput?.focus();
+        return;
+      }
+
+      let publishAt = null;
+      let effectivePrivacy = currentYtPrivacy;
+
+      if (currentYtPrivacy === 'scheduled') {
+        const rawDate = publishAtInput?.value;
+        if (!rawDate) {
+          alert('Укажите дату и время для отложенной публикации.');
+          publishAtInput?.focus();
+          return;
+        }
+        const selectedDate = new Date(rawDate);
+        if (selectedDate <= new Date()) {
+          alert('Время отложенной публикации должно быть в будущем.');
+          publishAtInput?.focus();
+          return;
+        }
+        publishAt = rawDate;
+        effectivePrivacy = 'private';
+      }
+
+      const tags = (tagsInput?.value || '')
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
+
+      const payload = {
+        title: title,
+        description: descInput?.value || '',
+        tags: tags,
+        privacy_status: effectivePrivacy,
+        publish_at: publishAt,
+        made_for_kids: madeForKidsInput ? madeForKidsInput.checked : false,
+      };
+
+      if (currentUploadTarget?.jobId) {
+        payload.job_id = currentUploadTarget.jobId;
+      }
+      if (currentUploadTarget?.videoPath) {
+        payload.video_path = currentUploadTarget.videoPath;
+      }
+
+      const statusBox = document.getElementById('yt-upload-status-box');
+      const statusText = document.getElementById('yt-upload-status-text');
+      const statusPct = document.getElementById('yt-upload-status-pct');
+      const progressBar = document.getElementById('yt-upload-progress-bar');
+      const spinner = document.getElementById('yt-upload-spinner');
+      const successLinks = document.getElementById('yt-upload-success-links');
+      const errorBox = document.getElementById('yt-upload-error-box');
+      const submitBtn = document.getElementById('btn-confirm-youtube-upload');
+
+      statusBox?.classList.remove('hidden');
+      successLinks?.classList.add('hidden');
+      errorBox?.classList.add('hidden');
+      spinner?.classList.remove('hidden');
+
+      if (statusText) statusText.textContent = 'Инициализация отправки на YouTube...';
+      if (statusPct) statusPct.textContent = '0%';
+      if (progressBar) progressBar.style.width = '0%';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+
+      try {
+        const res = await fetch('/api/v1/youtube/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Не удалось запустить загрузку');
+
+        const taskId = data.task_id;
+        startPollingYouTubeUpload(taskId);
+      } catch (err) {
+        spinner?.classList.add('hidden');
+        if (statusText) statusText.textContent = 'Ошибка запуска загрузки';
+        errorBox?.classList.remove('hidden');
+        const errText = document.getElementById('yt-upload-error-text');
+        if (errText) errText.textContent = err.message;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      }
+    }
+
+    function startPollingYouTubeUpload(taskId) {
+      if (ytUploadPollTimer) clearInterval(ytUploadPollTimer);
+
+      const statusText = document.getElementById('yt-upload-status-text');
+      const statusPct = document.getElementById('yt-upload-status-pct');
+      const progressBar = document.getElementById('yt-upload-progress-bar');
+      const spinner = document.getElementById('yt-upload-spinner');
+      const successLinks = document.getElementById('yt-upload-success-links');
+      const errorBox = document.getElementById('yt-upload-error-box');
+      const submitBtn = document.getElementById('btn-confirm-youtube-upload');
+
+      ytUploadPollTimer = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/v1/youtube/upload/tasks/${taskId}`);
+          if (!res.ok) return;
+          const task = await res.json();
+
+          const pct = Math.round(task.progress_percent || 0);
+          if (statusPct) statusPct.textContent = `${pct}%`;
+          if (progressBar) progressBar.style.width = `${pct}%`;
+          if (statusText) statusText.textContent = task.stage || 'Загрузка видео...';
+
+          if (task.status === 'completed') {
+            clearInterval(ytUploadPollTimer);
+            ytUploadPollTimer = null;
+            spinner?.classList.add('hidden');
+            if (statusText) statusText.textContent = 'Успешно опубликовано на YouTube!';
+            if (progressBar) progressBar.style.width = '100%';
+
+            if (task.result) {
+              const watchLink = document.getElementById('yt-success-watch-link');
+              const shortsLink = document.getElementById('yt-success-shorts-link');
+              if (watchLink && task.result.url) watchLink.href = task.result.url;
+              if (shortsLink && task.result.shorts_url) shortsLink.href = task.result.shorts_url;
+              successLinks?.classList.remove('hidden');
+            }
+
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            lucide.createIcons();
+          } else if (task.status === 'failed') {
+            clearInterval(ytUploadPollTimer);
+            ytUploadPollTimer = null;
+            spinner?.classList.add('hidden');
+            if (statusText) statusText.textContent = 'Сбой публикации на YouTube';
+            errorBox?.classList.remove('hidden');
+            const errText = document.getElementById('yt-upload-error-text');
+            if (errText) errText.textContent = task.error || 'Неизвестная ошибка загрузки';
+
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+          }
+        } catch (err) {
+          console.warn('Poll upload status error:', err);
+        }
+      }, 1000);
+    }
+
     // Auto-load history and restore queue state on start
     window.addEventListener('DOMContentLoaded', () => {
       // Explicit mode tab click listeners to guarantee flawless switching
@@ -6042,6 +6791,7 @@
       } catch (e) {}
 
       loadGenerationHistory();
+      checkYouTubeStatus();
       if (window.location.hash === '#history') {
         switchMainView('history');
       }

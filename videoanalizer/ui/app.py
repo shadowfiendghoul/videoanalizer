@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from videoanalizer.api.routes_quiz import hardware_router, voice_router
 from videoanalizer.api.routes_quiz import router as quiz_router
+from videoanalizer.api.routes_youtube import router as youtube_router
 from videoanalizer.config import AppConfig, get_config
 from videoanalizer.exceptions import VideoAnalyzerError
 from videoanalizer.media.reframer import Reframer
@@ -194,6 +195,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.include_router(quiz_router)
 app.include_router(hardware_router)
 app.include_router(voice_router)
+app.include_router(youtube_router)
 
 
 # --- Pydantic Request Models ---

@@ -62,26 +62,24 @@ async def test_generate_quiz_success(tmp_path: Path) -> None:
     with QuizWorkspace(job_id="test_script_job") as ws:
         service = ScriptService()
 
-        # Mock Gemini call
-        with patch.object(service, "_call_gemini", new=AsyncMock(return_value=mock_challenge)):
-            # Mock ImageService search_and_download
-            fake_img_path = ws.get_image_path("q1.png")
-            fake_img_path.touch()
-            with patch.object(
-                service.image_service,
-                "search_and_download",
-                new=AsyncMock(return_value=fake_img_path),
-            ):
-                result = await service.generate_quiz(
-                    topic="Flags of the World", language="ru", workspace=ws
-                )
+        fake_img_path = ws.get_image_path("q1.png")
+        fake_img_path.touch()
 
-                assert result.total_questions == 9
-                assert len(result.tiers) == 3
-                assert len(result.all_questions()) == 9
-                # Check that question 1 resolved image path
-                q1 = result.all_questions()[0]
-                assert q1.local_image_path == str(fake_img_path)
+        with (
+            patch.object(service, "_call_gemini", new=AsyncMock(return_value=mock_challenge)),
+            patch.object(service, "_verify_and_refine_facts", new=AsyncMock(return_value=mock_challenge)),
+            patch.object(service.image_service, "search_and_download", new=AsyncMock(return_value=fake_img_path)),
+        ):
+            result = await service.generate_quiz(
+                topic="Flags of the World", language="ru", workspace=ws
+            )
+
+            assert result.total_questions == 9
+            assert len(result.tiers) == 3
+            assert len(result.all_questions()) == 9
+            # Check that question 1 resolved image path
+            q1 = result.all_questions()[0]
+            assert q1.local_image_path == str(fake_img_path)
 
 
 def test_quiz_system_prompt_layout_guard_constraints() -> None:

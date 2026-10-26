@@ -64,3 +64,13 @@ class RenderError(MediaProcessingError):
 
 class FFmpegNotFoundError(MediaProcessingError):
     """Raised when FFmpeg binary is not found on system PATH."""
+
+
+# YouTube exceptions
+class YouTubeError(VideoAnalyzerError):
+    """Base exception for YouTube API interactions and uploads."""
+
+
+class YouTubeAuthError(YouTubeError):
+    """Raised when YouTube OAuth authentication is missing, invalid, or expired."""
+
