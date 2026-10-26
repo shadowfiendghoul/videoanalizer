@@ -63,6 +63,19 @@
       </div>
 
       <div class="flex items-center space-x-3">
+        <!-- YouTube Channels Manager Button -->
+        <button 
+          type="button" 
+          id="header-yt-btn" 
+          onclick="openYouTubeUploadModal()" 
+          class="text-xs px-3.5 py-1.5 rounded-xl bg-red-600/15 hover:bg-red-600/25 text-red-300 transition-all flex items-center space-x-2 border border-red-500/30 cursor-pointer font-medium"
+          title="Подключение и управление YouTube-каналами"
+        >
+          <i data-lucide="youtube" class="w-4 h-4 text-red-400"></i>
+          <span id="header-yt-label" class="truncate max-w-[120px]">YouTube</span>
+          <span id="header-yt-badge" class="hidden px-1.5 py-0.2 rounded-full bg-red-500/30 text-white font-mono text-[10px] font-bold"></span>
+        </button>
+
         <button 
           type="button" 
           id="header-history-btn" 
@@ -6559,10 +6572,17 @@
       const secretsBox = document.getElementById('yt-setup-secrets-box');
       const submitBtn = document.getElementById('btn-confirm-youtube-upload');
       const accountSelect = document.getElementById('yt-account-select');
+      const headerYtLabel = document.getElementById('header-yt-label');
+      const headerYtBadge = document.getElementById('header-yt-badge');
 
       if (!st) return;
 
       if (!st.configured) {
+        if (headerYtLabel) headerYtLabel.textContent = 'YouTube';
+        if (headerYtBadge) {
+          headerYtBadge.textContent = 'Ключи';
+          headerYtBadge.classList.remove('hidden');
+        }
         secretsBox?.classList.remove('hidden');
         connectBtn?.classList.add('hidden');
         addAccountBtn?.classList.add('hidden');
@@ -6582,6 +6602,13 @@
       secretsBox?.classList.add('hidden');
 
       if (st.authenticated && st.channel) {
+        if (headerYtLabel) headerYtLabel.textContent = st.channel.title || 'YouTube';
+        if (headerYtBadge) {
+          const totalAcc = st.accounts ? st.accounts.length : 1;
+          headerYtBadge.textContent = totalAcc > 1 ? `${totalAcc} акк.` : 'OK';
+          headerYtBadge.className = 'px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono text-[10px] font-bold';
+          headerYtBadge.classList.remove('hidden');
+        }
         if (st.channel.avatar_url) {
           avatarImg.src = st.channel.avatar_url;
           avatarImg?.classList.remove('hidden');
@@ -6619,6 +6646,12 @@
           submitBtn.removeAttribute('title');
         }
       } else {
+        if (headerYtLabel) headerYtLabel.textContent = 'YouTube';
+        if (headerYtBadge) {
+          headerYtBadge.textContent = 'Войти';
+          headerYtBadge.className = 'px-1.5 py-0.2 rounded-full bg-red-500/30 text-red-200 border border-red-500/40 font-mono text-[10px] font-bold';
+          headerYtBadge.classList.remove('hidden');
+        }
         avatarImg?.classList.add('hidden');
         avatarPh?.classList.remove('hidden');
         accountSelect?.classList.add('hidden');
@@ -6920,6 +6953,11 @@
       }
       if (currentUploadTarget?.videoPath) {
         payload.video_path = currentUploadTarget.videoPath;
+      }
+
+      if (!payload.job_id && !payload.video_path) {
+        alert('Видео не выбрано для загрузки.\n\nЭто окно можно использовать для привязки и переключения каналов. Чтобы загрузить ролик, нажмите кнопку «Опубликовать на YouTube» на нужном видео в Истории или после рендера.');
+        return;
       }
 
       const statusBox = document.getElementById('yt-upload-status-box');
