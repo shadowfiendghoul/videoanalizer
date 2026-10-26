@@ -367,6 +367,31 @@
                     <i data-lucide="shuffle" class="w-3.5 h-3.5 text-slate-400"></i>
                     <span>🎲 Пресет</span>
                   </button>
+                  <button 
+                    type="button" 
+                    onclick="openJsonPlanModal()" 
+                    class="shrink-0 flex items-center space-x-1.5 px-3.5 py-2.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-200 border border-cyan-500/40 transition-all text-xs font-semibold shadow-md cursor-pointer"
+                    title="Загрузить тему, дату, название и описание из JSON файла"
+                  >
+                    <i data-lucide="file-json" class="w-3.5 h-3.5 text-cyan-300"></i>
+                    <span>📋 Импорт JSON</span>
+                  </button>
+                </div>
+
+                <!-- Active Loaded Plan Banner -->
+                <div id="visual-plan-active-banner" class="hidden p-3 rounded-xl bg-gradient-to-r from-cyan-950/40 to-blue-950/30 border border-cyan-500/30 text-xs space-y-1.5">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-cyan-300 flex items-center space-x-1.5">
+                      <i data-lucide="calendar-check" class="w-4 h-4 text-cyan-400"></i>
+                      <span>Загружен план публикации:</span>
+                      <span id="plan-badge-count" class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-200 font-mono">1 ролик</span>
+                    </span>
+                    <button type="button" onclick="clearLoadedPlan()" class="text-[11px] text-slate-400 hover:text-rose-300 transition-colors cursor-pointer">Сбросить</button>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300 pt-0.5">
+                    <div class="truncate"><b class="text-white">Название:</b> <span id="plan-banner-title" class="text-cyan-200"></span></div>
+                    <div class="truncate"><b class="text-white">Дата выхода:</b> <span id="plan-banner-date" class="text-amber-300 font-mono"></span></div>
+                  </div>
                 </div>
 
                 <!-- AI Hook Preview Badge -->
@@ -1418,6 +1443,28 @@
         />
       </div>
 
+      <!-- YouTube Publication Bar (if plan loaded) -->
+      <div id="visual-plan-schedule-box" class="hidden p-4 rounded-2xl bg-red-950/20 border border-red-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-inner">
+        <div class="flex items-center space-x-3 min-w-0">
+          <div class="w-8 h-8 rounded-lg bg-red-600/20 text-red-400 flex items-center justify-center shrink-0 border border-red-500/30">
+            <i data-lucide="youtube" class="w-4 h-4"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center space-x-2 flex-wrap">
+              <span class="text-xs font-bold text-white truncate" id="visual-card-plan-title">Название видео</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 font-mono" id="visual-card-plan-date">Дата выхода</span>
+            </div>
+            <p class="text-[11px] text-slate-400 truncate" id="visual-card-plan-desc">Описание ролика</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2 shrink-0">
+          <input type="checkbox" id="visual-plan-auto-publish-toggle" checked class="rounded bg-white/10 border-white/20 text-red-600 focus:ring-0 cursor-pointer">
+          <label for="visual-plan-auto-publish-toggle" class="text-xs text-red-200 cursor-pointer font-medium">
+            Авто-публикация на YouTube после рендера
+          </label>
+        </div>
+      </div>
+
       <!-- Cards Grid (10 items) -->
       <div id="visual-cards-grid" class="grid grid-cols-1 md:grid-cols-2 gap-5 max-h-[780px] overflow-y-auto pr-1">
         <!-- Dynamic items rendered here -->
@@ -1436,7 +1483,7 @@
           class="w-full sm:w-auto px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white text-xs font-bold shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center space-x-2.5 cursor-pointer"
         >
           <i data-lucide="film" class="w-4 h-4"></i>
-          <span>Срендерить Visual Quiz (Remotion 60fps)</span>
+          <span id="btn-render-visual-quiz-text">Срендерить Visual Quiz (Remotion 60fps)</span>
         </button>
       </div>
     </section>
@@ -1826,6 +1873,138 @@
             <span>Запустить очередь (<span id="wizard-approved-stat">0/0</span>)</span>
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: JSON Publication Plan Loader -->
+  <div id="json-plan-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 hidden">
+    <div class="glass-panel max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-cyan-500/40 shadow-2xl bg-[#0c0e14]">
+      <!-- Header -->
+      <div class="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between shrink-0 bg-white/[0.02]">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-cyan-600/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+            <i data-lucide="file-json" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+              <span>Импорт плана публикаций (JSON)</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">Тема + Дата + YouTube</span>
+            </h3>
+            <p class="text-[11px] text-slate-400">Впишите файл или JSON — останется только подтвердить картинки</p>
+          </div>
+        </div>
+        <button 
+          type="button" 
+          onclick="closeJsonPlanModal()" 
+          class="p-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
+        >
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Scrollable Body -->
+      <div class="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-300">
+
+        <!-- Input Option 1: File Path on Disk -->
+        <div class="space-y-1.5">
+          <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold flex items-center space-x-1.5">
+            <i data-lucide="folder-input" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Путь к JSON-файлу на компьютере (или имя файла)</span>
+          </label>
+          <div class="flex items-center gap-2">
+            <input 
+              type="text" 
+              id="plan-input-filepath" 
+              placeholder="Например: my_quiz.json или C:\Users\User\Desktop\schedule.json" 
+              class="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white text-xs focus:outline-none focus:border-cyan-500/60 transition-all font-mono"
+            >
+            <button 
+              type="button" 
+              onclick="loadPlanFromFilePath()" 
+              class="shrink-0 px-4 py-2.5 rounded-xl bg-white/[0.08] hover:bg-cyan-500/20 hover:text-cyan-300 text-slate-200 border border-white/[0.1] hover:border-cyan-500/30 text-xs font-semibold transition-all cursor-pointer"
+            >
+              Открыть
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center my-1 text-slate-500">
+          <div class="flex-1 border-t border-white/[0.08]"></div>
+          <span class="px-3 text-[10px] uppercase font-bold tracking-wider">или выберите файл</span>
+          <div class="flex-1 border-t border-white/[0.08]"></div>
+        </div>
+
+        <!-- Input Option 2: File Picker -->
+        <div class="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.08]">
+          <input 
+            type="file" 
+            id="plan-input-file" 
+            accept=".json" 
+            onchange="handlePlanFilePicked(event)" 
+            class="text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-500/20 file:text-cyan-300 hover:file:bg-cyan-500/30 cursor-pointer"
+          >
+          <span class="text-[11px] text-slate-400">Загрузить файл с устройства</span>
+        </div>
+
+        <div class="flex items-center my-1 text-slate-500">
+          <div class="flex-1 border-t border-white/[0.08]"></div>
+          <span class="px-3 text-[10px] uppercase font-bold tracking-wider">или вставьте JSON прямо сюда</span>
+          <div class="flex-1 border-t border-white/[0.08]"></div>
+        </div>
+
+        <!-- Input Option 3: Raw JSON Textarea -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">JSON текст (1 видео или массив [ ... ])</label>
+            <button type="button" onclick="insertSamplePlanJson()" class="text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer flex items-center space-x-1">
+              <i data-lucide="copy" class="w-3 h-3"></i>
+              <span>Вставить образец</span>
+            </button>
+          </div>
+          <textarea 
+            id="plan-input-raw" 
+            rows="5" 
+            placeholder='{\n  "topic": "Угадай фильм по предмету",\n  "date": "2026-10-28 18:00",\n  "title": "Угадай фильм по предмету #shorts",\n  "description": "Сможешь отгадать все 10 шедевров? Пиши свой результат! 👇"\n}' 
+            class="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/[0.1] text-cyan-100 font-mono text-[11px] focus:outline-none focus:border-cyan-500/60 transition-all resize-y leading-relaxed"
+          ></textarea>
+        </div>
+
+        <!-- Plan Items Preview Box (when parsed) -->
+        <div id="plan-parsed-preview" class="hidden p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/30 space-y-2">
+          <div class="flex items-center justify-between font-bold text-xs text-white">
+            <span class="flex items-center space-x-1.5 text-cyan-300">
+              <i data-lucide="check-circle" class="w-4 h-4 text-cyan-400"></i>
+              <span>Распознано в плане:</span>
+              <span id="plan-parsed-count" class="font-mono text-cyan-200">1 видео</span>
+            </span>
+          </div>
+          <div id="plan-parsed-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1 text-[11px]">
+            <!-- Injected preview rows -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="px-5 py-3.5 border-t border-white/[0.08] flex items-center justify-between shrink-0 bg-white/[0.02] gap-3">
+        <button 
+          type="button" 
+          onclick="closeJsonPlanModal()" 
+          class="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 text-xs font-semibold border border-white/[0.1] transition-all cursor-pointer"
+        >
+          Отмена
+        </button>
+
+        <button 
+          id="btn-confirm-load-plan" 
+          type="button" 
+          onclick="executeLoadedPlan()" 
+          class="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-cyan-500/25 transition-all flex items-center space-x-2 cursor-pointer"
+        >
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>Загрузить план и найти 10 картинок</span>
+        </button>
       </div>
     </div>
   </div>
@@ -4039,6 +4218,12 @@
         }
 
         const dataset = await res.json();
+        if (activePlanYouTube) {
+          dataset.youtube_plan = activePlanYouTube;
+          if (activePlanYouTube.hook_tts) {
+            dataset.hook_tts = activePlanYouTube.hook_tts;
+          }
+        }
         currentVisualDataset = dataset;
         renderVisualQuizCards(dataset);
         loadExclusionsStats();
@@ -4065,6 +4250,24 @@
       if (themeBadge) themeBadge.textContent = dataset.theme;
       const hookInput = document.getElementById('visual-hook-input');
       if (hookInput) hookInput.value = dataset.hook_tts || '';
+
+      const planBox = document.getElementById('visual-plan-schedule-box');
+      const planTitleEl = document.getElementById('visual-card-plan-title');
+      const planDateEl = document.getElementById('visual-card-plan-date');
+      const planDescEl = document.getElementById('visual-card-plan-desc');
+      const renderBtnText = document.getElementById('btn-render-visual-quiz-text');
+
+      if (dataset.youtube_plan) {
+        planBox?.classList.remove('hidden');
+        if (planTitleEl) planTitleEl.textContent = dataset.youtube_plan.title;
+        if (planDateEl) planDateEl.textContent = dataset.youtube_plan.date || 'Дата не указана';
+        if (planDescEl) planDescEl.textContent = dataset.youtube_plan.description || '';
+        if (renderBtnText) renderBtnText.textContent = 'Срендерить и опубликовать на YouTube';
+      } else {
+        planBox?.classList.add('hidden');
+        if (renderBtnText) renderBtnText.textContent = 'Срендерить Visual Quiz (Remotion 60fps)';
+      }
+
       if (!grid) return;
 
       const isEn = (document.getElementById('language-select')?.value || 'ru') === 'en';
@@ -4521,6 +4724,13 @@
         if (stateBadge) {
           stateBadge.textContent = '1080x1920 MP4';
           stateBadge.className = 'text-xs text-emerald-400 font-mono';
+        }
+
+        // Auto-schedule on YouTube if a JSON plan is active
+        const autoPublishToggle = document.getElementById('visual-plan-auto-publish-toggle');
+        const shouldAutoPublish = autoPublishToggle ? autoPublishToggle.checked : true;
+        if (currentVisualDataset && currentVisualDataset.youtube_plan && shouldAutoPublish) {
+          autoScheduleVisualQuizToYouTube(result.job_id, result.video_path, currentVisualDataset.youtube_plan);
         }
 
         if (typeof loadGenerationHistory === 'function') {
@@ -6766,6 +6976,243 @@
           console.warn('Poll upload status error:', err);
         }
       }, 1000);
+    }
+
+    // =========================================================================
+    // JSON Publication Plan Loader & Auto-Schedule
+    // =========================================================================
+    let activeQuizPlan = [];
+    let activePlanIndex = 0;
+    let activePlanYouTube = null;
+
+    function openJsonPlanModal() {
+      const modal = document.getElementById('json-plan-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        lucide.createIcons();
+      }
+    }
+
+    function closeJsonPlanModal() {
+      const modal = document.getElementById('json-plan-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function insertSamplePlanJson() {
+      const rawTextarea = document.getElementById('plan-input-raw');
+      if (!rawTextarea) return;
+
+      const sample = [
+        {
+          "topic": "Угадай фильм по предмету",
+          "date": "2026-10-28 18:00",
+          "title": "Угадай культовый фильм по одной вещи! #shorts #кино",
+          "description": "Сможешь отгадать все 10 шедевров кинематографа? Пиши свой результат в комментариях! 👇\n\n#shorts #викторина #кино #топ",
+          "tags": ["кино", "фильмы", "викторина", "shorts", "топ"]
+        }
+      ];
+      rawTextarea.value = JSON.stringify(sample, null, 2);
+    }
+
+    function handlePlanFilePicked(event) {
+      const file = event.target?.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result;
+        const rawTextarea = document.getElementById('plan-input-raw');
+        if (rawTextarea) rawTextarea.value = content;
+      };
+      reader.readAsText(file);
+    }
+
+    async function loadPlanFromFilePath() {
+      const fpInput = document.getElementById('plan-input-filepath');
+      const pathVal = (fpInput?.value || '').trim();
+      if (!pathVal) {
+        alert('Укажите путь к файлу плана на диске.');
+        fpInput?.focus();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/v1/quiz/plan/load', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file_path: pathVal })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки плана');
+
+        renderPlanParsedPreview(data.items);
+      } catch (err) {
+        alert('Не удалось загрузить файл плана: ' + err.message);
+      }
+    }
+
+    function renderPlanParsedPreview(items) {
+      const previewBox = document.getElementById('plan-parsed-preview');
+      const countEl = document.getElementById('plan-parsed-count');
+      const listEl = document.getElementById('plan-parsed-list');
+      if (!previewBox || !listEl) return;
+
+      previewBox.classList.remove('hidden');
+      if (countEl) countEl.textContent = `${items.length} видео`;
+
+      listEl.innerHTML = items.map((it, idx) => `
+        <div class="p-2 rounded-lg bg-black/40 border border-white/[0.06] flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="font-bold text-white truncate">${idx + 1}. ${it.title || it.topic}</div>
+            <div class="text-[10px] text-cyan-300 truncate">Тема: ${it.topic}</div>
+          </div>
+          <span class="text-[10px] font-mono text-amber-300 shrink-0">${it.date || 'Без даты'}</span>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    async function executeLoadedPlan() {
+      const fpInput = document.getElementById('plan-input-filepath');
+      const rawTextarea = document.getElementById('plan-input-raw');
+      const filePath = (fpInput?.value || '').trim();
+      const rawJson = (rawTextarea?.value || '').trim();
+
+      if (!filePath && !rawJson) {
+        alert('Укажите путь к файлу или вставьте JSON-текст плана.');
+        return;
+      }
+
+      const btn = document.getElementById('btn-confirm-load-plan');
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+      }
+
+      try {
+        const bodyPayload = filePath ? { file_path: filePath } : { raw_json: rawJson };
+        const res = await fetch('/api/v1/quiz/plan/load', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyPayload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Не удалось обработать план');
+
+        activeQuizPlan = data.items || [];
+        activePlanIndex = 0;
+
+        if (activeQuizPlan.length === 0) {
+          throw new Error('В плане нет валидных элементов.');
+        }
+
+        // Apply first plan item
+        applyPlanItem(activeQuizPlan[0]);
+        closeJsonPlanModal();
+
+        // Switch to Visual mode tab
+        switchQuizMode('visual');
+
+        // Automatically trigger script and candidate image generation!
+        await generateVisualQuizScript();
+      } catch (err) {
+        alert('Ошибка импорта плана: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-50');
+        }
+      }
+    }
+
+    function applyPlanItem(planItem) {
+      activePlanYouTube = planItem;
+
+      const topicInput = document.getElementById('visual-topic-input');
+      if (topicInput) topicInput.value = planItem.topic;
+
+      const banner = document.getElementById('visual-plan-active-banner');
+      const bannerTitle = document.getElementById('plan-banner-title');
+      const bannerDate = document.getElementById('plan-banner-date');
+      const badgeCount = document.getElementById('plan-badge-count');
+
+      banner?.classList.remove('hidden');
+      if (bannerTitle) bannerTitle.textContent = planItem.title || planItem.topic;
+      if (bannerDate) bannerDate.textContent = planItem.date || 'Сразу после рендера';
+      if (badgeCount) badgeCount.textContent = `${activeQuizPlan.length} ролик(ов)`;
+
+      lucide.createIcons();
+    }
+
+    function clearLoadedPlan() {
+      activeQuizPlan = [];
+      activePlanIndex = 0;
+      activePlanYouTube = null;
+
+      const banner = document.getElementById('visual-plan-active-banner');
+      banner?.classList.add('hidden');
+
+      const planBox = document.getElementById('visual-plan-schedule-box');
+      planBox?.classList.add('hidden');
+
+      const renderBtnText = document.getElementById('btn-render-visual-quiz-text');
+      if (renderBtnText) renderBtnText.textContent = 'Срендерить Visual Quiz (Remotion 60fps)';
+    }
+
+    async function autoScheduleVisualQuizToYouTube(jobId, videoPath, plan) {
+      const progressDetails = document.getElementById('status-details');
+      if (progressDetails) {
+        progressDetails.textContent = `Видео создано! Отправляем на YouTube (публикация: ${plan.date || 'сейчас'})...`;
+      }
+
+      try {
+        const payload = {
+          job_id: jobId,
+          video_path: videoPath,
+          title: plan.title,
+          description: plan.description,
+          tags: plan.tags || [],
+          publish_at: plan.date || null,
+          privacy_status: plan.date ? 'private' : 'public',
+          made_for_kids: false,
+        };
+
+        const res = await fetch('/api/v1/youtube/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Не удалось запустить публикацию на YouTube');
+
+        openYouTubeUploadModal({
+          jobId: jobId,
+          videoPath: videoPath,
+          topic: plan.topic,
+        });
+
+        const titleInput = document.getElementById('yt-input-title');
+        const descInput = document.getElementById('yt-input-description');
+        const tagsInput = document.getElementById('yt-input-tags');
+        const publishInput = document.getElementById('yt-input-publish-at');
+        if (titleInput) titleInput.value = plan.title;
+        if (descInput) descInput.value = plan.description;
+        if (tagsInput) tagsInput.value = (plan.tags || []).join(', ');
+        if (publishInput && plan.date) publishInput.value = plan.date;
+
+        updateYtTitleCount();
+        updateYtDescCount();
+        if (plan.date) selectYtPrivacy('scheduled');
+
+        startPollingYouTubeUpload(data.task_id);
+      } catch (err) {
+        console.warn('Auto YouTube schedule error:', err);
+        if (progressDetails) {
+          progressDetails.textContent = `Видео готово! Ошибка авто-публикации: ${err.message}. Нажмите «Опубликовать на YouTube» вручную.`;
+        }
+      }
     }
 
     // Auto-load history and restore queue state on start

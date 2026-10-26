@@ -155,3 +155,47 @@ def test_api_youtube_status_endpoint():
     data = resp.json()
     assert "configured" in data
     assert "authenticated" in data
+
+
+def test_api_load_plan_from_raw_json():
+    client = TestClient(app)
+    raw = json.dumps({
+        "topic": "Угадай фильм по предмету",
+        "title": "Угадай фильм по предмету #shorts",
+        "description": "Сможешь отгадать все?",
+        "date": "2026-10-28 18:00",
+        "tags": ["кино", "фильмы"]
+    })
+    resp = client.post("/api/v1/quiz/plan/load", json={"raw_json": raw})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert data["count"] == 1
+    item = data["items"][0]
+    assert item["topic"] == "Угадай фильм по предмету"
+    assert item["title"] == "Угадай фильм по предмету #shorts"
+    assert item["date"] == "2026-10-28 18:00"
+    assert "кино" in item["tags"]
+
+
+def test_api_load_plan_from_file_path(tmp_path: Path):
+    plan_file = tmp_path / "plan_schedule.json"
+    plan_data = [
+        {
+            "theme": "Суперкары мира",
+            "name": "Тест для автолюбителей #shorts",
+            "desc": "Угадай по фарам!",
+            "publish_at": "2026-10-29 18:00"
+        }
+    ]
+    plan_file.write_text(json.dumps(plan_data), encoding="utf-8")
+
+    client = TestClient(app)
+    resp = client.post("/api/v1/quiz/plan/load", json={"file_path": str(plan_file)})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["count"] == 1
+    assert data["items"][0]["topic"] == "Суперкары мира"
+    assert data["items"][0]["title"] == "Тест для автолюбителей #shorts"
+    assert data["items"][0]["date"] == "2026-10-29 18:00"
+

@@ -1,6 +1,7 @@
 """FastAPI REST routes for Quiz Shorts Generator background jobs and video download."""
 
 import logging
+import json
 import os
 import shutil
 import subprocess
@@ -268,6 +269,33 @@ class VisualQuizRenderResponse(BaseModel):
     download_url: str = Field(..., description="API endpoint to download or stream MP4")
     duration_sec: float | None = Field(default=None, description="Video duration in seconds")
     status: str = Field(default="completed", description="Render status")
+
+
+class QuizPlanItem(BaseModel):
+    """Item specification in a JSON publication plan."""
+
+    topic: str = Field(..., description="Quiz theme or topic prompt")
+    title: str = Field(default="", description="YouTube video title")
+    description: str = Field(default="", description="YouTube video description")
+    date: str | None = Field(default=None, description="Scheduled publication date/time (RFC 3339 or ISO)")
+    tags: list[str] = Field(default_factory=list, description="YouTube search tags")
+    hook_tts: str | None = Field(default=None, description="Optional custom intro hook phrase")
+
+
+class LoadPlanRequest(BaseModel):
+    """Payload to load publishing plan from local file or raw JSON content."""
+
+    file_path: str | None = Field(default=None, description="Filesystem path to JSON file")
+    raw_json: str | None = Field(default=None, description="Raw JSON string")
+
+
+class LoadPlanResponse(BaseModel):
+    """Parsed items from plan JSON."""
+
+    status: str = "ok"
+    items: list[QuizPlanItem]
+    count: int
+
 
 
 class BackgroundInfo(BaseModel):
@@ -1110,6 +1138,115 @@ async def suggest_visual_topic(request: VisualTopicSuggestRequest) -> VisualTopi
             status_code=status_code,
             detail=f"Не удалось сгенерировать визуальную тему: {exc}",
         ) from exc
+
+
+@router.post("/plan/load", response_model=LoadPlanResponse)
+async def load_quiz_plan(request: LoadPlanRequest) -> LoadPlanResponse:
+    """Load and parse publication plan JSON containing topic, date, title, description."""
+    raw_data = None
+
+    if request.file_path:
+        p = Path(request.file_path.strip().strip('"\''))
+        if not p.is_absolute():
+            candidates = [p, Path("data") / p, Path(".") / p]
+            for cand in candidates:
+                if cand.exists() and cand.is_file():
+                    p = cand
+                    break
+        if not p.exists() or not p.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Файл плана '{request.file_path}' не найден.",
+            )
+        try:
+            with p.open("r", encoding="utf-8") as f:
+                raw_data = json.load(f)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ошибка чтения JSON из файла '{p.name}': {exc}",
+            ) from exc
+
+    elif request.raw_json:
+        try:
+            raw_data = json.loads(request.raw_json)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ошибка парсинга JSON: {exc}",
+            ) from exc
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Укажите 'file_path' к JSON файлу или передайте 'raw_json'.",
+        )
+
+    raw_list = raw_data if isinstance(raw_data, list) else [raw_data]
+    parsed_items: list[QuizPlanItem] = []
+
+    for entry in raw_list:
+        if not isinstance(entry, dict):
+            continue
+        topic = (
+            entry.get("topic")
+            or entry.get("theme")
+            or entry.get("subject")
+            or entry.get("prompt")
+            or ""
+        ).strip()
+        if not topic:
+            continue
+
+        title = (
+            entry.get("title")
+            or entry.get("name")
+            or f"{topic} #shorts #викторина"
+        ).strip()
+
+        desc = (
+            entry.get("description")
+            or entry.get("desc")
+            or "Сможешь ответить на все вопросы? Пиши в комментариях! 👇\n\n#shorts #викторина"
+        ).strip()
+
+        date_val = (
+            entry.get("date")
+            or entry.get("publish_at")
+            or entry.get("publishAt")
+            or entry.get("scheduled_at")
+            or entry.get("time")
+        )
+        if date_val:
+            date_val = str(date_val).strip()
+
+        tags_val = entry.get("tags") or entry.get("keywords") or []
+        if isinstance(tags_val, str):
+            tags_list = [t.strip() for t in tags_val.split(",") if t.strip()]
+        elif isinstance(tags_val, list):
+            tags_list = [str(t).strip() for t in tags_val if str(t).strip()]
+        else:
+            tags_list = []
+
+        hook_val = (entry.get("hook_tts") or entry.get("hook") or "").strip() or None
+
+        parsed_items.append(
+            QuizPlanItem(
+                topic=topic,
+                title=title,
+                description=desc,
+                date=date_val,
+                tags=tags_list,
+                hook_tts=hook_val,
+            )
+        )
+
+    if not parsed_items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="В переданном JSON не найдено ни одного элемента с полем 'topic' или 'theme'.",
+        )
+
+    return LoadPlanResponse(status="ok", items=parsed_items, count=len(parsed_items))
 
 
 @router.post("/visual/render", response_model=VisualQuizRenderResponse)
