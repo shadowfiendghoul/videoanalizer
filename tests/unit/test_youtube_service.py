@@ -232,3 +232,39 @@ def test_multi_account_management(yt_service: YouTubeService):
     assert yt_service.get_active_account_id() == "UC_channel_1"
 
 
+def test_pkce_code_verifier_preservation(yt_service: YouTubeService):
+    secrets = {
+        "installed": {
+            "client_id": "test-client-id.apps.googleusercontent.com",
+            "client_secret": "test-secret",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }
+    }
+    yt_service.save_client_secrets(secrets)
+
+    with patch("videoanalizer.services.youtube_service.Flow") as mock_flow_cls:
+        mock_flow = MagicMock()
+        mock_flow.code_verifier = "test_verifier_string_123"
+        mock_flow.authorization_url.return_value = ("https://auth.url", "sample_state_xyz")
+        mock_flow_cls.from_client_secrets_file.return_value = mock_flow
+
+        url = yt_service.get_auth_url("http://localhost:7860/cb")
+        assert url == "https://auth.url"
+        assert yt_service._oauth_verifiers.get("sample_state_xyz") == "test_verifier_string_123"
+
+        # Now test exchange_code restores code_verifier
+        flow_instance_2 = MagicMock()
+        flow_instance_2.credentials = MagicMock()
+        flow_instance_2.credentials.to_json.return_value = json.dumps({"token": "abc"})
+        mock_flow_cls.from_client_secrets_file.return_value = flow_instance_2
+
+        yt_service._fetch_channel_info_for_credentials = MagicMock(return_value={"id": "UC_new", "title": "New Channel"})
+
+        yt_service.exchange_code("code_123", "http://localhost:7860/cb", state="sample_state_xyz")
+
+        assert flow_instance_2.code_verifier == "test_verifier_string_123"
+        flow_instance_2.fetch_token.assert_called_once_with(code="code_123")
+
+
+

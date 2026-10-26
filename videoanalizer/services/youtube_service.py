@@ -43,7 +43,30 @@ class YouTubeService:
         self.client_secrets_file = self.data_dir / "client_secrets.json"
         self.token_file = self.data_dir / "token.json"
         self.active_account_file = self.data_dir / "active_account.json"
+        self._states_file = self.data_dir / "oauth_states.json"
+        self._oauth_verifiers: dict[str, str] = self._load_oauth_verifiers()
         self._migrate_legacy_token()
+
+    def _load_oauth_verifiers(self) -> dict[str, str]:
+        if self._states_file.exists():
+            try:
+                with self._states_file.open("r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                return {}
+        return {}
+
+    def _save_oauth_verifier(self, state: str, verifier: str) -> None:
+        self._oauth_verifiers[state] = verifier
+        try:
+            if len(self._oauth_verifiers) > 20:
+                keys_to_remove = list(self._oauth_verifiers.keys())[:-20]
+                for k in keys_to_remove:
+                    self._oauth_verifiers.pop(k, None)
+            with self._states_file.open("w", encoding="utf-8") as f:
+                json.dump(self._oauth_verifiers, f)
+        except Exception as exc:
+            logger.warning("Could not persist oauth states: %s", exc)
 
     def _migrate_legacy_token(self) -> None:
         """Migrate single legacy token.json to multi-account structure if needed."""
@@ -106,11 +129,13 @@ class YouTubeService:
             scopes=YOUTUBE_SCOPES,
             redirect_uri=redirect_uri,
         )
-        auth_url, _ = flow.authorization_url(
+        auth_url, state = flow.authorization_url(
             access_type="offline",
             include_granted_scopes="true",
             prompt="consent select_account",
         )
+        if flow.code_verifier and state:
+            self._save_oauth_verifier(state, flow.code_verifier)
         return auth_url
 
     def _fetch_channel_info_for_credentials(self, creds: Credentials) -> dict[str, Any]:
@@ -165,7 +190,7 @@ class YouTubeService:
         with acc_file.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
-    def exchange_code(self, code: str, redirect_uri: str) -> dict[str, Any]:
+    def exchange_code(self, code: str, redirect_uri: str, state: str | None = None) -> dict[str, Any]:
         """Exchange authorization code, fetch channel info, and save to accounts store."""
         secrets_file = self._resolve_secrets_file()
         if not secrets_file:
@@ -176,7 +201,25 @@ class YouTubeService:
             scopes=YOUTUBE_SCOPES,
             redirect_uri=redirect_uri,
         )
+
+        verifier = None
+        if state:
+            verifier = self._oauth_verifiers.get(state)
+        if not verifier and self._oauth_verifiers:
+            verifier = list(self._oauth_verifiers.values())[-1]
+
+        if verifier:
+            flow.code_verifier = verifier
+
         flow.fetch_token(code=code)
+        if state:
+            self._oauth_verifiers.pop(state, None)
+            try:
+                with self._states_file.open("w", encoding="utf-8") as f:
+                    json.dump(self._oauth_verifiers, f)
+            except Exception:
+                pass
+
         creds = flow.credentials
 
         try:

@@ -152,13 +152,16 @@ async def get_authorization_url(
 
 
 @router.get("/oauth-callback", response_class=HTMLResponse)
-async def oauth_callback(code: str = Query(...)) -> HTMLResponse:
+async def oauth_callback(
+    code: str = Query(...),
+    state: str | None = Query(default=None),
+) -> HTMLResponse:
     """Handle OAuth redirect callback from Google, exchange authorization code, and notify UI."""
     service = get_youtube_service()
     redirect_uri = "http://localhost:7860/api/v1/youtube/oauth-callback"
 
     try:
-        service.exchange_code(code=code, redirect_uri=redirect_uri)
+        service.exchange_code(code=code, redirect_uri=redirect_uri, state=state)
         html_content = """
         <!DOCTYPE html>
         <html lang="ru">
