@@ -7516,6 +7516,15 @@
       const bannerToggle = document.getElementById('banner-toggle');
       const bannerEnabled = bannerToggle ? bannerToggle.checked : false;
 
+      if (bannerEnabled && !uploadedBannerFile) {
+        alert('Вы включили промо-баннер, но не загрузили видео баннера. Отключите баннер или выберите файл.');
+        return;
+      }
+      if (musicEnabled && !uploadedMusicFile) {
+        alert('Вы включили фоновую музыку, но не загрузили аудио-файл. Отключите музыку или выберите MP3.');
+        return;
+      }
+
       const voiceConfig = typeof getVoiceConfig === 'function' ? getVoiceConfig() : null;
       const selectedVoice = (voiceConfig && voiceConfig.base_voice) ? voiceConfig.base_voice : voice;
 
@@ -7545,14 +7554,16 @@
               background_music_volume: musicVol,
               voice: selectedVoice,
               voice_config: voiceConfig,
-              render_profile: 'fast',
               banner_video: (bannerEnabled && uploadedBannerFile) ? uploadedBannerFile : null,
             })
           });
 
           if (!res.ok) {
-            const errData = await res.json();
-            throw new Error(errData.detail || 'Ошибка рендера');
+            const errData = await res.json().catch(() => ({}));
+            const detailMsg = Array.isArray(errData.detail)
+              ? errData.detail.map(d => `${d.loc?.slice(-1)[0] || 'поле'}: ${d.msg}`).join(', ')
+              : (typeof errData.detail === 'string' ? errData.detail : (res.statusText || 'Ошибка рендера'));
+            throw new Error(detailMsg);
           }
 
           const result = await res.json();
@@ -7562,7 +7573,7 @@
           const autoPublishToggle = document.getElementById('visual-plan-auto-publish-toggle');
           if (!autoPublishToggle || autoPublishToggle.checked) {
             if (progressDetails) progressDetails.textContent = `Ролик ${i + 1} срендерен! Публикуем на YouTube (канал: ${item.channel || 'активный'})...`;
-            await autoScheduleVisualQuizToYouTube(result.job_id, result.video_path, item);
+            await autoScheduleVisualQuizToYouTube(result.job_id, result.video_path, item, false);
           }
         } catch (err) {
           console.error(`Batch render error on video ${i + 1}:`, err);
@@ -7586,7 +7597,15 @@
         loadGenerationHistory();
       }
 
-      alert(`Пакетная генерация плана завершена!\nУспешно создано: ${successCount} из ${activeQuizPlan.length} видео.`);
+      if (failCount > 0) {
+        const errorSummary = activeQuizPlan
+          .filter(p => p.status === 'failed')
+          .map(p => `• ${p.title || p.topic}: ${p.error || 'Ошибка'}`)
+          .join('\n');
+        alert(`Пакетная генерация завершена:\nУспешно создано: ${successCount} из ${activeQuizPlan.length}\nСбоев: ${failCount}\n\nОшибки:\n${errorSummary}`);
+      } else {
+        alert(`Поздравляем! Все ${successCount} видео плана успешно сгенерированы и запланированы на YouTube!`);
+      }
     }
 
     function applyPlanItem(planItem) {
@@ -7635,7 +7654,7 @@
       if (renderBtnText) renderBtnText.textContent = 'Срендерить Visual Quiz (Remotion 60fps)';
     }
 
-    async function autoScheduleVisualQuizToYouTube(jobId, videoPath, plan) {
+    async function autoScheduleVisualQuizToYouTube(jobId, videoPath, plan, openModal = true) {
       const progressDetails = document.getElementById('status-details');
       if (progressDetails) {
         progressDetails.textContent = `Видео создано! Отправляем на YouTube (публикация: ${plan.date || 'сейчас'})...`;
@@ -7663,26 +7682,30 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Не удалось запустить публикацию на YouTube');
 
-        openYouTubeUploadModal({
-          jobId: jobId,
-          videoPath: videoPath,
-          topic: plan.topic,
-        });
+        if (openModal) {
+          openYouTubeUploadModal({
+            jobId: jobId,
+            videoPath: videoPath,
+            topic: plan.topic,
+          });
 
-        const titleInput = document.getElementById('yt-input-title');
-        const descInput = document.getElementById('yt-input-description');
-        const tagsInput = document.getElementById('yt-input-tags');
-        const publishInput = document.getElementById('yt-input-publish-at');
-        if (titleInput) titleInput.value = plan.title;
-        if (descInput) descInput.value = plan.description;
-        if (tagsInput) tagsInput.value = (plan.tags || []).join(', ');
-        if (publishInput && plan.date) publishInput.value = plan.date;
+          const titleInput = document.getElementById('yt-input-title');
+          const descInput = document.getElementById('yt-input-description');
+          const tagsInput = document.getElementById('yt-input-tags');
+          const publishInput = document.getElementById('yt-input-publish-at');
+          if (titleInput) titleInput.value = plan.title;
+          if (descInput) descInput.value = plan.description;
+          if (tagsInput) tagsInput.value = (plan.tags || []).join(', ');
+          if (publishInput && plan.date) publishInput.value = plan.date;
 
-        updateYtTitleCount();
-        updateYtDescCount();
-        if (plan.date) selectYtPrivacy('scheduled');
+          updateYtTitleCount();
+          updateYtDescCount();
+          if (plan.date) selectYtPrivacy('scheduled');
 
-        startPollingYouTubeUpload(data.task_id);
+          startPollingYouTubeUpload(data.task_id);
+        } else {
+          startPollingYouTubeUpload(data.task_id);
+        }
       } catch (err) {
         console.warn('Auto YouTube schedule error:', err);
         if (progressDetails) {

@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from videoanalizer.media.uniquifier import VideoUniquifierConfig
 from videoanalizer.quiz.audio_service import probe_audio_duration_ms
@@ -246,6 +246,17 @@ class VisualQuizRenderRequest(BaseModel):
     voice_config: VoiceConfig | None = Field(default=None, description="Voice pipeline config")
     banner_video: str | None = Field(default=None, description="Optional custom promo banner video filename or path")
     render_profile: RenderProfile | None = Field(default=None, description="Render profile (e.g. gpu_fast, cpu_safe)")
+
+    @field_validator("render_profile", mode="before")
+    @classmethod
+    def normalize_render_profile(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            if clean in {"fast", "gpu", "gpu_fast"}:
+                return RenderProfile.GPU_FAST
+            if clean in {"cpu", "safe", "cpu_safe"}:
+                return RenderProfile.CPU_SAFE
+        return v
 
 
 class VisualTopicSuggestRequest(BaseModel):
