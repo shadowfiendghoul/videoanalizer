@@ -260,6 +260,33 @@ class YouTubeService:
                 logger.warning("Failed to parse account file %s: %s", p, exc)
         return accounts
 
+    def _resolve_channel_id(self, identifier: str | None) -> str | None:
+        """Resolve channel ID by id, title, or @handle (case-insensitive)."""
+        if not identifier:
+            return None
+        clean_id = identifier.strip()
+        if (self.accounts_dir / f"{clean_id}.json").exists():
+            return clean_id
+
+        target_lower = clean_id.lower().lstrip("@")
+        for p in self.accounts_dir.glob("*.json"):
+            try:
+                with p.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                ch = data.get("channel") or {}
+                cid = ch.get("id") or p.stem
+                title = (ch.get("title") or "").strip().lower()
+                custom_url = (ch.get("custom_url") or "").strip().lower().lstrip("@")
+                if (
+                    target_lower == cid.lower()
+                    or target_lower == title
+                    or target_lower == custom_url
+                ):
+                    return cid
+            except Exception:
+                continue
+        return clean_id
+
     def get_active_account_id(self) -> str | None:
         """Return ID of currently selected YouTube channel."""
         if self.active_account_file.exists():
@@ -313,7 +340,8 @@ class YouTubeService:
 
     def get_credentials(self, channel_id: str | None = None) -> Credentials | None:
         """Load and refresh credentials for specified channel (or active channel)."""
-        target_id = channel_id or self.get_active_account_id()
+        resolved_id = self._resolve_channel_id(channel_id) if channel_id else None
+        target_id = resolved_id or self.get_active_account_id()
         acc_file = (self.accounts_dir / f"{target_id}.json") if target_id else None
 
         token_payload = None
@@ -365,7 +393,8 @@ class YouTubeService:
 
     def disconnect(self, channel_id: str | None = None) -> bool:
         """Disconnect specified channel or active channel if none specified."""
-        target_id = channel_id or self.get_active_account_id()
+        resolved_id = self._resolve_channel_id(channel_id) if channel_id else None
+        target_id = resolved_id or self.get_active_account_id()
 
         if target_id:
             acc_file = self.accounts_dir / f"{target_id}.json"
