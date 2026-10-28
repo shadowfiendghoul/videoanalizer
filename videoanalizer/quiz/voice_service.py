@@ -314,15 +314,8 @@ class VoiceService:
         else:
             candidate_voice = raw_voice
 
-        # Voice consistency: use base_voice. If Dmitry is selected but text contains Latin words
-        # (e.g. game or brand names like 'Minecraft', 'Portal'), Azure Speech has no Latin vocab for Dmitry
-        # and returns NoAudioReceived. We use ru-RU-SvetlanaNeural which natively speaks Latin/English phrases.
-        has_latin = bool(re.search(r"[a-zA-Z]", clean_text))
-        active_voice = (
-            "ru-RU-SvetlanaNeural"
-            if (has_latin and "dmitry" in candidate_voice.lower())
-            else candidate_voice
-        )
+        # Maintain candidate voice without overriding to Svetlana
+        active_voice = candidate_voice
 
         # Rate handling:
         # ru-RU-DmitryNeural rejects any custom rate (!= +0%) on Microsoft Azure with NoAudioReceived.
@@ -343,8 +336,9 @@ class VoiceService:
 
         ensure_latest_edge_tts()
 
-        # Retry persistently to handle transient network hiccups
-        max_attempts = 25
+        # Retry persistently to handle transient network hiccups (high retry count for Dmitry)
+        is_dmitry = "dmitry" in active_voice.lower()
+        max_attempts = 150 if is_dmitry else 25
         for attempt in range(max_attempts):
             try:
                 audio_bytes.clear()
@@ -377,20 +371,6 @@ class VoiceService:
                     logger.warning(
                         "Voice %s is invalid in Edge-TTS. Falling back immediately to ru-RU-SvetlanaNeural.",
                         active_voice,
-                    )
-                    active_voice = "ru-RU-SvetlanaNeural"
-                    pct = int(round((effective_rate - 1.0) * 100))
-                    rate_arg = f"{pct:+d}%"
-                    continue
-                # DmitryNeural lacks Latin vocab and throws NoAudioReceived on English names/terms
-                if (
-                    "NoAudioReceived" in type(e).__name__
-                    or "No audio was received" in str(e)
-                ) and "dmitry" in active_voice.lower():
-                    logger.warning(
-                        "Voice %s failed with NoAudioReceived on '%s'. Switching to ru-RU-SvetlanaNeural.",
-                        active_voice,
-                        clean_text[:40],
                     )
                     active_voice = "ru-RU-SvetlanaNeural"
                     pct = int(round((effective_rate - 1.0) * 100))

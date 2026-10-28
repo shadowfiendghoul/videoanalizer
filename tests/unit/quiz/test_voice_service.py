@@ -332,3 +332,45 @@ async def test_voice_service_chibi_virtual_preset(tmp_path: Path) -> None:
             " ".join(str(c) for c in call[0][0]) for call in mock_subproc.call_args_list
         )
         assert "asetrate=44100*1.28" in all_cmd_args
+
+
+@pytest.mark.asyncio
+async def test_voice_service_dmitry_retries_without_switching_to_svetlana(tmp_path: Path) -> None:
+    """Verify Dmitry retries and does NOT switch to Svetlana on transient NoAudioReceived."""
+    svc = VoiceService()
+    out_file = tmp_path / "test_dmitry_persistent.wav"
+    config = VoiceConfig(
+        voice_mode=VoiceMode.EDGE_TTS,
+        base_voice="ru-RU-DmitryNeural",
+    )
+
+    mock_words = ["Погнали"]
+    mock_stream = MockAsyncStream(mock_words)
+    attempt_count = 0
+
+    def mock_comm_factory(*args, **kwargs):
+        nonlocal attempt_count
+        attempt_count += 1
+        voice_called = args[1]
+        assert voice_called == "ru-RU-DmitryNeural", f"Switched away to {voice_called}!"
+        instance = MagicMock()
+        if attempt_count == 1:
+            async def failing_stream():
+                raise RuntimeError("No audio was received")
+                if False:
+                    yield {}
+            instance.stream = failing_stream
+        else:
+            instance.stream = MagicMock(return_value=mock_stream)
+        return instance
+
+    with patch("edge_tts.Communicate", side_effect=mock_comm_factory), patch(
+        "videoanalizer.quiz.voice_service.probe_audio_duration_ms", return_value=500
+    ), patch("subprocess.run"):
+        result = await svc.synthesize(
+            text="Угадай все эти логотипы! Погнали!",
+            output_path=out_file,
+            config=config,
+        )
+        assert result.voice_mode_used == VoiceMode.EDGE_TTS
+        assert attempt_count == 2

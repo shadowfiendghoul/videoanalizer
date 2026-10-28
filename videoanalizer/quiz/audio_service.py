@@ -530,12 +530,8 @@ class AudioService:
         if tts_text and not tts_text.endswith((".", "!", "?")):
             tts_text += "."
 
-        has_latin = bool(re.search(r"[a-zA-Z]", tts_text))
-        active_voice = (
-            "ru-RU-SvetlanaNeural"
-            if (has_latin and "dmitry" in base_voice.lower())
-            else base_voice
-        )
+        # Maintain base voice without overriding to Svetlana
+        active_voice = base_voice
 
         # Rate handling:
         # ru-RU-DmitryNeural rejects any custom rate (!= +0%) on Microsoft Azure with NoAudioReceived.
@@ -552,8 +548,9 @@ class AudioService:
 
         ensure_latest_edge_tts()
 
-        # Retry persistently with active_voice to guarantee audio synthesis
-        max_attempts = 25
+        # Retry persistently with active_voice to guarantee audio synthesis (high retry count for Dmitry)
+        is_dmitry = "dmitry" in active_voice.lower()
+        max_attempts = 150 if is_dmitry else 25
         for attempt in range(max_attempts):
             try:
                 connector = aiohttp.TCPConnector(resolver=aiohttp.ThreadedResolver())
@@ -591,19 +588,6 @@ class AudioService:
                     logger.warning(
                         "Voice %s is invalid in Edge-TTS. Falling back immediately to ru-RU-SvetlanaNeural.",
                         active_voice,
-                    )
-                    active_voice = "ru-RU-SvetlanaNeural"
-                    pct = int(round((effective_rate - 1.0) * 100))
-                    rate_arg = f"{pct:+d}%"
-                    continue
-                if (
-                    "NoAudioReceived" in type(e).__name__
-                    or "No audio was received" in str(e)
-                ) and "dmitry" in active_voice.lower():
-                    logger.warning(
-                        "Voice %s received NoAudioReceived on '%s'. Switching to ru-RU-SvetlanaNeural.",
-                        active_voice,
-                        text[:30],
                     )
                     active_voice = "ru-RU-SvetlanaNeural"
                     pct = int(round((effective_rate - 1.0) * 100))
