@@ -2336,6 +2336,14 @@
 
   <!-- Frontend Logic -->
   <script>
+    // Global Error & Rejection Logging to Developer Console
+    window.addEventListener('error', (event) => {
+      console.error('[Global Window Error]:', event.error || event.message, event);
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('[Unhandled Promise Rejection]:', event.reason);
+    });
+
     lucide.createIcons();
 
     function setTopic(name) {
@@ -4273,6 +4281,43 @@
       setVisualTopic(t);
     }
 
+    function cloneCleanPlan(p) {
+      if (!p) return null;
+      return {
+        topic: p.topic,
+        title: p.title,
+        description: p.description,
+        tags: Array.isArray(p.tags) ? [...p.tags] : [],
+        date: p.date,
+        channel: p.channel,
+        hook_tts: p.hook_tts
+      };
+    }
+
+    function sanitizeVisualDatasetForRender(ds) {
+      if (!ds) return null;
+      return {
+        mode: ds.mode || 'visual_image_quiz',
+        theme: ds.theme,
+        language: ds.language || 'ru',
+        hook_tts: ds.hook_tts,
+        rapid_flip_duration_ms: ds.rapid_flip_duration_ms || 120,
+        timer_duration_sec: ds.timer_duration_sec || 1.75,
+        items: (ds.items || []).map(it => ({
+          id: it.id,
+          difficulty: it.difficulty,
+          answer_text: it.answer_text,
+          prompt_tts: it.prompt_tts,
+          answer_tts: it.answer_tts || it.answer_text,
+          image_query: it.image_query,
+          image_url: it.image_url,
+          image_path: it.image_path || null,
+          is_approved: Boolean(it.is_approved)
+        })),
+        interstitials: ds.interstitials || []
+      };
+    }
+
     async function generateVisualQuizScript() {
       const topicInput = document.getElementById('visual-topic-input');
       const theme = topicInput ? topicInput.value.trim() : 'Суперкары мира';
@@ -4305,7 +4350,7 @@
 
         const dataset = await res.json();
         if (activePlanYouTube) {
-          dataset.youtube_plan = activePlanYouTube;
+          dataset.youtube_plan = cloneCleanPlan(activePlanYouTube);
           if (activePlanYouTube.hook_tts) {
             dataset.hook_tts = activePlanYouTube.hook_tts;
           }
@@ -4320,6 +4365,7 @@
           visualCardsPanel.scrollIntoView({ behavior: 'smooth' });
         }
       } catch (err) {
+        console.error('[VisualQuiz Script Gen Error]:', err);
         alert('Ошибка генерации сценария: ' + err.message);
       } finally {
         if (btn) {
@@ -4759,24 +4805,31 @@
       }
 
       try {
+        const payloadDataset = sanitizeVisualDatasetForRender(currentVisualDataset);
+        const reqPayload = {
+          dataset: payloadDataset,
+          background_video: bgVideo,
+          background_mode: currentBackgroundMode,
+          background_music: (musicEnabled && uploadedMusicFile) ? uploadedMusicFile : null,
+          background_music_volume: musicVol,
+          voice: selectedVoice,
+          voice_config: voiceConfig,
+          banner_video: (bannerEnabled && uploadedBannerFile) ? uploadedBannerFile : null
+        };
+
         const res = await fetch('/api/v1/quiz/visual/render', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            dataset: currentVisualDataset,
-            background_video: bgVideo,
-            background_mode: currentBackgroundMode,
-            background_music: (musicEnabled && uploadedMusicFile) ? uploadedMusicFile : null,
-            background_music_volume: musicVol,
-            voice: selectedVoice,
-            voice_config: voiceConfig,
-            banner_video: (bannerEnabled && uploadedBannerFile) ? uploadedBannerFile : null
-          })
+          body: JSON.stringify(reqPayload)
         });
 
         if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || 'Ошибка рендера');
+          const errData = await res.json().catch(() => ({}));
+          console.error('[VisualQuiz Server Error Response]', res.status, errData);
+          const detailMsg = Array.isArray(errData.detail)
+            ? errData.detail.map(d => `${d.loc?.slice(-1)[0] || 'поле'}: ${d.msg}`).join(', ')
+            : (typeof errData.detail === 'string' ? errData.detail : (res.statusText || 'Ошибка рендера'));
+          throw new Error(detailMsg);
         }
 
         const result = await res.json();
@@ -4826,6 +4879,7 @@
           loadGenerationHistory();
         }
       } catch (err) {
+        console.error('[VisualQuiz Render Error]:', err);
         alert('Ошибка при создании Visual Quiz: ' + err.message);
         if (progressDetails) progressDetails.textContent = 'Ошибка: ' + err.message;
       } finally {
@@ -7394,7 +7448,7 @@
           }
 
           const dataset = await res.json();
-          dataset.youtube_plan = item;
+          dataset.youtube_plan = cloneCleanPlan(item);
           if (item.hook_tts) dataset.hook_tts = item.hook_tts;
           item.dataset = dataset;
           item.status = 'ready';
@@ -7543,23 +7597,27 @@
         if (progressDetails) progressDetails.textContent = `Рендеринг «${item.title || item.topic}» для канала ${item.channel || 'по умолчанию'}...`;
 
         try {
+          const payloadDataset = sanitizeVisualDatasetForRender(item.dataset);
+          const reqPayload = {
+            dataset: payloadDataset,
+            background_video: bgVideo,
+            background_mode: currentBackgroundMode,
+            background_music: (musicEnabled && uploadedMusicFile) ? uploadedMusicFile : null,
+            background_music_volume: musicVol,
+            voice: selectedVoice,
+            voice_config: voiceConfig,
+            banner_video: (bannerEnabled && uploadedBannerFile) ? uploadedBannerFile : null,
+          };
+
           const res = await fetch('/api/v1/quiz/visual/render', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              dataset: item.dataset,
-              background_video: bgVideo,
-              background_mode: currentBackgroundMode,
-              background_music: (musicEnabled && uploadedMusicFile) ? uploadedMusicFile : null,
-              background_music_volume: musicVol,
-              voice: selectedVoice,
-              voice_config: voiceConfig,
-              banner_video: (bannerEnabled && uploadedBannerFile) ? uploadedBannerFile : null,
-            })
+            body: JSON.stringify(reqPayload)
           });
 
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
+            console.error(`[BatchRender Server Error on Video ${i + 1}]`, res.status, errData);
             const detailMsg = Array.isArray(errData.detail)
               ? errData.detail.map(d => `${d.loc?.slice(-1)[0] || 'поле'}: ${d.msg}`).join(', ')
               : (typeof errData.detail === 'string' ? errData.detail : (res.statusText || 'Ошибка рендера'));
@@ -7576,7 +7634,7 @@
             await autoScheduleVisualQuizToYouTube(result.job_id, result.video_path, item, false);
           }
         } catch (err) {
-          console.error(`Batch render error on video ${i + 1}:`, err);
+          console.error(`[BatchRender Error on Video ${i + 1} (${item.title || item.topic})]:`, err);
           item.status = 'failed';
           item.error = err.message;
           failCount++;
