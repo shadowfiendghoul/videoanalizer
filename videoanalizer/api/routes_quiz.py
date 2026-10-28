@@ -987,6 +987,12 @@ async def get_batch_queue_status() -> BatchQueueState:
 @router.post("/batch/queue/start", response_model=BatchQueueState)
 async def start_batch_queue(request: BatchRenderStartRequest) -> BatchQueueState:
     """Enqueue approved batch items into sequential Remotion render queue."""
+    logger.info(
+        "🚀 [API] /batch/queue/start: batch_id='%s', %d approved items, voice=%s",
+        request.batch_id,
+        len(request.approved_item_ids),
+        request.voice,
+    )
     manager = get_batch_queue_manager()
     state = await manager.start_render_queue(request)
     return state
@@ -1267,6 +1273,13 @@ async def load_quiz_plan(request: LoadPlanRequest) -> LoadPlanResponse:
 @router.post("/visual/render", response_model=VisualQuizRenderResponse)
 async def render_visual_quiz(request: VisualQuizRenderRequest) -> VisualQuizRenderResponse:
     """Render finalized Visual Image Quiz into MP4 via Remotion."""
+    logger.info(
+        "🚀 [API] /visual/render: theme='%s', items=%d, voice=%s, profile=%s",
+        request.dataset.theme,
+        len(request.dataset.items),
+        request.voice,
+        request.render_profile,
+    )
     orchestrator = QuizOrchestrator()
     job_id = f"vis_{uuid.uuid4().hex[:10]}"
     try:

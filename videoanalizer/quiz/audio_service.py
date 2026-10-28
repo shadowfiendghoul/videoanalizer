@@ -554,6 +554,14 @@ class AudioService:
         for attempt in range(max_attempts):
             try:
                 connector = aiohttp.TCPConnector(resolver=aiohttp.ThreadedResolver())
+                logger.info(
+                    "🎙️ [TTS] Synthesizing '%s' with %s (%s, attempt %d/%d)...",
+                    tts_text[:40],
+                    active_voice,
+                    rate_arg,
+                    attempt + 1,
+                    max_attempts,
+                )
                 communicate = edge_tts.Communicate(
                     tts_text, active_voice, rate=rate_arg, connector=connector
                 )
@@ -580,6 +588,13 @@ class AudioService:
                         detected_speech_duration_ms = chunk["duration"] // 10000
                 if audio_bytes:
                     synthesized_successfully = True
+                    dur_ms = words[-1].end_ms if words else 0
+                    logger.info(
+                        "🎙️ [TTS] Finished '%s' -> %d words, duration=%.2fs",
+                        tts_text[:40],
+                        len(words),
+                        dur_ms / 1000,
+                    )
                     break
             except Exception as e:
                 if "403" in str(e) or "Handshake" in str(e):

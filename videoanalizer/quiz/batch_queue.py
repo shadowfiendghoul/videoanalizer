@@ -354,6 +354,13 @@ class BatchQueueManager:
             next_item.stage = "Запуск Remotion рендерера..."
             next_item.updated_at = datetime.now(UTC)
 
+            logger.info(
+                "📦 [Batch] Starting render for item %d/%d: '%s' (item_id=%s)",
+                self.current_state.completed_count + 1,
+                len(self.current_state.items),
+                next_item.topic,
+                next_item.item_id,
+            )
             # Process under Semaphore(1) lock
             target_item = next_item
             async with self.render_semaphore:
@@ -407,7 +414,15 @@ class BatchQueueManager:
 
                     self.current_state.completed_count += 1
                     self.record_history(next_item)
-                    logger.info("Successfully finished rendering batch item '%s'", next_item.topic)
+                    file_size_mb = output_path.stat().st_size / (1024 * 1024) if output_path.exists() else 0
+                    logger.info(
+                        "🎉 [Batch] Item %d/%d '%s' COMPLETED -> %s (%.1f MB)",
+                        self.current_state.completed_count,
+                        len(self.current_state.items),
+                        next_item.topic,
+                        output_path,
+                        file_size_mb,
+                    )
 
                 except Exception as exc:
                     logger.error(

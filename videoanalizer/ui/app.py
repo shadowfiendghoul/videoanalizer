@@ -648,7 +648,9 @@ def launch(server_name: str = "0.0.0.0", server_port: int = 7860) -> None:  # no
     print("\n=====================================================================")
     print(f"[OK] VideoAnalyzer Web Dashboard running at http://localhost:{server_port}")
     print("=====================================================================\n")
-    uvicorn.run(app, host=server_name, port=server_port, log_level="info")
+    from videoanalizer.logging_setup import get_uvicorn_log_config, setup_console_logging
+    setup_console_logging()
+    uvicorn.run(app, host=server_name, port=server_port, log_config=get_uvicorn_log_config())
 
 
 if __name__ == "__main__":

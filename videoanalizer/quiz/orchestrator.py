@@ -789,8 +789,9 @@ class QuizOrchestrator:
         if process.returncode != 0:
             err_msg = "\n".join(collected_stderr[-30:])
             out_msg = "\n".join(collected_stdout[-30:])
+            details = err_msg if err_msg.strip() else out_msg
             logger.error(
-                "Remotion render failed with exit code %s: %s", process.returncode, err_msg
+                "Remotion render failed with exit code %s: %s", process.returncode, details
             )
             # Automatic fail-safe fallback to CPU Safe if GPU_FAST failed (Clarification 1)
             if effective_profile == RenderProfile.GPU_FAST:
@@ -1120,6 +1121,13 @@ class QuizOrchestrator:
             else self.config.output_dir / f"visual_quiz_{timestamp}_{secrets.token_hex(3)}.mp4"
         )
         final_output.parent.mkdir(parents=True, exist_ok=True)
+        logger.info(
+            "🎬 [VisualQuiz] Starting render for theme: '%s' (%d items, voice=%s, profile=%s)",
+            dataset.theme,
+            len(dataset.items),
+            voice,
+            render_profile or self.config.render_profile,
+        )
 
         with QuizWorkspace(base_dir=self.config.temp_dir) as ws:
             public_dir = ws.public_dir
@@ -1253,7 +1261,12 @@ class QuizOrchestrator:
             if progress_callback:
                 progress_callback(100, "Видео успешно создано!")
 
-            logger.info("VisualImageQuiz rendered successfully to %s", final_output)
+            file_size_mb = final_output.stat().st_size / (1024 * 1024) if final_output.exists() else 0
+            logger.info(
+                "✅ [Success] Visual quiz video ready -> %s (size: %.1f MB)",
+                final_output,
+                file_size_mb,
+            )
             return final_output
 
     async def render_widescreen_quiz(
@@ -1276,6 +1289,14 @@ class QuizOrchestrator:
             else self.config.output_dir / f"widescreen_quiz_{timestamp}_{secrets.token_hex(3)}.mp4"
         )
         final_output.parent.mkdir(parents=True, exist_ok=True)
+        total_q = getattr(dataset, "total_questions_count", len(getattr(dataset, "rounds", [])))
+        logger.info(
+            "🎬 [WidescreenQuiz] Starting render for: '%s' (%d questions, voice=%s, profile=%s)",
+            getattr(dataset, "title", "Widescreen Gaming Quiz"),
+            total_q,
+            voice,
+            render_profile or self.config.render_profile,
+        )
 
         with QuizWorkspace(base_dir=self.config.temp_dir) as ws:
             public_dir = ws.public_dir

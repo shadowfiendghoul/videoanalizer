@@ -344,6 +344,14 @@ class VoiceService:
                 audio_bytes.clear()
                 words.clear()
                 connector = aiohttp.TCPConnector(resolver=aiohttp.ThreadedResolver())
+                logger.info(
+                    "🎙️ [TTS] Synthesizing '%s' with %s (%s, attempt %d/%d)...",
+                    clean_text[:40],
+                    active_voice,
+                    rate_arg,
+                    attempt + 1,
+                    max_attempts,
+                )
                 communicate = edge_tts.Communicate(
                     clean_text, active_voice, rate=rate_arg, connector=connector
                 )
@@ -361,6 +369,13 @@ class VoiceService:
                             )
                         )
                 if audio_bytes:
+                    dur_ms = words[-1].end_ms if words else 0
+                    logger.info(
+                        "🎙️ [TTS] Finished '%s' -> %d words, duration=%.2fs",
+                        clean_text[:40],
+                        len(words),
+                        dur_ms / 1000,
+                    )
                     break
             except Exception as e:
                 last_err = e
