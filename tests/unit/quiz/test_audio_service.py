@@ -252,3 +252,45 @@ async def test_synthesize_speech_voice_profiles(tmp_path: Path) -> None:
         assert "asetrate=" in cmd[cmd.index("-af") + 1]
 
 
+
+
+def test_extract_acoustic_word_cues_language_constraint(tmp_path: Path) -> None:
+    """Verify subtitle recognition is strictly constrained to Russian and English."""
+    from unittest.mock import MagicMock
+    import numpy as np
+    from videoanalizer.quiz.audio_service import extract_acoustic_word_cues
+
+    dummy_audio = tmp_path / "dummy.wav"
+    dummy_audio.write_bytes(b"RIFFdummydata")
+
+    mock_model = MagicMock()
+    mock_segment = MagicMock()
+    mock_word = MagicMock()
+    mock_word.word = "Тест"
+    mock_word.start = 0.0
+    mock_word.end = 0.5
+    mock_segment.words = [mock_word]
+    mock_model.transcribe.return_value = ([mock_segment], None)
+
+    dummy_samples = np.zeros(16000, dtype=np.float32)
+
+    with patch("videoanalizer.quiz.audio_service._get_whisper_model", return_value=mock_model), patch(
+        "soundfile.read", return_value=(dummy_samples, 16000)
+    ):
+        # 1. Russian text -> language must be 'ru'
+        res_ru = extract_acoustic_word_cues(dummy_audio, expected_text="Привет мир", language=None)
+        assert res_ru is not None
+        _, kwargs_ru = mock_model.transcribe.call_args
+        assert kwargs_ru.get("language") == "ru"
+
+        # 2. English text -> language must be 'en'
+        res_en = extract_acoustic_word_cues(dummy_audio, expected_text="Hello world", language=None)
+        assert res_en is not None
+        _, kwargs_en = mock_model.transcribe.call_args
+        assert kwargs_en.get("language") == "en"
+
+        # 3. Disallowed language (e.g. 'de' or 'fr') with Cyrillic text -> restricted to 'ru'
+        res_disallowed = extract_acoustic_word_cues(dummy_audio, expected_text="Викторина", language="de")
+        assert res_disallowed is not None
+        _, kwargs_dis = mock_model.transcribe.call_args
+        assert kwargs_dis.get("language") == "ru"

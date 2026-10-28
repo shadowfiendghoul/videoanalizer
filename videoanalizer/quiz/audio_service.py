@@ -99,16 +99,31 @@ def extract_acoustic_word_cues(
         if sr != 16000:
             data = librosa.resample(data, orig_sr=sr, target_sr=16000)
 
+        clean_prompt = expected_text.strip() if expected_text else ""
+        has_cyrillic = bool(re.search(r"[а-яА-ЯёЁ]", clean_prompt))
+
+        # Restrict subtitle recognition strictly to Russian ('ru') or English ('en')
+        if language in ("ru", "en"):
+            effective_lang = language
+        elif language and language.lower().startswith("en"):
+            effective_lang = "en"
+        elif language and language.lower().startswith("ru"):
+            effective_lang = "ru"
+        elif has_cyrillic:
+            effective_lang = "ru"
+        elif clean_prompt and bool(re.search(r"[a-zA-Z]", clean_prompt)):
+            effective_lang = "en"
+        else:
+            effective_lang = "ru"
+
         kwargs: dict[str, Any] = {
             "word_timestamps": True,
             "beam_size": 1,
             "temperature": 0.0,
+            "language": effective_lang,
         }
-        clean_prompt = expected_text.strip() if expected_text else ""
         if clean_prompt:
             kwargs["initial_prompt"] = clean_prompt
-        if language:
-            kwargs["language"] = language
 
         segments, _ = model.transcribe(data, **kwargs)
         word_cues: list[WordCue] = []
@@ -477,7 +492,8 @@ class AudioService:
             cues = [
                 WordCue(word=w.word, start_ms=w.start_ms, end_ms=w.end_ms) for w in res.words
             ]
-            whisper_cues = extract_acoustic_word_cues(output_path, expected_text=text)
+            whisper_lang = "ru" if bool(re.search(r"[а-яА-ЯёЁ]", text)) else "en"
+            whisper_cues = extract_acoustic_word_cues(output_path, expected_text=text, language=whisper_lang)
             if whisper_cues:
                 cues = whisper_cues
             return res.duration_ms, cues
@@ -673,7 +689,7 @@ class AudioService:
 
         duration_ms = probe_audio_duration_ms(output_path)
 
-        whisper_lang = "ru" if "ru" in voice.lower() else ("en" if "en" in voice.lower() else None)
+        whisper_lang = "ru" if ("ru" in voice.lower() or bool(re.search(r"[а-яА-ЯёЁ]", text))) else "en" 
         whisper_words = extract_acoustic_word_cues(
             output_path, expected_text=text, language=whisper_lang
         )
