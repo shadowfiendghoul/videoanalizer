@@ -346,11 +346,22 @@ class ScriptService:
         self.config = config or get_quiz_config()
         self.image_service = image_service or ImageService()
         self.exclusions_manager = QuizExclusionsManager()
+        self._custom_client = client is not None
         if client is not None:
             self._client = client
         else:
             api_key = self.config.effective_api_key.get_secret_value()
             self._client = genai.Client(api_key=api_key)
+
+    def _reset_client(self) -> None:
+        """Discard broken TCP connector pool and recreate Gemini Client."""
+        if not getattr(self, "_custom_client", False):
+            try:
+                api_key = self.config.effective_api_key.get_secret_value()
+                self._client = genai.Client(api_key=api_key)
+                logger.info("Re-initialized Gemini Client session after network/socket reset.")
+            except Exception as reset_err:
+                logger.debug("Failed to reset Gemini Client: %s", reset_err)
 
     async def _generate_structured(
         self,
@@ -371,7 +382,7 @@ class ScriptService:
         )
 
         limiter = get_gemini_rate_limiter()
-        max_retries = 4
+        max_retries = 6
         last_error: Exception | None = None
 
         for attempt in range(max_retries):
@@ -388,25 +399,47 @@ class ScriptService:
             except Exception as exc:
                 last_error = exc
                 err_msg = str(exc)
+                exc_type = type(exc).__name__
                 is_429 = "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg
+                is_conn_error = (
+                    isinstance(exc, (ConnectionError, OSError, TimeoutError, asyncio.TimeoutError))
+                    or "aiohttp" in exc_type.lower()
+                    or "connector" in exc_type.lower()
+                    or "Cannot connect" in err_msg
+                    or "10013" in err_msg
+                    or "10051" in err_msg
+                    or "10054" in err_msg
+                    or "10060" in err_msg
+                    or "WSAEACCES" in err_msg
+                    or "запрещенным правами доступа" in err_msg
+                    or "отключенной сети" in err_msg
+                    or "RemoteDisconnected" in err_msg
+                    or "ServerDisconnected" in err_msg
+                    or "SSL" in err_msg
+                )
                 is_transient = (
                     "503" in err_msg
+                    or "502" in err_msg
+                    or "504" in err_msg
                     or "UNAVAILABLE" in err_msg
                     or "high demand" in err_msg
                     or is_429
+                    or is_conn_error
                 )
                 if is_transient and attempt < max_retries - 1:
                     if is_429:
                         await limiter.record_429_backoff(attempt)
                     else:
-                        delay = 2.5 * (2**attempt)
+                        delay = min(2.0 * (1.8**attempt), 15.0)
                         logger.warning(
-                            "Transient Gemini API error (attempt %d/%d). Retrying in %.1fs: %s",
+                            "Transient Gemini API / network error (attempt %d/%d). Retrying in %.1fs: %s",
                             attempt + 1,
                             max_retries,
                             delay,
                             exc,
                         )
+                        if is_conn_error:
+                            self._reset_client()
                         await asyncio.sleep(delay)
                 else:
                     raise exc

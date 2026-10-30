@@ -332,3 +332,46 @@ def test_regenerate_system_prompt_constraints() -> None:
     assert "Anti-Duplication" in REGENERATE_QUESTIONS_SYSTEM_PROMPT
     assert "KEPT" in REGENERATE_QUESTIONS_SYSTEM_PROMPT
 
+
+
+@pytest.mark.asyncio
+async def test_generate_structured_retries_transient_socket_and_connection_errors() -> None:
+    """Verify _generate_structured retries on WinError 10013 and connection errors without raising."""
+    from unittest.mock import MagicMock
+    from pydantic import BaseModel
+
+    class DummyResponse(BaseModel):
+        val: str
+
+    service = ScriptService()
+    attempt = 0
+
+    async def mock_generate_content(*args, **kwargs):
+        nonlocal attempt
+        attempt += 1
+        if attempt == 1:
+            # Simulate Windows socket permission error / WinError 10013
+            raise PermissionError("[WinError 10013] Сделана попытка доступа к сокету методом, запрещенным правами доступа")
+        elif attempt == 2:
+            # Simulate momentary network connection error
+            raise ConnectionError("Cannot connect to host generativelanguage.googleapis.com:443")
+        else:
+            mock_resp = MagicMock()
+            mock_resp.text = '{"val": "success"}'
+            return mock_resp
+
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(side_effect=mock_generate_content)
+    service._client = mock_client
+    service._custom_client = True
+
+    with patch("asyncio.sleep", new=AsyncMock()) as mock_sleep:
+        res = await service._generate_structured(
+            prompt="test prompt",
+            system_instruction="test system",
+            response_schema=DummyResponse,
+        )
+
+        assert res.val == "success"
+        assert attempt == 3
+        assert mock_sleep.call_count >= 2
