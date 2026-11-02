@@ -374,3 +374,41 @@ async def test_voice_service_dmitry_retries_without_switching_to_svetlana(tmp_pa
         )
         assert result.voice_mode_used == VoiceMode.EDGE_TTS
         assert attempt_count == 2
+
+
+@pytest.mark.asyncio
+async def test_voice_service_dmitry_acoustic_enhancement_filter(tmp_path: Path) -> None:
+    """Verify ru-RU-DmitryNeural applies studio de-box and presence filters via FFmpeg."""
+    svc = VoiceService()
+    out_file = tmp_path / "test_dmitry_enhanced.wav"
+    config = VoiceConfig(
+        voice_mode=VoiceMode.EDGE_TTS,
+        base_voice="ru-RU-DmitryNeural",
+        speech_rate=1.0,
+    )
+
+    mock_words = ["Привет"]
+    mock_stream = MockAsyncStream(mock_words)
+
+    with patch("edge_tts.Communicate") as mock_comm, patch(
+        "videoanalizer.quiz.voice_service.probe_audio_duration_ms", return_value=800
+    ), patch("subprocess.run") as mock_subproc:
+        instance = MagicMock()
+        instance.stream = MagicMock(return_value=mock_stream)
+        mock_comm.return_value = instance
+
+        result = await svc.synthesize(
+            text="Привет",
+            output_path=out_file,
+            config=config,
+        )
+
+        assert result.voice_mode_used == VoiceMode.EDGE_TTS
+        # FFmpeg must be called with acoustic enhancement filters
+        assert mock_subproc.called
+        all_cmd_args = " ".join(
+            " ".join(str(c) for c in call[0][0]) for call in mock_subproc.call_args_list
+        )
+        assert "equalizer=f=420" in all_cmd_args
+        assert "highpass=f=85" in all_cmd_args
+        assert "acompressor" in all_cmd_args

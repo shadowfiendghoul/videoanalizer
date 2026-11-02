@@ -32,6 +32,22 @@ from videoanalizer.quiz.rvc_engine import RvcInferenceEngine
 
 logger = logging.getLogger(__name__)
 
+# Studio acoustic mastering filter for ru-RU-DmitryNeural to eliminate the boxy/muffled "barrel" effect:
+# - highpass=f=85: removes sub-bass room rumble (<85 Hz)
+# - equalizer=f=420:t=q:w=1.2:g=-4.5: eliminates the prominent 400-480 Hz "barrel / boxiness" resonance
+# - equalizer=f=800:t=q:w=1.0:g=-1.5: smooths nasal lower-mid buildup
+# - equalizer=f=2800:t=q:w=1.0:g=2.5: boosts voice clarity and consonant articulation
+# - equalizer=f=7500:t=h:g=3.5: high-shelf boost adding crisp top-end studio air
+# - acompressor: broadcast-grade dynamic vocal compression for punchy, upfront presence
+DMITRY_STUDIO_ENHANCE_FILTER = (
+    "highpass=f=85,"
+    "equalizer=f=420:t=q:w=1.2:g=-4.5,"
+    "equalizer=f=800:t=q:w=1.0:g=-1.5,"
+    "equalizer=f=2800:t=q:w=1.0:g=2.5,"
+    "equalizer=f=7500:t=h:g=3.5,"
+    "acompressor=threshold=-16dB:ratio=3.5:attack=15:release=100:makeup=2.0dB"
+)
+
 VIRTUAL_VOICE_PRESETS: dict[str, dict[str, Any]] = {
     "ru-RU-SvetlanaEnergetic": {
         "base_voice": "ru-RU-SvetlanaNeural",
@@ -323,9 +339,15 @@ class VoiceService:
         # Svetlana and other voices support native SSML rate directly.
         if "dmitry" in active_voice.lower():
             rate_arg = "+0%"
+            # Apply studio acoustic enhancement filter to eliminate muffled/barrel resonance
+            af_filter = (
+                f"{af_filter},{DMITRY_STUDIO_ENHANCE_FILTER}"
+                if af_filter
+                else DMITRY_STUDIO_ENHANCE_FILTER
+            )
             if abs(effective_rate - 1.0) >= 0.02:
                 tempo_str = f"atempo={effective_rate:.3f}"
-                af_filter = f"{af_filter},{tempo_str}" if af_filter else tempo_str
+                af_filter = f"{af_filter},{tempo_str}" 
         else:
             pct = int(round((effective_rate - 1.0) * 100))
             rate_arg = f"{pct:+d}%"
