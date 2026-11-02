@@ -377,10 +377,10 @@ async def test_voice_service_dmitry_retries_without_switching_to_svetlana(tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_voice_service_dmitry_acoustic_enhancement_filter(tmp_path: Path) -> None:
-    """Verify ru-RU-DmitryNeural applies studio de-box and presence filters via FFmpeg."""
+async def test_voice_service_dmitry_preserves_pure_audio_without_distortion_filters(tmp_path: Path) -> None:
+    """Verify ru-RU-DmitryNeural does not apply harsh artificial EQ filters."""
     svc = VoiceService()
-    out_file = tmp_path / "test_dmitry_enhanced.wav"
+    out_file = tmp_path / "test_dmitry_clean.wav"
     config = VoiceConfig(
         voice_mode=VoiceMode.EDGE_TTS,
         base_voice="ru-RU-DmitryNeural",
@@ -404,11 +404,10 @@ async def test_voice_service_dmitry_acoustic_enhancement_filter(tmp_path: Path) 
         )
 
         assert result.voice_mode_used == VoiceMode.EDGE_TTS
-        # FFmpeg must be called with acoustic enhancement filters
-        assert mock_subproc.called
         all_cmd_args = " ".join(
             " ".join(str(c) for c in call[0][0]) for call in mock_subproc.call_args_list
         )
-        assert "equalizer=f=420" in all_cmd_args
-        assert "highpass=f=85" in all_cmd_args
-        assert "acompressor" in all_cmd_args
+        # Ensure no artificial equalizer distortion is forced on Dmitry
+        assert "equalizer=f=420" not in all_cmd_args
+        assert "highpass=f=85" not in all_cmd_args
+        assert "acompressor" not in all_cmd_args

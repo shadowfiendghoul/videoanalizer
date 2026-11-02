@@ -509,7 +509,7 @@ class AudioService:
                     words.append(WordCue(word=tok, start_ms=i * step, end_ms=(i + 1) * step))
             return duration_ms, words
 
-        from videoanalizer.quiz.voice_service import DMITRY_STUDIO_ENHANCE_FILTER, VIRTUAL_VOICE_PRESETS
+        from videoanalizer.quiz.voice_service import VIRTUAL_VOICE_PRESETS
 
         af_filter: str | None = None
         effective_rate = 1.0
@@ -555,15 +555,9 @@ class AudioService:
         # Svetlana and other voices support native SSML rate directly.
         if "dmitry" in active_voice.lower():
             rate_arg = "+0%"
-            # Apply studio acoustic enhancement filter to eliminate muffled/barrel resonance
-            af_filter = (
-                f"{af_filter},{DMITRY_STUDIO_ENHANCE_FILTER}"
-                if af_filter
-                else DMITRY_STUDIO_ENHANCE_FILTER
-            )
             if abs(effective_rate - 1.0) >= 0.02:
                 tempo_str = f"atempo={effective_rate:.3f}"
-                af_filter = f"{af_filter},{tempo_str}" 
+                af_filter = f"{af_filter},{tempo_str}" if af_filter else tempo_str
         else:
             pct = int(round((effective_rate - 1.0) * 100))
             rate_arg = f"{pct:+d}%"
@@ -683,6 +677,8 @@ class AudioService:
                         str(output_path),
                         "-af",
                         af_filter,
+                        "-b:a",
+                        "192k",
                         str(filtered_target),
                     ],
                     check=True,
